@@ -3,7 +3,7 @@
 
 `amr-tools` is a nextflow pipeline to process sequencing data of Antimicrobial Multi-Resistance bacteria with
 a focus on plasmids. It is actively developed by [Diego Andrey Lab](https://www.unige.ch/medecine/demed/en/research/andrey-diego)
-at the [University of Geneva](https://www.unige.ch/medecine) and [Geneva University Hospital](https://www.hug.ch).
+at the University of Geneva and Geneva University Hospital.
 
 
 | ![](assets/amr-tools_overview.png) |
