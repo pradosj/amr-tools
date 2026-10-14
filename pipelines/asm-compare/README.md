@@ -25,12 +25,12 @@ curl -s https://get.nextflow.io | bash
 # Usage
 
 ```bash
-nextflow run BioinfoSupport/amr-tools/pipelines/asm-compare/main.nf --ref=ref_assembly.fasta --query=query_assembly.fasta
+nextflow run pradosj/amr-tools/pipelines/asm-compare/main.nf --ref=ref_assembly.fasta --query=query_assembly.fasta
 ```
 
 # Test the pipeline
 
 ```bash
-nextflow run BioinfoSupport/amr-tools/pipelines/asm-compare/main.nf -profile standard,test
+nextflow run pradosj/amr-tools/pipelines/asm-compare/main.nf -profile standard,test
 ```
 
