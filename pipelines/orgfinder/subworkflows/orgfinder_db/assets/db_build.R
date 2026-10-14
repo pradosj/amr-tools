@@ -1,9 +1,8 @@
 #!/usr/bin/env Rscript
 
 base_dir <- './'
-#base_dir <- '/Users/prados/Documents/AMR-genomics/amr-tools/amr-tools/pipelines/orgfinder/work/55/8ecfb333fb2491cca51bca1773d3de/'
 ncbi_dir <- fs::path(base_dir,"ncbi_db")
-db_dir <- fs::path(base_dir,"output")
+db_dir <- fs::path(base_dir,"orgfinder_db")
 
 #-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#
 # Load the list of reference genome downloaded from NCBI
@@ -23,22 +22,20 @@ ss <- read_tsv(file.path(ncbi_dir,"accessions.tsv"),col_types = cols("Organism T
 
 
 #-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#
-# Add molecule type
+# TODO: Add molecule type and exclude plasmids
 #-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#
-function() {
-	mol_type <- read_tsv(file.path(ncbi_dir,"molecule_types.tsv"),col_names = c("Assembly Accession","contig","type"),col_types = "c") %>%
-		filter(type != "Plasmid")
-	
-	ss <- nest_join(ss,mol_type,by="Assembly Accession")
-	
-	ss %>%
-		rowwise() %>%
-		mutate({
-			dna <- Biostrings::readDNAStringSet(src_path)
-			names(dna) <- str_replace(names(dna)," .*","")
-			all(names(dna) %in% mol_type$contig)
-		})
-}
+# function() {
+# 	mol_type <- read_tsv(file.path(ncbi_dir,"molecule_types.tsv"),col_names = c("Assembly Accession","contig","type"),col_types = "c") %>%
+# 		filter(type != "Plasmid")
+# 	ss <- nest_join(ss,mol_type,by="Assembly Accession")
+# 	ss %>%
+# 		rowwise() %>%
+# 		mutate({
+# 			dna <- Biostrings::readDNAStringSet(src_path)
+# 			names(dna) <- str_replace(names(dna)," .*","")
+# 			all(names(dna) %in% mol_type$contig)
+# 		})
+# }
 	
 
 
@@ -73,7 +70,7 @@ read_tax <- function(taxdump_dir) {
 }
 
 message("load taxonomy")
-tax <- read_tax(fs::path(base_dir,"extra/taxdump")) |>
+tax <- read_tax(fs::path(base_dir,"taxdump")) |>
 	mutate(is_db_tax = tax_id %in% db$tax_id) 
 
 # Find all ancestors of selected nodes

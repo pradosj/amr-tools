@@ -1,10 +1,9 @@
 
 include { NCBI_DATASET_DOWNLOAD_GENOME } from './modules/ncbi/dataset/main.nf'
 include { NCBI_TAXDUMP_DOWNLOAD        } from './modules/ncbi/taxdump/main.nf'
-include { RSCRIPT                      } from './modules/rscript/main.nf'
 
 // Make the tsv file with all accession numbers
-process ACCESSIONS_TSV {
+process STEP1_ACCESSIONS_TSV {
     container 'docker.io/staphb/ncbi-datasets:18.18.0'
     memory '8 GB'
     cpus 1
@@ -23,8 +22,9 @@ process ACCESSIONS_TSV {
 	    """
 }
 
-process MOLECULE_TYPES_TSV {
-    container 'registry.gitlab.unige.ch/amr-genomics/rscript:v3'
+process STEP2_MOLECULE_TYPES_TSV {
+		label 'rscript'
+		container 'registry.gitlab.unige.ch/amr-genomics/rscript:v3'
     memory '2 GB'
     cpus 1
     time '30 min'
@@ -40,6 +40,27 @@ process MOLECULE_TYPES_TSV {
 			> ncbi_db/molecule_types.tsv
 	    """
 }
+
+process STEP3_DB_BUILD {
+	  label 'rscript'
+	  container 'registry.gitlab.unige.ch/amr-genomics/rscript:v3'
+    memory '8 GB'
+    cpus 1
+    time '30 min'
+    input:
+        path('ncbi_db')
+        each path('taxdump')
+        each path('db_build.R')
+    output:
+        path('orgfinder_db',type: 'dir', emit: 'dir')
+        path('orgfinder_db/fna/*.fna', emit: 'fasta')
+        path('orgfinder_db/db.tsv', emit: 'tsv')
+    script:
+				"""
+				Rscript db_build.R
+				"""
+}
+
 
 workflow ORGFINDER_DB {
 	main:
@@ -65,11 +86,18 @@ workflow ORGFINDER_DB {
 		
 		def db_ch = genomes_ch
 			.collect()
-			| ACCESSIONS_TSV
-			| MOLECULE_TYPES_TSV
+			| STEP1_ACCESSIONS_TSV
+			| STEP2_MOLECULE_TYPES_TSV
 
-		RSCRIPT(db_ch.map({["all",it]}),file("${moduleDir}/assets/db_build.R"),taxdump)
+		STEP3_DB_BUILD(
+			STEP2_MOLECULE_TYPES_TSV.out,
+			NCBI_TAXDUMP_DOWNLOAD.out,
+			file("${moduleDir}/assets/db_build.R")
+		)
+
 	emit:
-		db = RSCRIPT.out.map({it[1]})
+		dir   = STEP3_DB_BUILD.out.dir
+		fasta = STEP3_DB_BUILD.out.fasta
+		tsv   = STEP3_DB_BUILD.out.tsv
 }
 
