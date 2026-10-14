@@ -4,7 +4,6 @@ library(GenomicRanges)
 library(Biostrings)
 
 read_org_name <- function(txt_file) {
-	#json_file <- "results/samples/r62b17.hdr/assembly/anninfo.json"
 	if (fs::file_exists(txt_file)) {
 		readLines(txt_file)	
 	} else {
@@ -14,8 +13,6 @@ read_org_name <- function(txt_file) {
 
 
 read_resfinder_json <- function(json_file) {
-	#json_file <- "/Volumes/m-Andrey_KPC/BioinfoSupport/pOXA/2026-01_oxa48/basecalling_and_pipeline/results/amr/assemblies/r113b10_RS2313__long_flye_medaka.amr/resfinder/data.json"
-	#json_file <- "/Volumes/m-Andrey_KPC/BioinfoSupport/pOXA/2026-01_oxa48/basecalling_and_pipeline/results/amr/reads/r113b10_RS2313/resfinder_long/data.json"
 	expected_structure <- tibble(
 		contig_id = character(0),
 		name = character(0),
@@ -40,11 +37,10 @@ read_resfinder_json <- function(json_file) {
 		mutate(position=str_glue("{query_start_pos}-{query_end_pos}")) |>
 		relocate(contig_id,resistance_name=name,query_start_pos,query_end_pos,coverage,identity,position)
 }
-#fs::dir_ls("results/samples/",glob = "*/resfinder",recurse = 1,type = "dir") |> fs::path("data.json") |> head(1) |> read_resfinder_json()
+
 
 
 read_amrfinderplus_tsv <- function(tsv_file) {
-	#tsv_file <- "results/samples/RH1/assembly/amrfinderplus/report.tsv"
 	expected_structure <- tibble(
 		contig_id = character(0),
 		resistance_name = character(0),
@@ -62,8 +58,6 @@ read_amrfinderplus_tsv <- function(tsv_file) {
 
 
 read_plasmidfinder_json <- function(json_file) {
-	#json_file <- "results_amr-annot/samples/r89b1/assemblies/hybrid_hybracter/plasmidfinder/data.json"
-	#json_file <- "results/samples/1717.consensus/input_assembly/plasmidfinder/data.json"
 	expected_structure <- tibble(
 		contig_name = character(0),
 		plasmid = character(0),
@@ -87,19 +81,18 @@ read_plasmidfinder_json <- function(json_file) {
 		mutate(contig_id = str_replace(contig_name," .*","")) |>
 		relocate(contig_id,plasmid_type=plasmid,coverage,identity)
 }
-#fs::dir_ls("results/samples/",glob = "*/plasmidfinder",recurse = 1,type = "dir") |> fs::path("data.json") |> tail(1) |> read_plasmidfinder_json()
+
 
 
 
 read_cgemlst_json <- function(json_file) {
 	if (!file.exists(json_file)) return(tibble(mlst_type="?"))
-	#json_file <- "results/samples/r62b17.hdr/cge_mlst/data.json"
 	json <- jsonlite::fromJSON(json_file,simplifyVector=FALSE)
 	json$mlst$results$sequence_type |>
 		enframe(value = "mlst_type",name = NULL) |>
 		mutate(mlst_type=if_else(mlst_type %in% c("Unknown",NA),"?",mlst_type))
 }
-#fs::dir_ls("results/samples/",glob = "*/mlst",recurse = 1,type = "dir") |> fs::path("data.json") |> tail(1) |> read_mlst_json()
+
 
 
 read_mobtyper_tsv <- function(tsv_file) {
@@ -110,7 +103,6 @@ read_mobtyper_tsv <- function(tsv_file) {
 			rep_types = character(0)
 		)	
 		if (!file.exists(tsv_file)) return(expected_structure)
-		#tsv_file <- "results/samples/r62b17.hdr/mobtyper.tsv"
 		read_tsv(tsv_file,col_types = cols(.default="c")) |>
 			mutate(contig_id=str_replace(sample_id," .*","")) |>
 			dplyr::rename(contig_name=sample_id,relaxase_types=`relaxase_type(s)`,rep_types=`rep_type(s)`) |>
@@ -120,8 +112,7 @@ read_mobtyper_tsv <- function(tsv_file) {
 
 
 read_orgfinder_tax <- function(tsv_file) {
-	#tsv_file <- "results/samples/r62b17.hdr/orgfinder/tax.tsv"
-	#assembly_acc    org_name        tax_id  species_id      genus_id        family_id       order_id        class_id        phylum_id       species_name    genus_name      family_name     order_name      class_name      phylum_name
+
 	expected_structure <- tibble(
 		assembly_acc = character(0),
 		org_name = character(0),
@@ -146,8 +137,6 @@ read_orgfinder_tax <- function(tsv_file) {
 }
 
 read_orgfinder_tsv <- function(tsv_file) {
-	#tsv_file <- "results/samples/r62b17.hdr/orgfinder/ani.tsv"
-	#query   assembly_acc    ANI     bi_frag query_frag      org_name        tax_id
 	expected_structure <- tibble(
 		query = character(0),
 		assembly_acc = character(0),
@@ -210,8 +199,7 @@ contig_meta <- function(fasta_filename) {
 
 
 db_load <- function(amr_dir) {
-	#amr_dir <- "/Users/prados/Documents/AMR-genomics/amr-tools/work/47/f133187c3eee55943a428e12343029/output"
-	#amr_dir <- "/Users/prados/Documents/AMR-genomics/amr-tools/work/47/f133187c3eee55943a428e12343029"
+
 	assemblies <- fs::path(amr_dir,"amr/assemblies") |>
 		fs::dir_ls(glob = "*.fasta",fail=FALSE) |>
 		enframe(name = NULL,value = "assembly_path") |>
@@ -244,8 +232,7 @@ db_load <- function(amr_dir) {
 
 
 summarise_assembly <- function(db) {
-	#db <- db_load("/Users/prados/Documents/AMR-genomics/amr-tools/work/47/f133187c3eee55943a428e12343029/") 
-
+	
 	assemblies <- db$assemblies |> 
 		select(assembly_id,sample_id,assembler_name,contigs) |> 
 		unnest(contigs) |> 
@@ -280,7 +267,6 @@ summarise_assembly <- function(db) {
 }
 
 summarise_resistances <- function(db) {
-	#db <- db_load("/Users/prados/Documents/AMR-genomics/amr-tools/work/47/f133187c3eee55943a428e12343029/output")
 	bind_rows(
 		resfinder = db$assemblies |> 
 			select(assembly_id,sample_id,assembler_name,resfinder) |> 
@@ -309,8 +295,6 @@ summarise_resistances <- function(db) {
 }
 
 summarise_plasmidfinder_hits <- function(db) {
-	#db <- db_load("/Users/prados/Documents/AMR-genomics/amr-tools/work/47/f133187c3eee55943a428e12343029/output")
-	#db <- db_load("/Users/prados/Documents/AMR-genomics/amr-tools/work/47/f133187c3eee55943a428e12343029")
 	select(db$assemblies,assembly_id,sample_id,assembler_name,plasmidfinder) |> 
 		unnest(plasmidfinder) |>
 		bind_rows(tibble(contig_id=character(0),plasmid_type=character(0),coverage=numeric(0),identity=numeric(0),positions_in_contig=character(0))) |>
@@ -321,7 +305,6 @@ summarise_plasmidfinder_hits <- function(db) {
 }
 
 summarise_contigs <- function(db) {
-	#db <- db_load("/Users/prados/Documents/AMR-genomics/amr-tools/work/47/f133187c3eee55943a428e12343029/output")
 	contigs <- db$assemblies |> 
 		select(assembly_id,sample_id,assembler_name,contigs) |> 
 		unnest(contigs)
