@@ -1,7 +1,7 @@
 {
 	"$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
-	"required": ["query"],
+
 	"properties": {
 
 		"query": {
@@ -12,14 +12,27 @@
 			"description": "Path to FASTA file containing query genomes"
 		},
 		
-		"ref": {
+		"ref_fasta": {
 			"type": "string",
 			"format": "file-path-pattern",
 			"exists": true,
 			"pattern": "^\\S+\\.(fasta|fa|fna)$",			
 			"description": "Path to FASTA files containing reference genomes",
 			"default": null
+		},
+
+		"ref_db": {
+			"type": "string",
+			"format": "dir-path",
+			"exists": true,
+			"description": "Path to a directory with reference genome database",
+			"default": null
 		}
-		
-	}
+	},
+	"oneOf": [
+		{"required": ["query"], "not": {"required": ["ref_fasta","ref_db"]}},
+    {"required": ["query","ref_db"], "not": {"required": ["ref_fasta"]}},
+    {"required": ["query","ref_fasta"],"not": {"required": ["ref_db"]}},
+  ]
+
 }
