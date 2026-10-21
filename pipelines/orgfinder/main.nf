@@ -13,7 +13,7 @@ process FASTANI_TO_ORGFINDER {
     input:
         tuple(val(meta), path('input.fastani'))
         each path('fastani2orgfinder.R')
-        each path('db')
+        each path('db.tsv')
     output:
         tuple(val(meta), path('output.orgfinder'))
     script:
@@ -41,7 +41,8 @@ workflow {
 			ref_ch = ORGFINDER_DB_BUILD.out.fasta.collect().map({[it]})
 			db_dir = ORGFINDER_DB_BUILD.out.dir
 		}
-
+		def db_tsv = db_dir.map({it / "db.tsv"})
+		
 		// Prepare query genomes
 		def query_ch = Channel.empty()
 		if (params.query!=null) {
@@ -60,10 +61,11 @@ workflow {
 		FASTANI_TO_ORGFINDER(
 			FASTANI.out,
 			file("${moduleDir}/assets/fastani2orgfinder.R"),
-			db_dir
+			db_tsv
 		)
 
 	publish:
+		fastani_tsv = FASTANI.out	
 		orgfinder_tsv = FASTANI_TO_ORGFINDER.out
 		db = db_dir
 }
@@ -75,6 +77,9 @@ output {
 	orgfinder_tsv {
 		path { m,x -> x >> "${m.sample_id}.orgfinder"}
 	}
+	fastani_tsv {
+		path { m,x -> x >> "${m.sample_id}.fastani"}
+	}	
 }
 
 

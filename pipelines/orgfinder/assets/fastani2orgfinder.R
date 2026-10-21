@@ -1,9 +1,9 @@
 #!/usr/bin/env Rscript
 
-db_dir <- "/Users/prados/Documents/AMR-genomics/amr-tools/amr-tools/pipelines/orgfinder/results/db/orgfinder"
-fastani_file <- "/Users/prados/Documents/AMR-genomics/amr-tools/amr-tools/pipelines/orgfinder/results/GCF_011397115.1.fastani"
+db_tsv <- "./db.tsv"
+fastani_file <- "./input.fastani"
 	
-db <- readr::read_tsv(fs::path(db_dir,"db.tsv"),col_types = "ccc")
+db <- readr::read_tsv(db_tsv,col_types = "ccc")
 
 # Load FastANI output and add DB information
 out <- readr::read_tsv(fastani_file,col_names = c("query","ref","ANI","bi_frag","query_frag")) |>
