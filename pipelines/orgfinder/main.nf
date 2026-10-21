@@ -4,6 +4,25 @@ include { FASTANI } from './modules/fastani/main.nf'
 include { validateParameters; paramsSummaryLog; samplesheetToList } from 'plugin/nf-schema'
 
 
+process FASTANI_ANNOTATE {
+	  label 'rscript'
+	  container 'registry.gitlab.unige.ch/amr-genomics/rscript:v3'
+    memory '8 GB'
+    cpus 1
+    time '30 min'
+    input:
+        tuple(val(meta), path('input.fastani'))
+        each path('fastani2orgfinder.R')
+        each path('db')
+    output:
+        tuple(val(meta), path('output.orgfinder'))
+    script:
+				"""
+				Rscript fastani2orgfinder.R
+				"""
+}
+
+
 workflow {
 	main:
 		// Validate parameters and print summary of supplied ones
@@ -37,6 +56,12 @@ workflow {
 				.combine(ref_ch)
 				.map({m, q, r -> tuple(m, q, r)})
 				| FASTANI
+				
+		FASTANI_ANNOTATE(
+			FASTANI.out,
+			file("${moduleDir}/assets/fastani2orgfinder.R"),
+			db_dir
+		)
 
 	publish:
 		fastani_tsv = FASTANI.out
