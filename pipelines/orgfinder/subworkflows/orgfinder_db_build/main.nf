@@ -1,6 +1,7 @@
 
 include { NCBI_DATASET_DOWNLOAD_GENOME } from './modules/ncbi/dataset/main.nf'
-include { NCBI_TAXDUMP_DOWNLOAD        } from './modules/ncbi/taxdump/main.nf'
+include { UNTAR        } from './modules/tar/untar.nf'
+
 
 // Make the tsv file with all accession numbers
 process STEP1_ACCESSIONS_TSV {
@@ -64,7 +65,6 @@ process STEP3_DB_BUILD {
 
 workflow ORGFINDER_DB_BUILD {
 	main:
-		def taxdump = NCBI_TAXDUMP_DOWNLOAD()
 		def genomes_ch = Channel.of(
 			"taxon 'Pseudomonas aeruginosa'  --reference --assembly-level complete --include genome,seq-report",
 			"taxon 'Acinetobacter baumannii' --reference --assembly-level complete --include genome,seq-report",
@@ -89,9 +89,11 @@ workflow ORGFINDER_DB_BUILD {
 			| STEP1_ACCESSIONS_TSV
 			| STEP2_MOLECULE_TYPES_TSV
 
+		UNTAR(tuple(file("https://ftp.ncbi.nlm.nih.gov/pub/taxonomy/taxdump.tar.gz"),'taxdump'))
+
 		STEP3_DB_BUILD(
 			STEP2_MOLECULE_TYPES_TSV.out,
-			NCBI_TAXDUMP_DOWNLOAD.out,
+			UNTAR.out,
 			file("${moduleDir}/assets/db_build.R")
 		)
 

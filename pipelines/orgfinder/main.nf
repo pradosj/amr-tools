@@ -10,6 +10,7 @@ workflow {
 		validateParameters()
 		log.info(paramsSummaryLog(workflow))
 
+		// Prepare reference database
 		def ref_ch = Channel.empty()
 		def db_dir = Channel.empty()
 		if (params.ref.db != null) {
@@ -22,6 +23,7 @@ workflow {
 			db_dir = ORGFINDER_DB_BUILD.out.dir
 		}
 
+		// Prepare query genomes
 		def query_ch = Channel.empty()
 		if (params.query!=null) {
 			query_ch = Channel.fromPath(params.query).map({
@@ -29,6 +31,8 @@ workflow {
 					[[sample_id:id],it]
 			})
 		}
+		
+		// Run FASTANI
 		query_ch
 				.combine(ref_ch)
 				.map({m, q, r -> tuple(m, q, r)})
