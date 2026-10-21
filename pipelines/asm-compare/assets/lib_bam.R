@@ -40,8 +40,8 @@ gaCigarBedpe <- function(aln) {
 # Generate one polygon per alignment
 bedpePolygons <- function(bedpe) {
 	bind_rows(
-		"ref" = as_tibble(bedpe$ref) |> bind_cols(aln_idx = bedpe$aln_idx),
-		"qry" = as_tibble(bedpe$query) |> bind_cols(aln_idx = bedpe$aln_idx),
+		"ref" = as_tibble(bedpe$ref) |> bind_cols(aln_idx = bedpe$aln_idx, bedpe_idx=seq_along(bedpe$aln_idx)),
+		"qry" = as_tibble(bedpe$query) |> bind_cols(aln_idx = bedpe$aln_idx, bedpe_idx=seq_along(bedpe$aln_idx)),
 		.id = "source"
 	) |>
 		select(-width) |>
@@ -54,7 +54,7 @@ bedpePolygons <- function(bedpe) {
 			TRUE ~ NA_integer_
 		)) |>
 		select(-strand) |>
-		arrange(aln_idx,order)
+		arrange(aln_idx,bedpe_idx,order)
 }
 
 
