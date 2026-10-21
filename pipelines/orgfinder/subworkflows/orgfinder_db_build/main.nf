@@ -62,7 +62,7 @@ process STEP3_DB_BUILD {
 }
 
 
-workflow ORGFINDER_DB {
+workflow ORGFINDER_DB_BUILD {
 	main:
 		def taxdump = NCBI_TAXDUMP_DOWNLOAD()
 		def genomes_ch = Channel.of(

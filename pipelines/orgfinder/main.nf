@@ -1,7 +1,8 @@
 
-include { ORGFINDER_DB } from './subworkflows/orgfinder_db/main.nf'
+include { ORGFINDER_DB_BUILD } from './subworkflows/orgfinder_db_build/main.nf'
 include { FASTANI } from './modules/fastani/main.nf'
 include { validateParameters; paramsSummaryLog; samplesheetToList } from 'plugin/nf-schema'
+
 
 workflow {
 	main:
@@ -9,22 +10,25 @@ workflow {
 		validateParameters()
 		log.info(paramsSummaryLog(workflow))
 
-
 		def ref_ch = Channel.empty()
-		if (params.ref_db != null) {
-			ref_ch = Channel.fromPath("${params.ref_db}/fna/*.fna").collect().map({[it]})
-		} else if (params.ref_fasta != null) {
-			ref_ch = Channel.fromPath(params.ref_fasta).collect().map({[it]})
+		def db_dir = Channel.empty()
+		if (params.ref.db != null) {
+			ref_ch = Channel.fromPath("${params.ref.db}/fna/*.fna").collect().map({[it]})
+		} else if (params.ref.fasta != null) {
+			ref_ch = Channel.fromPath(params.ref.fasta).collect().map({[it]})
 		} else {
-			ORGFINDER_DB()
-			ref_ch = ORGFINDER_DB.out.fasta.collect().map({[it]})
+			ORGFINDER_DB_BUILD()
+			ref_ch = ORGFINDER_DB_BUILD.out.fasta.collect().map({[it]})
+			db_dir = ORGFINDER_DB_BUILD.out.dir
 		}
 
-		def query_ch = Channel.fromPath(params.query).map({
-				def id = it.name.replaceAll(/\.(fasta|fna|fa)$/,'')
-				[[sample_id:id],it]
-		})
-
+		def query_ch = Channel.empty()
+		if (params.query!=null) {
+			query_ch = Channel.fromPath(params.query).map({
+					def id = it.name.replaceAll(/\.(fasta|fna|fa)$/,'')
+					[[sample_id:id],it]
+			})
+		}
 		query_ch
 				.combine(ref_ch)
 				.map({m, q, r -> tuple(m, q, r)})
@@ -32,7 +36,7 @@ workflow {
 
 	publish:
 		fastani_tsv = FASTANI.out
-		db = ORGFINDER_DB.out.dir
+		db = db_dir
 }
 
 output {
