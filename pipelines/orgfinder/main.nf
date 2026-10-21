@@ -4,7 +4,7 @@ include { FASTANI } from './modules/fastani/main.nf'
 include { validateParameters; paramsSummaryLog; samplesheetToList } from 'plugin/nf-schema'
 
 
-process FASTANI_ANNOTATE {
+process FASTANI_TO_ORGFINDER {
 	  label 'rscript'
 	  container 'registry.gitlab.unige.ch/amr-genomics/rscript:v3'
     memory '8 GB'
@@ -57,14 +57,14 @@ workflow {
 				.map({m, q, r -> tuple(m, q, r)})
 				| FASTANI
 				
-		FASTANI_ANNOTATE(
+		FASTANI_TO_ORGFINDER(
 			FASTANI.out,
 			file("${moduleDir}/assets/fastani2orgfinder.R"),
 			db_dir
 		)
 
 	publish:
-		fastani_tsv = FASTANI.out
+		orgfinder_tsv = FASTANI_TO_ORGFINDER.out
 		db = db_dir
 }
 
@@ -72,8 +72,8 @@ output {
 	db {
 		path {x -> x >> "db/orgfinder"}
 	}
-	fastani_tsv {
-		path { m,x -> x >> "${m.sample_id}.fastani"}
+	orgfinder_tsv {
+		path { m,x -> x >> "${m.sample_id}.orgfinder"}
 	}
 }
 
