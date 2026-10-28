@@ -165,7 +165,7 @@ workflow AMR_ANNOT {
     	multireport_assemblies_tsv  = MULTIREPORT.out.assemblies_tsv.map({m,x -> x})
     	multireport_contigs_tsv     = MULTIREPORT.out.contigs_tsv.map({m,x -> x})
     	multireport_resistances_tsv = MULTIREPORT.out.resistances_tsv.map({m,x -> x})
-    	multireport_plasmidfinder_hits_tsv = MULTIREPORT.out.plasmidfinder_hits.map({m,x -> x})
+    	multireport_plasmidfinder_hits_tsv = MULTIREPORT.out.plasmidfinder_hits_tsv.map({m,x -> x})
 }
 
 
