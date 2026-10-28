@@ -147,7 +147,7 @@ output {
 	}
 	assemblies_dir {
 		mode "copy" //because link is problematic
-		enabled params.verbose
+		enabled params.verbosity
 		path { m,x -> x >> "assemblies/${m[0].sample_id}__${m[1].assembler_name}.output"}
 	}	
 	assemblies_checkm2 {

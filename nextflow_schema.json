@@ -33,7 +33,7 @@
 			}
 		},
 		
-		"verbose": {
+		"verbosity": {
 			"type": "boolean",
 			"default": false,
 			"description": "If on, the pipeline will produce extended outputs for debugging purpose"
