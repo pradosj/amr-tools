@@ -117,6 +117,7 @@ workflow {
 		amr_multireport_assemblies_tsv  = AMR_ANNOT.out.multireport_assemblies_tsv.ifEmpty([])
 		amr_multireport_contigs_tsv     = AMR_ANNOT.out.multireport_contigs_tsv.ifEmpty([])
 		amr_multireport_resistances_tsv = AMR_ANNOT.out.multireport_resistances_tsv.ifEmpty([])
+		amr_multireport_plasmidfinder_hits_tsv = AMR_ANNOT.out.multireport_plasmidfinder_hits_tsv.ifEmpty([])
 }
 
 output {
@@ -214,7 +215,9 @@ output {
 	amr_multireport_resistances_tsv {
 		path { "reports/"}
 	}	
-
+  amr_multireport_plasmidfinder_hits_tsv {
+		path { "reports/"}
+	}
 }
 
 

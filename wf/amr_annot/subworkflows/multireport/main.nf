@@ -15,6 +15,7 @@ process MULTITABLE {
         tuple val(meta), path('multitable_assemblies.tsv'), emit:'assemblies_tsv'
         tuple val(meta), path('multitable_contigs.tsv'), emit:'contigs_tsv'
         tuple val(meta), path('multitable_resistances.tsv'), emit:'resistances_tsv'
+        tuple val(meta), path('multitable_plasmidfinder_hits.tsv'), emit:'plasmidfinder_hits_tsv'
     script:
         """
 		#!/usr/bin/env Rscript
@@ -28,9 +29,10 @@ process MULTITABLE {
 		)
 		tbl\$contigs <- left_join(tbl\$contigs,select(tbl\$assemblies,sample_id,assembler_name,species_name,mlst_type),by=c('sample_id','assembler_name'))
 		openxlsx::write.xlsx(tbl,file="multitable.xlsx")
-		readr::write_tsv(tbl\$contigs,file="multitable_assemblies.tsv")
+		readr::write_tsv(tbl\$assemblies,file="multitable_assemblies.tsv")
 		readr::write_tsv(tbl\$contigs,file="multitable_contigs.tsv")
-		readr::write_tsv(tbl\$contigs,file="multitable_resistances.tsv")
+		readr::write_tsv(tbl\$resistances,file="multitable_resistances.tsv")
+		readr::write_tsv(tbl\$plasmidfinder_hits,file="multitable_plasmidfinder_hits.tsv")
         """
 }
 
@@ -91,7 +93,8 @@ workflow MULTIREPORT {
 		folder = ORGANIZE_FILES.out
 		html   = RMD_RENDER.out       // channel: [ meta, path(html) ]
 		xlsx   = MULTITABLE.out.xlsx  // channel: [ meta, path(xlsx) ]
-		contigs_tsv     = MULTITABLE.out.contigs_tsv      // channel: [ meta, path(tsv) ]
-		resistances_tsv = MULTITABLE.out.resistances_tsv  // channel: [ meta, path(tsv) ]
-		assemblies_tsv = MULTITABLE.out.assemblies_tsv    // channel: [ meta, path(tsv) ]
+		assemblies_tsv         = MULTITABLE.out.assemblies_tsv         // channel: [ meta, path(tsv) ]
+		contigs_tsv            = MULTITABLE.out.contigs_tsv            // channel: [ meta, path(tsv) ]
+		resistances_tsv        = MULTITABLE.out.resistances_tsv        // channel: [ meta, path(tsv) ]
+		plasmidfinder_hits_tsv = MULTITABLE.out.plasmidfinder_hits_tsv // channel: [ meta, path(tsv) ]
 }
