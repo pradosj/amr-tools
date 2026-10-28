@@ -33,9 +33,9 @@
 			}
 		},
 		
-		"verbosity": {
-			"type": "integer",
-			"default": 0,
+		"verbose": {
+			"type": "boolean",
+			"default": false,
 			"description": "If on, the pipeline will produce extended outputs for debugging purpose"
 		},
 		
