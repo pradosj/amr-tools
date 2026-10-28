@@ -114,7 +114,9 @@ workflow {
 		orgfinder            = AMR_ANNOT.out.orgfinder
 		amr_multireport_html = AMR_ANNOT.out.multireport_html.ifEmpty([])
 		amr_multireport_xlsx = AMR_ANNOT.out.multireport_xlsx.ifEmpty([])
-		amr_multireport_tsv  = AMR_ANNOT.out.multireport_tsv.ifEmpty([])
+		amr_multireport_assemblies_tsv  = AMR_ANNOT.out.multireport_assemblies_tsv.ifEmpty([])
+		amr_multireport_contigs_tsv     = AMR_ANNOT.out.multireport_contigs_tsv.ifEmpty([])
+		amr_multireport_resistances_tsv = AMR_ANNOT.out.multireport_resistances_tsv.ifEmpty([])
 }
 
 output {
@@ -203,7 +205,13 @@ output {
 	amr_multireport_xlsx {
 		path { "reports/"}
 	}
-	amr_multireport_tsv {
+	amr_multireport_assemblies_tsv {
+		path { "reports/"}
+	}	
+	amr_multireport_contigs_tsv {
+		path { "reports/"}
+	}	
+	amr_multireport_resistances_tsv {
 		path { "reports/"}
 	}	
 

@@ -12,6 +12,7 @@ process MULTITABLE {
 		each path("lib_typing.R")
     output:
         tuple val(meta), path('multitable.xlsx'), emit:'xlsx'
+        tuple val(meta), path('multitable_assemblies.tsv'), emit:'assemblies_tsv'
         tuple val(meta), path('multitable_contigs.tsv'), emit:'contigs_tsv'
         tuple val(meta), path('multitable_resistances.tsv'), emit:'resistances_tsv'
     script:
@@ -27,6 +28,7 @@ process MULTITABLE {
 		)
 		tbl\$contigs <- left_join(tbl\$contigs,select(tbl\$assemblies,sample_id,assembler_name,species_name,mlst_type),by=c('sample_id','assembler_name'))
 		openxlsx::write.xlsx(tbl,file="multitable.xlsx")
+		readr::write_tsv(tbl\$contigs,file="multitable_assemblies.tsv")
 		readr::write_tsv(tbl\$contigs,file="multitable_contigs.tsv")
 		readr::write_tsv(tbl\$contigs,file="multitable_resistances.tsv")
         """
@@ -91,4 +93,5 @@ workflow MULTIREPORT {
 		xlsx   = MULTITABLE.out.xlsx  // channel: [ meta, path(xlsx) ]
 		contigs_tsv     = MULTITABLE.out.contigs_tsv      // channel: [ meta, path(tsv) ]
 		resistances_tsv = MULTITABLE.out.resistances_tsv  // channel: [ meta, path(tsv) ]
+		assemblies_tsv = MULTITABLE.out.assemblies_tsv    // channel: [ meta, path(tsv) ]
 }
