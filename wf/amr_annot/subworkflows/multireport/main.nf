@@ -26,7 +26,7 @@ process MULTITABLE {
 		)
 		tbl\$contigs <- left_join(tbl\$contigs,select(tbl\$assemblies,sample_id,assembler_name,species_name,mlst_type),by=c('sample_id','assembler_name'))
 		openxlsx::write.xlsx(tbl,file="multitable.xlsx")
-		readr::write_tsv(tbl,file="multitable.tsv")
+		readr::write_tsv(tbl\$contigs,file="multitable_contigs.tsv")
         """
 }
 
