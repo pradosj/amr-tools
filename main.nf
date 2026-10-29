@@ -15,6 +15,12 @@ include { IDENTITY as COPY_LONG_READS                 } from './modules/identity
 include { validateParameters; paramsSummaryLog; samplesheetToList } from 'plugin/nf-schema'
 
 
+params {
+	verbose: Boolean = false
+	csv:     Path? = null
+}
+
+
 workflow {
 	main:
 		// Validate parameters and print summary of supplied ones
