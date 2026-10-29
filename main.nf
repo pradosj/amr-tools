@@ -23,7 +23,7 @@ record ReadsParams {
 params {
 	verbose: Boolean = false
 	csv:     Path? = null
-	reads:   ReadsParams = record('ont':null,'illumina':null)
+	reads:   ReadsParams = record(ont:null, illumina:null)
 }
 
 

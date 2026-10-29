@@ -32,8 +32,8 @@ class Samples {
 			def sr_ch = Channel.empty()
 			def lr_ch = Channel.empty()
 			def fa_ch = Channel.empty()
-	  	if (opts.reads.illumina) {
-	  		lr_ch = Channel.fromPath(opts.reads.illumina).map({
+	  	if (opts.reads.ont) {
+	  		lr_ch = Channel.fromPath(opts.reads.ont).map({
 	  				def id = it.name.replaceAll(/\.(fastq\.gz|fq\.gz|bam|cram)$/,'')
 	  				[[sample_id:id],it]
 	  		})
