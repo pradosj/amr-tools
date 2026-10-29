@@ -32,8 +32,8 @@ class Samples {
 			def sr_ch = Channel.empty()
 			def lr_ch = Channel.empty()
 			def fa_ch = Channel.empty()
-	  	if (opts.reads.long) {
-	  		lr_ch = Channel.fromPath(opts.reads.long).map({
+	  	if (opts.reads.illumina) {
+	  		lr_ch = Channel.fromPath(opts.reads.illumina).map({
 	  				def id = it.name.replaceAll(/\.(fastq\.gz|fq\.gz|bam|cram)$/,'')
 	  				[[sample_id:id],it]
 	  		})
@@ -44,8 +44,8 @@ class Samples {
 	  				[[sample_id:id],it]
 	  		})
 	  	}	  	
-	  	if (opts.reads.short) {
-				sr_ch = Channel.fromFilePairs(opts.reads.short,size:-1) { 
+	  	if (opts.reads.illumina) {
+				sr_ch = Channel.fromFilePairs(opts.reads.illumina,size:-1) { 
 						file -> file.name.replaceAll(/_(R?[12])(_[0-9][0-9][0-9])?\.(fq|fastq)\.gz$/, '') 
 				}
 				.map({id,x -> [[sample_id:id],x]})

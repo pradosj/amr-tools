@@ -1,4 +1,5 @@
 
+
 include { SAMTOOLS_FASTQ as CONVERT_LONG_BAM_TO_FASTQ } from './modules/samtools/fastq' 
 include { READS_FILTER                                } from './wf/reads_filter/main.nf'
 include { READS_QC as FILTERED_READS_QC               } from './wf/reads_qc/main.nf'
@@ -14,41 +15,16 @@ include { IDENTITY as COPY_LONG_READS                 } from './modules/identity
 // ------------------------------------------------------------------
 include { validateParameters; paramsSummaryLog; samplesheetToList } from 'plugin/nf-schema'
 
-
 record ReadsParams {
-  long: String?
-  short: String?
-}
-
-record AssemblerArgsParams {
-    flye: String?
-    medaka: String?
-}
-
-record AssemblerParams {
-    name: String
-    args: AssemblerArgsParams
+		ont: String?
+    illumina: String?
 }
 
 params {
 	verbose: Boolean = false
 	csv:     Path? = null
-	reads:   ReadsParams = record(
-			long: null,
-			short: null
-		)
-	assembler: AssemblerParams = record(
-			name: 'long_flye_medaka',
-			args: record(
-				flye  : null,
-				medaka: '--bacteria'
-			)
-		)
-	
+	reads:   ReadsParams = record('ont':null,'illumina':null)
 }
-
-
-
 
 
 
@@ -81,14 +57,14 @@ workflow {
 
 		// Filter reads
 		if (!params.reads_filter.skip) {
-			READS_FILTER(sr_ch,lr_ch)
-			sr_ch = READS_FILTER.out.short_filtered
-			lr_ch = READS_FILTER.out.long_filtered
+			def rd_flt_ch = READS_FILTER(sr_ch,lr_ch)
+			sr_ch = rd_flt_ch.short_filtered
+			lr_ch = rd_flt_ch.long_filtered
 		}
 		def reads_multiqc_html_ch = Channel.empty()
 		if (!params.reads_qc.skip) {
-			FILTERED_READS_QC(sr_ch,lr_ch)
-			reads_multiqc_html_ch = FILTERED_READS_QC.out.multiqc_html
+			def qc_ch = FILTERED_READS_QC(sr_ch,lr_ch)
+			reads_multiqc_html_ch = qc_ch.multiqc_html
 		}
 		
 		
@@ -98,21 +74,22 @@ workflow {
 			done: it.assembly_fasta
 			todo: true
 		}
-		asm_ch.done.map({[it.subMap('sample_id'),it.assembly_fasta]}) 
-		| COPY_ASSEMBLY_FASTA
-		ASSEMBLE(
+		def asm_cpy = asm_ch.done
+			.map({[it.subMap('sample_id'),it.assembly_fasta]}) 
+			| COPY_ASSEMBLY_FASTA
+		def assemblies = ASSEMBLE(
 				params.assembler.name,
 				sr_ch.join(asm_ch.todo.map({[it.subMap('sample_id')]})),
 				lr_ch.join(asm_ch.todo.map({[it.subMap('sample_id')]}))
 		)
 		def asm_fa_ch = Channel.empty().mix(
-				COPY_ASSEMBLY_FASTA.out.map({[[it[0],[assembler_name:'none']],it[1]]}),
-				ASSEMBLE.out.fasta.map({[[it[0],[assembler_name:params.assembler.name]],it[1]]})
+				asm_cpy.map({[[it[0],[assembler_name:'none']],it[1]]}),
+				assemblies.fasta.map({[[it[0],[assembler_name:params.assembler.name]],it[1]]})
 		)
-		def asm_dir_channel = ASSEMBLE.out.dir.map({[[it[0],[assembler_name:params.assembler.name]],it[1]]})
+		def asm_dir_channel = assemblies.dir.map({[[it[0],[assembler_name:params.assembler.name]],it[1]]})
 
 		// Compute assemblies QC stats
-		ASSEMBLIES_QC(
+		def asm_qc_ch = ASSEMBLIES_QC(
 			params.assemblies_qc,
 			asm_fa_ch,
 			sr_ch.combine(asm_fa_ch.map({m,x->m}),by:0).map({[[it[0],it[2]],it[1]]}),
@@ -120,12 +97,12 @@ workflow {
 		)
 
 		// Finally run AMR annotations
-		AMR_ANNOT(params.amr,asm_fa_ch,sr_ch,lr_ch)
+		def amr_annot_ch = AMR_ANNOT(params.amr,asm_fa_ch,sr_ch,lr_ch)
 		
 		
 
 	publish:
-		checkm2_db = ASSEMBLIES_QC.out.checkm2_db
+		checkm2_db = asm_qc_ch.checkm2_db
 		
 		reads_long_filtered = lr_ch
 		reads_short_filtered = sr_ch
@@ -133,28 +110,28 @@ workflow {
 		
 		assemblies_fasta        = asm_fa_ch
 		assemblies_dir          = asm_dir_channel
-		assemblies_checkm2      = ASSEMBLIES_QC.out.checkm2
-		assemblies_multiqc_txt  = ASSEMBLIES_QC.out.assembly_multiqc_txt.ifEmpty([])
-		assemblies_multiqc_xlsx = ASSEMBLIES_QC.out.assembly_multiqc_xlsx.ifEmpty([])
+		assemblies_checkm2      = asm_qc_ch.checkm2
+		assemblies_multiqc_txt  = asm_qc_ch.assembly_multiqc_txt.ifEmpty([])
+		assemblies_multiqc_xlsx = asm_qc_ch.assembly_multiqc_xlsx.ifEmpty([])
 
-		resfinder            = AMR_ANNOT.out.resfinder
-		resfinder_long       = AMR_ANNOT.out.resfinder_long
-		resfinder_short      = AMR_ANNOT.out.resfinder_short
-		plasmidfinder        = AMR_ANNOT.out.plasmidfinder
-		plasmidfinder_long   = AMR_ANNOT.out.plasmidfinder_long
-		plasmidfinder_short  = AMR_ANNOT.out.plasmidfinder_short
-		amrfinderplus        = AMR_ANNOT.out.amrfinderplus
-		mobtyper             = AMR_ANNOT.out.mobtyper
-		MLST                 = AMR_ANNOT.out.MLST
-		prokka               = AMR_ANNOT.out.prokka
-		cgemlst              = AMR_ANNOT.out.cgemlst
-		orgfinder            = AMR_ANNOT.out.orgfinder
-		amr_multireport_html = AMR_ANNOT.out.multireport_html.ifEmpty([])
-		amr_multireport_xlsx = AMR_ANNOT.out.multireport_xlsx.ifEmpty([])
-		amr_multireport_assemblies_tsv  = AMR_ANNOT.out.multireport_assemblies_tsv.ifEmpty([])
-		amr_multireport_contigs_tsv     = AMR_ANNOT.out.multireport_contigs_tsv.ifEmpty([])
-		amr_multireport_resistances_tsv = AMR_ANNOT.out.multireport_resistances_tsv.ifEmpty([])
-		amr_multireport_plasmidfinder_hits_tsv = AMR_ANNOT.out.multireport_plasmidfinder_hits_tsv.ifEmpty([])
+		resfinder            = amr_annot_ch.resfinder
+		resfinder_long       = amr_annot_ch.resfinder_long
+		resfinder_short      = amr_annot_ch.resfinder_short
+		plasmidfinder        = amr_annot_ch.plasmidfinder
+		plasmidfinder_long   = amr_annot_ch.plasmidfinder_long
+		plasmidfinder_short  = amr_annot_ch.plasmidfinder_short
+		amrfinderplus        = amr_annot_ch.amrfinderplus
+		mobtyper             = amr_annot_ch.mobtyper
+		MLST                 = amr_annot_ch.MLST
+		prokka               = amr_annot_ch.prokka
+		cgemlst              = amr_annot_ch.cgemlst
+		orgfinder            = amr_annot_ch.orgfinder
+		amr_multireport_html = amr_annot_ch.multireport_html.ifEmpty([])
+		amr_multireport_xlsx = amr_annot_ch.multireport_xlsx.ifEmpty([])
+		amr_multireport_assemblies_tsv  = amr_annot_ch.multireport_assemblies_tsv.ifEmpty([])
+		amr_multireport_contigs_tsv     = amr_annot_ch.multireport_contigs_tsv.ifEmpty([])
+		amr_multireport_resistances_tsv = amr_annot_ch.multireport_resistances_tsv.ifEmpty([])
+		amr_multireport_plasmidfinder_hits_tsv = amr_annot_ch.multireport_plasmidfinder_hits_tsv.ifEmpty([])
 }
 
 output {

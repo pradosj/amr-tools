@@ -16,14 +16,14 @@
 			"title": "Reads definition",
 			"type": "object",
 			"properties": {
-				"long": {
+				"ont": {
 					"type": "string",
 					"format": "file-path-pattern",
 					"exists": true,
 					"pattern": "^\\S+\\.(bam|fastq\\.gz|fq\\.gz)$",
 					"description": "Path to BAM or FASTQ.GZ files containing ONT reads"
 				},
-				"short": {
+				"illumina": {
 					"type": "string",
 					"format": "file-path-pattern",
 					"exists": true,
