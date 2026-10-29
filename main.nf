@@ -15,10 +15,41 @@ include { IDENTITY as COPY_LONG_READS                 } from './modules/identity
 include { validateParameters; paramsSummaryLog; samplesheetToList } from 'plugin/nf-schema'
 
 
+record ReadsParams {
+  long: String?
+  short: String?
+}
+
+record AssemblerArgsParams {
+    flye: String?
+    medaka: String?
+}
+
+record AssemblerParams {
+    name: String
+    args: AssemblerArgsParams
+}
+
 params {
 	verbose: Boolean = false
 	csv:     Path? = null
+	reads:   ReadsParams = record(
+			long: null,
+			short: null
+		)
+	assembler: AssemblerParams = record(
+			name: 'long_flye_medaka',
+			args: record(
+				flye  : null,
+				medaka: '--bacteria'
+			)
+		)
+	
 }
+
+
+
+
 
 
 workflow {
