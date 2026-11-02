@@ -66,5 +66,5 @@ workflow READS_QC {
 	emit:
 	nanoplot: Channel<Record>    = nanoplot_ch
 	fastp: Channel<Record>       = fastp_ch
-	multiqc_html: Channel<Path> = multiqc_ch.map({ r -> r.html })
+	multiqc: Channel<Record>     = multiqc_ch    // records with fields meta, html
 }

@@ -157,8 +157,7 @@ workflow ASSEMBLIES_QC {
 	long_alignments: Channel<Record>  = long_bam_ch       // records with fields meta, bam, bai
 	short_alignments: Channel<Record> = short_bam_ch      // records with fields meta, bam, bai
 	assembly_qc: Channel<Record>      = qc_ch             // records with fields meta, rds
-	assembly_multiqc_txt: Channel<Path>  = multiqc_ch.map({ r -> r.txt })
-	assembly_multiqc_xlsx: Channel<Path> = multiqc_ch.map({ r -> r.xlsx })
+	multiqc: Channel<Record>          = multiqc_ch        // records with fields txt, xlsx
 	checkm2: Channel<Record>          = checkm2_ch        // records with fields meta, report
 	checkm2_db: Channel<Path>         = checkm2_db_ch
 }

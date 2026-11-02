@@ -175,9 +175,9 @@ workflow {
 		sr_rec = rd_flt_ch.short_filtered
 		lr_rec = rd_flt_ch.long_filtered
 	}
-	def reads_multiqc_html_ch = channel.empty()
+	def reads_multiqc_ch = channel.empty()
 	if (!params.no_reads_qc) {
-		reads_multiqc_html_ch = FILTERED_READS_QC(sr_rec, lr_rec).multiqc_html
+		reads_multiqc_ch = FILTERED_READS_QC(sr_rec, lr_rec).multiqc
 	}
 
 	// De novo assembly of the samples given without assembly
@@ -217,13 +217,12 @@ workflow {
 
 	reads_long_filtered = lr_rec
 	reads_short_filtered = sr_rec
-	filtered_reads_multiqc_html = reads_multiqc_html_ch
+	filtered_reads_multiqc = reads_multiqc_ch
 
 	assemblies_fasta        = asm_rec
 	assemblies_dir          = asm_dir_ch
 	assemblies_checkm2      = asm_qc_ch.checkm2
-	assemblies_multiqc_txt  = asm_qc_ch.assembly_multiqc_txt
-	assemblies_multiqc_xlsx = asm_qc_ch.assembly_multiqc_xlsx
+	assemblies_multiqc      = asm_qc_ch.multiqc
 
 	resfinder            = amr_annot_ch.resfinder
 	resfinder_long       = amr_annot_ch.resfinder_long
@@ -257,8 +256,8 @@ output {
 		}
 	}
 
-	filtered_reads_multiqc_html: Channel<Path> {
-		path "reports/"
+	filtered_reads_multiqc: Channel<Record> {
+		path { r -> r.html >> "reports/multiqc.html" }
 	}
 
 	assemblies_fasta: Channel<Record> {
@@ -273,11 +272,11 @@ output {
 	assemblies_checkm2: Channel<Record> {
 		path { r -> r.report >> "assemblies/${r.meta.sample_id}__${r.meta.assembler_name}.qc/checkm2_quality.tsv" }
 	}
-	assemblies_multiqc_txt: Channel<Path> {
-		path "reports/"
-	}
-	assemblies_multiqc_xlsx: Channel<Path> {
-		path "reports/"
+	assemblies_multiqc: Channel<Record> {
+		path { r ->
+			r.txt >> "reports/assemblies_multiqc.txt"
+			r.xlsx >> "reports/assemblies_multiqc.xlsx"
+		}
 	}
 
 	resfinder_long: Channel<Record> {
