@@ -15,7 +15,7 @@ include { MLST                                     } from './modules/tseemann/ml
 include { MLST as CGEMLST                          } from './modules/cgetools/mlst'
 include { MOBTYPER                                 } from './modules/mobsuite/mobtyper.nf'
 include { SAMTOOLS_FAIDX                           } from './modules/samtools/faidx'
-include { MULTIREPORT; NamedEntry                  } from './subworkflows/multireport'
+include { MULTIREPORT                              } from './subworkflows/multireport'
 
 
 // Options of a tool (params.amr.<tool>). Fields are nullable: modules fall back to their own defaults.
@@ -64,19 +64,6 @@ record LongReads {
 	reads: Path
 }
 
-
-// Entries of the AMR results folder read by the multireport (see lib_typing.R)
-def assemblyEntry(meta: Map, suffix: String, path: Path) -> NamedEntry {
-	return record(name: "amr/assemblies/${meta.sample_id}__${meta.assembler_name}${suffix}", path: path, text: null)
-}
-
-def amrEntry(meta: Map, path: Path) -> NamedEntry {
-	return assemblyEntry(meta, ".amr/${path.name}", path)
-}
-
-def readsEntry(meta: Map, name: String, path: Path) -> NamedEntry {
-	return record(name: "amr/reads/${meta.sample_id}.reads_amr/${name}", path: path, text: null)
-}
 
 // A result of an AMR tool, published under the given tool name
 record AmrResult {
@@ -226,22 +213,23 @@ workflow AMR_ANNOT {
 	def rds = AMR_ANNOT_READS(opts, short_reads, long_reads)
 
 	// Gather all the results in a folder for the multireport
-	def entries = assemblies.map({ r -> assemblyEntry(r.meta, '.fasta', r.fasta) })
-		.mix(fai_ch.map({ r -> assemblyEntry(r.meta, '.fasta.fai', r.fai) }))
-		.mix(asm.orgfinder.map({ r -> record(name: "amr/assemblies/${r.meta.sample_id}__${r.meta.assembler_name}.amr/org_name.txt", path: null, text: r.org_name as String) }))
-		.mix(asm.orgfinder.map({ r -> amrEntry(r.meta, r.dir) }))
-		.mix(asm.amrfinderplus.map({ r -> amrEntry(r.meta, r.dir) }))
-		.mix(asm.resfinder.map({ r -> amrEntry(r.meta, r.dir) }))
-		.mix(asm.plasmidfinder.map({ r -> amrEntry(r.meta, r.dir) }))
-		.mix(asm.cgemlst.map({ r -> amrEntry(r.meta, r.dir) }))
-		.mix(asm.mobtyper.map({ r -> amrEntry(r.meta, r.tsv) }))
-		.mix(asm.MLST.map({ r -> amrEntry(r.meta, r.txt) }))
-		.mix(asm.prokka.map({ r -> amrEntry(r.meta, r.dir) }))
-		.mix(rds.resfinder_long.map({ r -> readsEntry(r.meta, 'resfinder_long', r.dir) }))
-		.mix(rds.plasmidfinder_long.map({ r -> readsEntry(r.meta, 'plasmidfinder_long', r.dir) }))
-		.mix(rds.resfinder_short.map({ r -> readsEntry(r.meta, 'resfinder_short', r.dir) }))
-		.mix(rds.plasmidfinder_short.map({ r -> readsEntry(r.meta, 'plasmidfinder_short', r.dir) }))
-	def report = MULTIREPORT(entries)
+	def report = MULTIREPORT(
+		assemblies.map({ r -> record(name: "amr/assemblies/${r.meta.sample_id}__${r.meta.assembler_name}.fasta", path: r.fasta) })
+			.mix(fai_ch.map({ r -> record(name: "amr/assemblies/${r.meta.sample_id}__${r.meta.assembler_name}.fasta.fai", path: r.fai) }))
+			.mix(asm.orgfinder.map({ r -> record(name: "amr/assemblies/${r.meta.sample_id}__${r.meta.assembler_name}.amr/org_name.txt", path: null, text: r.org_name) }))
+			.mix(asm.orgfinder.map({ r -> record(name: "amr/assemblies/${r.meta.sample_id}__${r.meta.assembler_name}.amr/${r.dir.name}", path: r.dir) }))
+			.mix(asm.amrfinderplus.map({ r -> record(name: "amr/assemblies/${r.meta.sample_id}__${r.meta.assembler_name}.amr/${r.dir.name}", path: r.dir) }))
+			.mix(asm.resfinder.map({ r -> record(name: "amr/assemblies/${r.meta.sample_id}__${r.meta.assembler_name}.amr/${r.dir.name}", path: r.dir) }))
+			.mix(asm.plasmidfinder.map({ r -> record(name: "amr/assemblies/${r.meta.sample_id}__${r.meta.assembler_name}.amr/${r.dir.name}", path: r.dir) }))
+			.mix(asm.cgemlst.map({ r -> record(name: "amr/assemblies/${r.meta.sample_id}__${r.meta.assembler_name}.amr/${r.dir.name}", path: r.dir) }))
+			.mix(asm.mobtyper.map({ r -> record(name: "amr/assemblies/${r.meta.sample_id}__${r.meta.assembler_name}.amr/${r.tsv.name}", path: r.tsv) }))
+			.mix(asm.MLST.map({ r -> record(name: "amr/assemblies/${r.meta.sample_id}__${r.meta.assembler_name}.amr/${r.txt.name}", path: r.txt) }))
+			.mix(asm.prokka.map({ r -> record(name: "amr/assemblies/${r.meta.sample_id}__${r.meta.assembler_name}.amr/${r.dir.name}", path: r.dir) }))
+			.mix(rds.resfinder_long.map({ r -> record(name: "amr/reads/${r.meta.sample_id}.reads_amr/resfinder_long", path: r.dir) }))
+			.mix(rds.plasmidfinder_long.map({ r -> record(name: "amr/reads/${r.meta.sample_id}.reads_amr/plasmidfinder_long", path: r.dir) }))
+			.mix(rds.resfinder_short.map({ r -> record(name: "amr/reads/${r.meta.sample_id}.reads_amr/resfinder_short", path: r.dir) }))
+			.mix(rds.plasmidfinder_short.map({ r -> record(name: "amr/reads/${r.meta.sample_id}.reads_amr/plasmidfinder_short", path: r.dir) }))
+	)
 
 	// Results of the tools, by assembly and by reads sample
 	def asm_results_ch = asm.orgfinder.map({ r -> amrResult(r.meta, 'orgfinder', r.dir) })
