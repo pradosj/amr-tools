@@ -7,6 +7,8 @@ include { BWA_MEM            } from './modules/bwa/mem'
 include { BWA_INDEX          } from './modules/bwa/index'
 include { CHECKM2_DB         } from './modules/checkm2/db'
 include { CHECKM2_PREDICT    } from './modules/checkm2/predict'
+include { READS_INPUT; ASSEMBLIES_INPUT    } from './conf/inputs.nf'
+include { validateParameters; paramsSummaryLog } from 'plugin/nf-schema'
 
 
 // Options of CheckM2 (params.assemblies_qc.checkm2)
@@ -202,3 +204,48 @@ process IGV_SCRIPT {
 	"""
 }
 */
+
+// Input assemblies and reads given as glob patterns (the sample_id is taken from the file names), and ASSEMBLIES_QC options
+params {
+	fasta: String? = null
+	ont: String? = null
+	illumina: String? = null
+	assemblies_qc: AssembliesQcParams = record(checkm2: record(skip: false, db: null, args: ''))
+}
+
+workflow {
+	main:
+	// Validate parameters and print summary of supplied ones
+	validateParameters()
+	log.info(paramsSummaryLog(workflow))
+
+	def assemblies = ASSEMBLIES_INPUT(params.fasta)
+	def reads = READS_INPUT(params.ont, params.illumina)
+
+	// Reads of the sample of each assembly
+	def asm_keys = assemblies.map({ r -> record(meta: r.meta.subMap(['sample_id']), asm_meta: r.meta) })
+	def asm_short_reads = asm_keys.join(reads.short_reads, by: 'meta').map({ r -> record(meta: r.asm_meta, reads: r.reads, read2: r.read2) })
+	def asm_long_reads = asm_keys.join(reads.long_reads, by: 'meta').map({ r -> record(meta: r.asm_meta, reads: r.reads) })
+
+	def qc = ASSEMBLIES_QC(params.assemblies_qc, assemblies, asm_short_reads, asm_long_reads)
+
+	publish:
+	checkm2_db = qc.checkm2_db
+	assemblies_checkm2 = qc.checkm2
+	assemblies_multiqc = qc.multiqc
+}
+
+output {
+	checkm2_db: Channel<Path> {
+		path { x -> x >> "db/checkm2" }
+	}
+	assemblies_checkm2: Channel<Record> {
+		path { r -> r.report >> "assemblies/${r.meta.sample_id}__${r.meta.assembler_name}.qc/checkm2_quality.tsv" }
+	}
+	assemblies_multiqc: Channel<Record> {
+		path { r ->
+			r.txt >> "reports/assemblies_multiqc.txt"
+			r.xlsx >> "reports/assemblies_multiqc.xlsx"
+		}
+	}
+}
