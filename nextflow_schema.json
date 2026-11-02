@@ -20,7 +20,7 @@
 					"type": "string",
 					"format": "file-path-pattern",
 					"exists": true,
-					"pattern": "^\\S+\\.(bam|fastq\\.gz|fq\\.gz)$",
+					"pattern": "^\\S+(\\.(bam|cram|fastq\\.gz|fq\\.gz)|\\{\\S+\\})$",
 					"description": "Path to BAM or FASTQ.GZ files containing ONT reads"
 				},
 				"illumina": {

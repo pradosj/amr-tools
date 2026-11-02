@@ -1,0 +1,70 @@
+{
+	"$schema": "https://json-schema.org/draft/2020-12/schema",
+	"type": "object",
+	"properties": {
+		"ont": {
+			"type": "string",
+			"format": "file-path-pattern",
+			"exists": true,
+			"pattern": "^\\S+(\\.(bam|cram|fastq\\.gz|fq\\.gz)|\\{\\S+\\})$",
+			"description": "Path to BAM, CRAM or FASTQ.GZ files containing ONT reads (BAM/CRAM are converted to FASTQ)"
+		},
+		"illumina": {
+			"type": "string",
+			"format": "file-path-pattern",
+			"exists": true,
+			"pattern": "^\\S+\\.(fastq\\.gz|fq\\.gz)$",
+			"description": "Path to FASTQ.GZ files containing short reads. Paired-end files are recognized when ending with regex pattern '_(R?[12])(_[0-9][0-9][0-9])?.(fq|fastq).gz$'"
+		},
+
+		"verbose": {
+			"type": "boolean",
+			"default": false,
+			"description": "If on, the pipeline will produce extended outputs for debugging purpose"
+		},
+
+		"assembler": {
+			"title": "Assembler definition",
+			"type": "object",
+			"properties": {
+		    "name": {
+		      "type": "string",
+		      "default": "long_flye_medaka",
+		      "enum": [
+		      	"long_flye",
+		        "long_flye_medaka",
+		        "long_hybracter",
+		        "long_unicycler",
+		        "short_spades",
+		        "short_unicycler",
+		        "hybrid_unicycler",
+		        "hybrid_hybracter",
+		        "hybrid_flye_medaka_pilon"
+		      ]
+		    },
+				"args": {
+					"type": "object",
+					"description": "Argument to pass to the assembler",
+					"properties": {
+						"flye": {
+							"type": "string"
+						},
+						"medaka": {
+							"type": "string",
+							"default": "--bacteria"
+						},
+						"spades": {
+							"type": "string"
+						},
+						"unicycler": {
+							"type": "string"
+						},
+						"hybracter": {
+							"type": "string"
+						}
+					}
+				}
+			}
+		}
+	}
+}

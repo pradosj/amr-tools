@@ -6,6 +6,8 @@ include { HYBRID_FLYE_MEDAKA_PILON      } from './subworkflows/flye_medaka_pilon
 include { UNICYCLER                     } from './modules/unicycler'
 include { SPADES                        } from './modules/spades'
 include { HYBRACTER                     } from './modules/hybracter'
+include { READS_INPUT                   } from './conf/inputs.nf'
+include { validateParameters; paramsSummaryLog } from 'plugin/nf-schema'
 
 
 // Arguments given to each assembly tool. Fields are nullable: modules fall back to their own defaults.
@@ -91,4 +93,39 @@ workflow ASSEMBLE {
 	emit:
 	assemblies: Channel<Assembly> = asm_ch    // meta holds sample_id and assembler_name
 		.map({ r -> r + record(meta: r.meta + [assembler_name: name]) })
+}
+
+
+// Input reads given as glob patterns (the sample_id is taken from the file names), and ASSEMBLE options
+params {
+	ont: String? = null
+	illumina: String? = null
+	assembler: AssemblerParams = record(name: 'long_flye_medaka', args: record(flye: null, medaka: '--bacteria', spades: null, unicycler: null, hybracter: null))
+	verbose: Boolean = false
+}
+
+workflow {
+	main:
+	// Validate parameters and print summary of supplied ones
+	validateParameters()
+	log.info(paramsSummaryLog(workflow))
+
+	def reads = READS_INPUT(params.ont, params.illumina)
+	def assemblies = ASSEMBLE(params.assembler, reads.short_reads, reads.long_reads)
+
+	publish:
+	assemblies_fasta = assemblies
+	assemblies_dir = assemblies
+}
+
+output {
+	assemblies_fasta: Channel<Record> {
+		mode "copy" //because link is problematic
+		path { r -> r.fasta >> "assemblies/${r.meta.sample_id}__${r.meta.assembler_name}.fasta" }
+	}
+	assemblies_dir: Channel<Record> {
+		mode "copy" //because link is problematic
+		enabled params.verbose
+		path { r -> r.dir >> "assemblies/${r.meta.sample_id}__${r.meta.assembler_name}.output" }
+	}
 }
