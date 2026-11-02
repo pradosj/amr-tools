@@ -6,14 +6,26 @@ include { ORGANIZE_FILES     } from './modules/organize_files'
 include { MULTIQC            } from './modules/multiqc'
 
 
+// Short reads sample: [R1] or [R1, R2]
+record ShortReads {
+	meta: Map
+	reads: List<Path>
+}
+
+// Long reads sample: one FASTQ per sample
+record LongReads {
+	meta: Map
+	reads: Path
+}
+
 workflow READS_QC {
 	take:
-	fqs_ch: Channel<Tuple>    // short reads: [meta, [R1, R2?]]
-	fql_ch: Channel<Tuple>    // long reads:  [meta, fastq]
+	short_reads: Channel<ShortReads>
+	long_reads: Channel<LongReads>
 
 	main:
-	def nanoplot_ch = NANOPLOT(fql_ch, null)
-	def fastp_ch = FASTP(fqs_ch, null)
+	def nanoplot_ch = NANOPLOT(long_reads)
+	def fastp_ch = FASTP(short_reads)
 
 	// MultiQC
 	def multiqc_files_ch = nanoplot_ch
@@ -21,10 +33,9 @@ workflow READS_QC {
 		.mix(fastp_ch.map({ r -> tuple(r.json, "${r.meta.sample_id}.fastp.json") }))
 		.collect()
 		.flatMap({ fs -> fs.isEmpty() ? [] : [tuple("multiqc.html", fs.toList())] })  // no MultiQC when there are no reads
+	def multiqc_config = file("${moduleDir}/assets/multiqc_config.yml")
 	def multiqc_ch = MULTIQC(
-		ORGANIZE_FILES(multiqc_files_ch),
-		file("${moduleDir}/assets/multiqc_config.yml"),
-		null
+		ORGANIZE_FILES(multiqc_files_ch).map({ t -> record(meta: t[0], db: t[1], config: multiqc_config) })
 	)
 
 	emit:

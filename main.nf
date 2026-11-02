@@ -1,7 +1,7 @@
 
 
 include { SAMTOOLS_FASTQ as CONVERT_LONG_BAM_TO_FASTQ } from './modules/samtools/fastq' 
-include { READS_FILTER                                } from './wf/reads_filter/main.nf'
+include { READS_FILTER; ReadsFilterParams             } from './wf/reads_filter/main.nf'
 include { READS_QC as FILTERED_READS_QC               } from './wf/reads_qc/main.nf'
 include { ASSEMBLE                                    } from './wf/assemble/main.nf'
 include { ASSEMBLIES_QC                               } from './wf/assemblies_qc/main.nf'
@@ -24,9 +24,18 @@ params {
 	verbose: Boolean = false
 	csv:     Path? = null
 	reads:   ReadsParams = record(ont:null, illumina:null)
+	reads_filter: ReadsFilterParams = record(skip: false, long_limit: 1_000_000_000, short_limit: 1_000_000_000, chopper_args: '--quality 15 --minlength 200')
 }
 
+// Convert [meta, reads] tuple channels into the reads records expected by typed subworkflows
+def toShortReads(ch) {
+	// a single-end sample comes as a single Path: always give a list
+	return ch.map({ m, f -> record(meta: m, reads: f instanceof List ? f : [f]) })
+}
 
+def toLongReads(ch) {
+	return ch.map({ m, f -> record(meta: m, reads: f) })
+}
 
 workflow {
 	main:
@@ -55,18 +64,27 @@ workflow {
 		}
 		lr_ch = lr_ch.fq.mix(CONVERT_LONG_BAM_TO_FASTQ(lr_ch.bam))
 
+		// Reads as records for the typed subworkflows
+		def sr_rec = toShortReads(sr_ch)
+		def lr_rec = toLongReads(lr_ch)
+
 		// Filter reads
 		if (!params.reads_filter.skip) {
-			def rd_flt_ch = READS_FILTER(params.reads_filter,sr_ch,lr_ch)
-			sr_ch = rd_flt_ch.short_filtered
-			lr_ch = rd_flt_ch.long_filtered
+			def rd_flt_ch = READS_FILTER(params.reads_filter, sr_rec, lr_rec)
+			sr_rec = rd_flt_ch.short_filtered
+			lr_rec = rd_flt_ch.long_filtered
 		}
 		def reads_multiqc_html_ch = channel.empty()
 		if (!params.reads_qc.skip) {
-			def qc_ch = FILTERED_READS_QC(sr_ch,lr_ch)
+			def qc_ch = FILTERED_READS_QC(sr_rec, lr_rec)
 			reads_multiqc_html_ch = qc_ch.multiqc_html
 		}
-		
+
+		// Back to [meta, reads] tuples for the subworkflows not migrated yet
+		// (a single-end sample is given as a single Path, as before)
+		sr_ch = sr_rec.map({ r -> [r.meta, r.reads.size() == 1 ? r.reads[0] : r.reads] })
+		lr_ch = lr_rec.map({ r -> [r.meta, r.reads] })
+
 		
 		// Run denovo assembly process when 
 		// Determine assemblies that are done and thus that have to be run

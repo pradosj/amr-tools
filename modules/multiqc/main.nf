@@ -7,9 +7,7 @@ process MULTIQC {
     time 1.h
 
     input:
-    tuple(meta: Object, db: Path)
-    config: Path
-    args: String?
+    record(meta: Object, db: Path, config: Path, args: String?)
 
     output:
     record(

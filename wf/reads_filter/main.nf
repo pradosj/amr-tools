@@ -5,21 +5,44 @@ include { CHOPPER as CHOPPER_LONG            } from './modules/chopper'
 include { FQ_SUBSAMPLE as FQ_SUBSAMPLE_SHORT } from './modules/fq_subsample'
 
 
+// Options of READS_FILTER (params.reads_filter). Fields are nullable: modules fall back to their own defaults.
+record ReadsFilterParams {
+	skip: Boolean?             // used by the caller to skip READS_FILTER
+	long_limit: Integer?       // FQ_SUBSAMPLE bp limit for long reads, negative to keep all reads
+	short_limit: Integer?      // FQ_SUBSAMPLE bp limit for short reads, negative to keep all reads
+	chopper_args: String?      // CHOPPER arguments
+}
+
+// Short reads sample: [R1] or [R1, R2]
+record ShortReads {
+	meta: Map
+	reads: List<Path>
+}
+
+// Long reads sample: one FASTQ per sample
+record LongReads {
+	meta: Map
+	reads: Path
+}
+
 workflow READS_FILTER {
 	take:
-	opts: Map                 // params.reads_filter: [long_limit, short_limit, chopper_args]
-	fqs_ch: Channel<Tuple>    // short reads: [meta, [R1, R2?]]
-	fql_ch: Channel<Tuple>    // long reads:  [meta, fastq]
+	opts: ReadsFilterParams
+	short_reads: Channel<ShortReads>
+	long_reads: Channel<LongReads>
 
 	main:
-	def chopper_ch = CHOPPER_LONG(fql_ch, opts.chopper_args)
-	def long_ch = FQ_SUBSAMPLE_LONG(
-		chopper_ch.map({ r -> tuple(r.meta, [r.reads]) }),
-		opts.long_limit as Long
+	def chopper_ch = CHOPPER_LONG(
+		long_reads.map({ r -> r + record(args: opts.chopper_args) })
 	)
-	def short_ch = FQ_SUBSAMPLE_SHORT(fqs_ch, opts.short_limit as Long)
+	def long_ch = FQ_SUBSAMPLE_LONG(
+		chopper_ch.map({ r -> r + record(reads: [r.reads], bp_limit: opts.long_limit as Long) })
+	)
+	def short_ch = FQ_SUBSAMPLE_SHORT(
+		short_reads.map({ r -> r + record(bp_limit: opts.short_limit as Long) })
+	)
 
 	emit:
-	long_filtered: Channel<Tuple>  = long_ch.map({ r -> tuple(r.meta, r.reads[0]) })
-	short_filtered: Channel<Tuple> = short_ch.map({ r -> tuple(r.meta, r.reads) })
+	long_filtered: Channel<LongReads>   = long_ch.map({ r -> r + record(reads: r.reads[0]) })
+	short_filtered: Channel<ShortReads> = short_ch
 }

@@ -7,8 +7,7 @@ process FQ_SUBSAMPLE {
     time 30.m
 
     input:
-    tuple(meta: Map, reads: List<Path>)
-    bp_limit: Long?   // maximum total read length in bp (default 1_000_000_000), negative to keep all reads
+    record(meta: Map, reads: List<Path>, bp_limit: Long?)   // bp_limit: maximum total read length in bp (default 1_000_000_000), negative to keep all reads
 
     output:
     record(

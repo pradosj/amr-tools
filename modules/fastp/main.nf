@@ -7,8 +7,7 @@ process FASTP {
     time 30.m
 
     input:
-    tuple(meta: Map, reads: List<Path>)
-    args: String?
+    record(meta: Map, reads: List<Path>, args: String?)
 
     output:
     record(
