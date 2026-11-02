@@ -2,13 +2,11 @@ nextflow.enable.types = true
 
 include { LONG_FLYE                     } from './subworkflows/flye_medaka_pilon'
 include { LONG_FLYE_MEDAKA              } from './subworkflows/flye_medaka_pilon'
-include { UNICYCLER as LONG_UNICYCLER   } from './subworkflows/unicycler'
 include { HYBRACTER as LONG_HYBRACTER   } from './subworkflows/hybracter'
-include { UNICYCLER as SHORT_UNICYCLER  } from './subworkflows/unicycler'
-include { SPADES    as SHORT_SPADES     } from './subworkflows/spades'
-include { UNICYCLER as HYBRID_UNICYCLER } from './subworkflows/unicycler'
 include { HYBRACTER as HYBRID_HYBRACTER } from './subworkflows/hybracter'
 include { HYBRID_FLYE_MEDAKA_PILON      } from './subworkflows/flye_medaka_pilon'
+include { UNICYCLER                     } from './modules/unicycler'
+include { SPADES                        } from './modules/spades'
 
 
 // Arguments given to each assembly tool. Fields are nullable: modules fall back to their own defaults.
@@ -62,15 +60,20 @@ workflow ASSEMBLE {
 	} else if (name == 'long_flye_medaka') {
 		asm_ch = LONG_FLYE_MEDAKA(long_reads, args?.flye, args?.medaka)
 	} else if (name == 'long_unicycler') {
-		asm_ch = LONG_UNICYCLER(channel.empty(), long_reads, args?.unicycler)
+		asm_ch = UNICYCLER(long_reads.map({ r -> record(meta: r.meta, reads: null, read2: null, long_reads: r.reads, args: args?.unicycler) }))
 	} else if (name == 'long_hybracter') {
 		asm_ch = LONG_HYBRACTER(channel.empty(), long_reads, args?.hybracter)
 	} else if (name == 'short_unicycler') {
-		asm_ch = SHORT_UNICYCLER(short_reads, channel.empty(), args?.unicycler)
+		asm_ch = UNICYCLER(short_reads.map({ r -> r + record(long_reads: null, args: args?.unicycler) }))
 	} else if (name == 'short_spades') {
-		asm_ch = SHORT_SPADES(short_reads, channel.empty(), args?.spades)
+		asm_ch = SPADES(short_reads.map({ r -> r + record(long_reads: null, args: args?.spades) }))
 	} else if (name == 'hybrid_unicycler') {
-		asm_ch = HYBRID_UNICYCLER(short_reads, long_reads, args?.unicycler)
+		// samples with a single type of reads are assembled with it alone
+		asm_ch = UNICYCLER(
+			short_reads
+				.join(long_reads.map({ r -> record(meta: r.meta, long_reads: r.reads) }), by: 'meta', remainder: true)
+				.map({ r -> r + record(args: args?.unicycler) })
+		)
 	} else if (name == 'hybrid_hybracter') {
 		asm_ch = HYBRID_HYBRACTER(short_reads, long_reads, args?.hybracter)
 	} else if (name == 'hybrid_flye_medaka_pilon') {
