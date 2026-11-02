@@ -5,7 +5,7 @@ include { READS_FILTER; ReadsFilterParams             } from './pipelines/reads-
 include { READS_QC as FILTERED_READS_QC               } from './pipelines/reads-qc/main.nf'
 include { ASSEMBLE; AssemblerParams                   } from './pipelines/assemble/main.nf'
 include { ASSEMBLIES_QC; AssembliesQcParams           } from './pipelines/assemblies-qc/main.nf'
-include { AMR_ANNOT; AmrParams                        } from './wf/amr_annot/main.nf'
+include { AMR_ANNOT; AmrParams                        } from './pipelines/amr-annot/main.nf'
 include { IDENTITY as COPY_ASSEMBLY_FASTA             } from './modules/identity/main.nf'
 include { IDENTITY as COPY_SHORT_READS                } from './modules/identity/main.nf'
 include { IDENTITY as COPY_LONG_READS                 } from './modules/identity/main.nf'

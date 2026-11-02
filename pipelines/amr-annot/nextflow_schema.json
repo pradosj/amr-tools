@@ -1,0 +1,173 @@
+{
+	"$schema": "https://json-schema.org/draft/2020-12/schema",
+	"type": "object",
+	"required": ["fasta"],
+	"properties": {
+		"fasta": {
+			"type": "string",
+			"format": "file-path-pattern",
+			"exists": true,
+			"pattern": "^\\S+(\\.(fasta|fa|fna)|\\{\\S+\\})$",
+			"description": "Path to FASTA files containing the assemblies"
+		},
+		"ont": {
+			"type": "string",
+			"format": "file-path-pattern",
+			"exists": true,
+			"pattern": "^\\S+(\\.(bam|cram|fastq\\.gz|fq\\.gz)|\\{\\S+\\})$",
+			"description": "Path to BAM, CRAM or FASTQ.GZ files containing ONT reads (BAM/CRAM are converted to FASTQ)"
+		},
+		"illumina": {
+			"type": "string",
+			"format": "file-path-pattern",
+			"exists": true,
+			"pattern": "^\\S+\\.(fastq\\.gz|fq\\.gz)$",
+			"description": "Path to FASTQ.GZ files containing short reads. Paired-end files are recognized when ending with regex pattern '_(R?[12])(_[0-9][0-9][0-9])?.(fq|fastq).gz$'"
+		},
+
+		"amr": {
+			"title": "Parameters for tool amr annotation",
+			"type": "object",
+			"properties": {
+					"orgfinder": {
+					  "type": "object",
+						"properties": {
+							"skip": {
+							  "type": "boolean",
+							  "default": false
+							},
+							"args": {
+							  "type": "string",
+							  "default": ""
+							},
+							"db": {
+							  "type": "string",
+								"format": "directory-path",
+								"exists": true
+							}
+						}
+					},
+					"speciator": {
+					  "type": "object",
+						"properties": {
+							"skip": {
+							  "type": "boolean",
+							  "default": true
+							},
+							"args": {
+							  "type": "string",
+							  "default": ""
+							}
+						}
+					},
+					"amrfinderplus": {
+					  "type": "object",
+						"properties": {
+							"skip": {
+							  "type": "boolean",
+							  "default": false
+							},
+							"args": {
+							  "type": "string",
+							  "default": ""
+							}
+						}
+					},
+					"mobtyper": {
+					  "type": "object",
+						"properties": {
+							"skip": {
+							  "type": "boolean",
+							  "default": false
+							},
+							"args": {
+							  "type": "string",
+							  "default": ""
+							}
+						}
+					},
+					"plasmidfinder": {
+					  "type": "object",
+						"properties": {
+							"skip": {
+							  "type": "boolean",
+							  "default": false
+							},
+							"skip_shortread": {
+							  "type": "boolean",
+							  "default": false
+							},
+							"skip_longread": {
+							  "type": "boolean",
+							  "default": false
+							},
+							"args": {
+							  "type": "string",
+							  "default": ""
+							}
+						}
+					},
+					"resfinder": {
+					  "type": "object",
+						"properties": {
+							"skip": {
+							  "type": "boolean",
+							  "default": false
+							},
+							"skip_shortread": {
+							  "type": "boolean",
+							  "default": false
+							},
+							"skip_longread": {
+							  "type": "boolean",
+							  "default": false
+							},
+							"args": {
+							  "type": "string",
+							  "default": ""
+							}
+						}
+					},
+					"cgemlst": {
+					  "type": "object",
+						"properties": {
+							"skip": {
+							  "type": "boolean",
+							  "default": false
+							},
+							"args": {
+							  "type": "string",
+							  "default": ""
+							}
+						}
+					},
+					"MLST": {
+					  "type": "object",
+						"properties": {
+							"skip": {
+							  "type": "boolean",
+							  "default": false
+							},
+							"args": {
+							  "type": "string",
+							  "default": ""
+							}
+						}
+					},
+					"prokka": {
+					  "type": "object",
+						"properties": {
+							"skip": {
+							  "type": "boolean",
+							  "default": true
+							},
+							"args": {
+							  "type": "string",
+							  "default": "--kingdom Bacteria"
+							}
+						}
+					}
+			}
+		}
+	}
+}

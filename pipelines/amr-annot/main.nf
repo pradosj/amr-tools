@@ -4,6 +4,8 @@ include { AMR_ANNOT_ASSEMBLY } from './subworkflows/amr_annot_assembly'
 include { AMR_ANNOT_READS    } from './subworkflows/amr_annot_reads'
 include { SAMTOOLS_FAIDX     } from './modules/samtools/faidx'
 include { MULTIREPORT        } from './subworkflows/multireport'
+include { READS_INPUT; ASSEMBLIES_INPUT } from './conf/inputs.nf'
+include { validateParameters; paramsSummaryLog } from 'plugin/nf-schema'
 
 
 // Options of a tool (params.amr.<tool>). Fields are nullable: modules fall back to their own defaults.
@@ -87,4 +89,52 @@ workflow AMR_ANNOT {
 
 	emit:
 	multireport: Channel<Record> = report                // records with fields folder, html, xlsx, assemblies_tsv, contigs_tsv, resistances_tsv, plasmidfinder_hits_tsv
+}
+
+
+// Input assemblies and reads given as glob patterns (the sample_id is taken from the file names), and AMR_ANNOT options
+params {
+	fasta: String? = null
+	ont: String? = null
+	illumina: String? = null
+	amr: AmrParams = record(
+		orgfinder:     record(skip: false, args: ''),
+		speciator:     record(skip: true, args: ''),
+		amrfinderplus: record(skip: false, args: ''),
+		mobtyper:      record(skip: false, args: ''),
+		plasmidfinder: record(skip: false, skip_longread: false, skip_shortread: false, args: ''),
+		resfinder:     record(skip: false, skip_longread: false, skip_shortread: false, args: ''),
+		cgemlst:       record(skip: false, args: ''),
+		MLST:          record(skip: false, args: ''),    // args '' to autodetect the species
+		prokka:        record(skip: true, args: '--kingdom Bacteria')
+	)
+}
+
+workflow {
+	main:
+	// Validate parameters and print summary of supplied ones
+	validateParameters()
+	log.info(paramsSummaryLog(workflow))
+
+	def assemblies = ASSEMBLIES_INPUT(params.fasta)
+	def reads = READS_INPUT(params.ont, params.illumina)
+	def report = AMR_ANNOT(params.amr, assemblies, reads.short_reads, reads.long_reads)
+
+	publish:
+	amr_multireport = report
+}
+
+output {
+	amr_multireport: Channel<Record> {
+		mode "copy"    // the folder holds symlinks to the task outputs
+		path { r ->
+			r.folder.resolve('amr') >> "amr"    // results of the AMR tools, as gathered for the multireport
+			r.html >> "reports/report.html"
+			r.xlsx >> "reports/multitable.xlsx"
+			r.assemblies_tsv >> "reports/multitable_assemblies.tsv"
+			r.contigs_tsv >> "reports/multitable_contigs.tsv"
+			r.resistances_tsv >> "reports/multitable_resistances.tsv"
+			r.plasmidfinder_hits_tsv >> "reports/multitable_plasmidfinder_hits.tsv"
+		}
+	}
 }
