@@ -1,3 +1,4 @@
+nextflow.enable.types = true
 
 include { NANOPLOT           } from './modules/nanoplot'
 include { FASTP              } from './modules/fastp'
@@ -7,29 +8,27 @@ include { MULTIQC            } from './modules/multiqc'
 
 workflow READS_QC {
 	take:
-		fqs_ch    // channel: [ val(meta), path(short_reads) ]	
-		fql_ch    // channel: [ val(meta), path(long_reads) ]
+	fqs_ch: Channel<Tuple>    // short reads: [meta, [R1, R2?]]
+	fql_ch: Channel<Tuple>    // long reads:  [meta, fastq]
+
 	main:
-		// Run nanoplot once on each FASTQ, and then expand to inputs sharing the same FASTQ
-		def nanoplot_ch = NANOPLOT(fql_ch, null)
+	def nanoplot_ch = NANOPLOT(fql_ch, null)
+	def fastp_ch = FASTP(fqs_ch, null)
 
-		// Run fastp once on each FASTQ-pair, and then expand to inputs sharing the same FASTQ
-		def fastp_ch = FASTP(fqs_ch, null)
+	// MultiQC
+	def multiqc_files_ch = nanoplot_ch
+		.map({ r -> tuple(r.nanostat, "${r.meta.sample_id}.nanostat") })
+		.mix(fastp_ch.map({ r -> tuple(r.json, "${r.meta.sample_id}.fastp.json") }))
+		.collect()
+		.flatMap({ fs -> fs.isEmpty() ? [] : [tuple("multiqc.html", fs.toList())] })  // no MultiQC when there are no reads
+	def multiqc_ch = MULTIQC(
+		ORGANIZE_FILES(multiqc_files_ch),
+		file("${moduleDir}/assets/multiqc_config.yml"),
+		null
+	)
 
-		// MultiQC
-		ORGANIZE_FILES(
-			channel.empty().mix(
-				nanoplot_ch.map({r -> [r.nanostat,"${r.meta.sample_id}.nanostat"]}),
-				fastp_ch.map({r -> [r.json,"${r.meta.sample_id}.fastp.json"]})
-			)
-			.collect({f -> [f]})
-			.map({fs -> ["multiqc.html",fs]})
-		)
-		def multiqc_ch = MULTIQC(ORGANIZE_FILES.out, file("${moduleDir}/assets/multiqc_config.yml"), null)
 	emit:
-		long_nanoplot     = nanoplot_ch.map({r -> [r.meta, r.nanoplot]})
-		long_nanostat     = nanoplot_ch.map({r -> [r.meta, r.nanostat]})
-		short_fastp_json  = fastp_ch.map({r -> [r.meta, r.json]})
-		short_fastp_html  = fastp_ch.map({r -> [r.meta, r.html]})
-		multiqc_html      = multiqc_ch.map({r -> r.html})
+	nanoplot: Channel<Record>    = nanoplot_ch
+	fastp: Channel<Record>       = fastp_ch
+	multiqc_html: Channel<Path> = multiqc_ch.map({ r -> r.html })
 }
