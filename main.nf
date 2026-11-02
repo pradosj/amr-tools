@@ -27,17 +27,14 @@ record AssembliesParams {
 	info: String?
 }
 
-record SkipParams {
-	skip: Boolean?
-}
-
 params {
 	verbose: Boolean = false
 	csv:     Path? = null
 	reads:   ReadsParams = record(ont: null, illumina: null)
 	assemblies: AssembliesParams = record(fasta: null, info: null)
-	reads_filter: ReadsFilterParams = record(skip: false, long_limit: 1_000_000_000, short_limit: 1_000_000_000, chopper_args: '--quality 15 --minlength 200')
-	reads_qc: SkipParams = record(skip: false)
+	no_reads_filter: Boolean = false   // work with the given reads
+	no_reads_qc: Boolean = false
+	reads_filter: ReadsFilterParams = record(long_limit: 1_000_000_000, short_limit: 1_000_000_000, chopper_args: '--quality 15 --minlength 200')
 	assembler: AssemblerParams = record(name: 'long_flye_medaka', args: record(flye: null, medaka: '--bacteria', spades: null, unicycler: null, hybracter: null))
 	assemblies_qc: AssembliesQcParams = record(checkm2: record(skip: false, db: null, args: ''))
 	amr: AmrParams = record(
@@ -173,13 +170,13 @@ workflow {
 		))
 
 	// Filter reads
-	if (!params.reads_filter?.skip) {
+	if (!params.no_reads_filter) {
 		def rd_flt_ch = READS_FILTER(params.reads_filter, sr_rec, lr_rec)
 		sr_rec = rd_flt_ch.short_filtered
 		lr_rec = rd_flt_ch.long_filtered
 	}
 	def reads_multiqc_html_ch = channel.empty()
-	if (!params.reads_qc?.skip) {
+	if (!params.no_reads_qc) {
 		reads_multiqc_html_ch = FILTERED_READS_QC(sr_rec, lr_rec).multiqc_html
 	}
 

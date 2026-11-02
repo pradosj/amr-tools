@@ -57,11 +57,6 @@
 			"title": "Parameters for tool reads_filter",
 			"type": "object",
 			"properties": {
-				"skip": {
-					"type": "boolean",
-					"description": "Should read filtering be skipped to work with given reads",
-					"default": false
-				},
 		    "long_limit": {
 		      "type": "integer",
 		      "description": "Limit the number input reads to this maximum total length (in bp), -1 to skip",
@@ -80,16 +75,16 @@
 			}
 		},
 
-		"reads_qc": {
-			"title": "Parameters for tool reads_qc",
-			"type": "object",
-			"properties": {
-				"skip": {
-					"type": "boolean",
-					"description": "Should read qc be skipped",
-					"default": false
-				}
-			}
+		"no_reads_filter": {
+			"type": "boolean",
+			"description": "Skip reads filtering, to work with the given reads",
+			"default": false
+		},
+
+		"no_reads_qc": {
+			"type": "boolean",
+			"description": "Skip reads QC",
+			"default": false
 		},
 
 		"assemblies_qc": {

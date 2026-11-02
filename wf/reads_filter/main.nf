@@ -7,7 +7,6 @@ include { FQ_SUBSAMPLE as FQ_SUBSAMPLE_SHORT } from './modules/fq_subsample'
 
 // Options of READS_FILTER (params.reads_filter). Fields are nullable: modules fall back to their own defaults.
 record ReadsFilterParams {
-	skip: Boolean?             // used by the caller to skip READS_FILTER
 	long_limit: Integer?       // FQ_SUBSAMPLE bp limit for long reads, negative to keep all reads
 	short_limit: Integer?      // FQ_SUBSAMPLE bp limit for short reads, negative to keep all reads
 	chopper_args: String?      // CHOPPER arguments
