@@ -2,11 +2,10 @@ nextflow.enable.types = true
 
 include { LONG_FLYE                     } from './subworkflows/flye_medaka_pilon'
 include { LONG_FLYE_MEDAKA              } from './subworkflows/flye_medaka_pilon'
-include { HYBRACTER as LONG_HYBRACTER   } from './subworkflows/hybracter'
-include { HYBRACTER as HYBRID_HYBRACTER } from './subworkflows/hybracter'
 include { HYBRID_FLYE_MEDAKA_PILON      } from './subworkflows/flye_medaka_pilon'
 include { UNICYCLER                     } from './modules/unicycler'
 include { SPADES                        } from './modules/spades'
+include { HYBRACTER                     } from './modules/hybracter'
 
 
 // Arguments given to each assembly tool. Fields are nullable: modules fall back to their own defaults.
@@ -62,7 +61,7 @@ workflow ASSEMBLE {
 	} else if (name == 'long_unicycler') {
 		asm_ch = UNICYCLER(long_reads.map({ r -> record(meta: r.meta, reads: null, read2: null, long_reads: r.reads, args: args?.unicycler) }))
 	} else if (name == 'long_hybracter') {
-		asm_ch = LONG_HYBRACTER(channel.empty(), long_reads, args?.hybracter)
+		asm_ch = HYBRACTER(long_reads.map({ r -> record(meta: r.meta, reads: null, read2: null, long_reads: r.reads, args: args?.hybracter) }))
 	} else if (name == 'short_unicycler') {
 		asm_ch = UNICYCLER(short_reads.map({ r -> r + record(long_reads: null, args: args?.unicycler) }))
 	} else if (name == 'short_spades') {
@@ -75,7 +74,14 @@ workflow ASSEMBLE {
 				.map({ r -> r + record(args: args?.unicycler) })
 		)
 	} else if (name == 'hybrid_hybracter') {
-		asm_ch = HYBRID_HYBRACTER(short_reads, long_reads, args?.hybracter)
+		// samples with long reads only are assembled with `hybracter long-single`,
+		// samples with short reads only are dropped (hybracter needs long reads)
+		asm_ch = HYBRACTER(
+			short_reads
+				.join(long_reads.map({ r -> record(meta: r.meta, long_reads: r.reads) }), by: 'meta', remainder: true)
+				.filter({ r -> r.long_reads != null })
+				.map({ r -> r + record(args: args?.hybracter) })
+		)
 	} else if (name == 'hybrid_flye_medaka_pilon') {
 		asm_ch = HYBRID_FLYE_MEDAKA_PILON(short_reads, long_reads, args?.flye, args?.medaka)
 	} else {
