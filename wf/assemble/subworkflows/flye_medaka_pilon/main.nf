@@ -36,7 +36,7 @@ record NamedFile {
 
 // Gather the outputs of the assembly steps of a sample into a folder, each one under its given name
 process ASSEMBLY_FOLDER {
-    executor 'local'
+    label 'local'
     input:
     record(meta: Map, files: List<NamedFile>)
     stage:

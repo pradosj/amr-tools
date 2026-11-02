@@ -2,7 +2,7 @@ nextflow.enable.types = true
 
 include { SAMTOOLS_FASTQ as CONVERT_LONG_BAM_TO_FASTQ } from './modules/samtools/fastq'
 include { READS_FILTER; ReadsFilterParams             } from './wf/reads_filter/main.nf'
-include { READS_QC as FILTERED_READS_QC               } from './wf/reads_qc/main.nf'
+include { READS_QC as FILTERED_READS_QC               } from './pipelines/reads-qc/main.nf'
 include { ASSEMBLE; AssemblerParams                   } from './wf/assemble/main.nf'
 include { ASSEMBLIES_QC; AssembliesQcParams           } from './wf/assemblies_qc/main.nf'
 include { AMR_ANNOT; AmrParams                        } from './wf/amr_annot/main.nf'
