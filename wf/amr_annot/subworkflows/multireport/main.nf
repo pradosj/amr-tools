@@ -35,6 +35,7 @@ process AMR_FOLDER {
 // Summary tables of the AMR results folder
 process MULTITABLE {
 	container 'registry.gitlab.unige.ch/amr-genomics/rscript:main'
+	label 'rscript'
 	memory 8.GB
 	cpus 2
 	time 30.m

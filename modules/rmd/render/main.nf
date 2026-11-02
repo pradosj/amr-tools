@@ -2,6 +2,7 @@ nextflow.enable.types = true
 
 process RMD_RENDER {
     container "registry.gitlab.unige.ch/amr-genomics/rscript:v2"
+    label 'rscript'
     memory 8.GB
     cpus 2
     time 30.m

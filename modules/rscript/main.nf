@@ -1,6 +1,7 @@
 
 process RSCRIPT {
 	  container "registry.gitlab.unige.ch/amr-genomics/rscript:main"
+	  label 'rscript'
     memory '8 GB'
     cpus 1
     time '30 min'

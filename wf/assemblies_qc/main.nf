@@ -44,6 +44,7 @@ record LongReads {
 // Gather the QC statistics of an assembly into an RDS file
 process COMBINE_QC_STATS {
 	container "registry.gitlab.unige.ch/amr-genomics/rscript:main"
+	label 'rscript'
 	memory 8.GB
 	cpus 2
 	time 30.m
@@ -78,6 +79,7 @@ process COMBINE_QC_STATS {
 // Aggregate the QC statistics of all the assemblies into a table
 process ASSEMBLIES_MULTIQC {
 	container "registry.gitlab.unige.ch/amr-genomics/rscript:main"
+	label 'rscript'
 	memory 8.GB
 	cpus 2
 	time 30.m

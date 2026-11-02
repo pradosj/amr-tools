@@ -8,6 +8,7 @@ params {
 
 process GTF2GFF {
 	container "registry.gitlab.unige.ch/amr-genomics/rscript:v3"
+	label 'rscript'
 	memory 4.GB
 	cpus 1
 	time 30.m
