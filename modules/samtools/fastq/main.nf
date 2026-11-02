@@ -1,19 +1,30 @@
+nextflow.enable.types = true
 
 process SAMTOOLS_FASTQ {
     container 'quay.io/biocontainers/samtools:1.21--h50ea8bc_0'
-    memory '2 GB'
+    memory 2.GB
     cpus 1
-    time '15 min'
+    time 15.m
+
     input:
-    		tuple val(meta), path("input.bam")
+    // bam: BAM or CRAM file
+    record(meta: Map, bam: Path, args: String?)
+
     output:
-    		tuple val(meta), path("output.fastq.gz")
+    record(
+        meta: meta,
+        reads: file('output.fastq.gz')
+    )
+
     script:
-				"""
-				samtools fastq -@ ${task.cpus} ${task.ext.args?:'-n -T "*" -0 -'} input.bam \\
-				| bgzip -@ ${task.cpus} \\
-				> output.fastq.gz
-				"""
+    """
+    samtools fastq -@ ${task.cpus} ${args ?: '-n -T "*" -0 -'} ${bam} \\
+    | bgzip -@ ${task.cpus} \\
+    > output.fastq.gz
+    """
+
+    stub:
+    """
+    echo "" | gzip > output.fastq.gz
+    """
 }
-
-

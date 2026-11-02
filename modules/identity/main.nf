@@ -1,16 +1,22 @@
+nextflow.enable.types = true
+
+// Copy input files into the work directory as task outputs (only task outputs can be published)
 process IDENTITY {
-    memory '2 GB'
+    memory 2.GB
     cpus 1
-    time '1h'
+    time 1.h
     executor 'local'
+
     input:
-    	tuple val(meta), path(file)
+    record(meta: Map, file1: Path, file2: Path?)
+
     output:
-    	tuple val(meta), path(file)
+    record(
+        meta: meta,
+        file1: file(file1.name),
+        file2: file(file2 ? file2.name : '.no_file2', optional: true)
+    )
+
     script:
-    """
-    """
+    "true"
 }
-
-
-

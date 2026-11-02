@@ -22,7 +22,7 @@ record AssemblerArgs {
 
 // Options of ASSEMBLE (params.assembler)
 record AssemblerParams {
-	name: String               // assembly strategy, e.g. long_flye_medaka
+	name: String?              // assembly strategy, e.g. long_flye_medaka
 	args: AssemblerArgs?
 }
 
