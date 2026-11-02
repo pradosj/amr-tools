@@ -1,17 +1,29 @@
+nextflow.enable.types = true
 
 process SPECIATOR {
     container 'speciator-v4.0.0.sif'
-    memory '10 GB'
+    memory 10.GB
     cpus 1
-    time '15 min'
-    input:
-        tuple val(meta), path('assembly.fna')
-    output:
-    		tuple val(meta), path("speciator",type: 'dir'), emit: orgfinder
-    script:
-		    """
-		    mkdir ./speciator
-		    python3 /speciator.py assembly.fna /libraries /bactinspector/data/taxon_info.pqt > speciator/results.json
-		    """
-}
+    time 15.m
 
+    input:
+    record(meta: Map, fasta: Path)
+
+    output:
+    record(
+        meta: meta,
+        dir: file('speciator')
+    )
+
+    script:
+    """
+    mkdir ./speciator
+    python3 /speciator.py ${fasta} /libraries /bactinspector/data/taxon_info.pqt > speciator/results.json
+    """
+
+    stub:
+    """
+    mkdir -p speciator
+    touch speciator/results.json
+    """
+}

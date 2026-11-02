@@ -1,14 +1,21 @@
+nextflow.enable.types = true
 
 process AMRFINDERPLUS_UPDATE {
     container 'quay.io/biocontainers/ncbi-amrfinderplus:4.0.22--hf69ffd2_0'
-    memory '4 GB'
+    memory 4.GB
     cpus 1
-    time '1h'
+    time 1.h
+
     output:
-		    path('amrfinder_db', type: 'dir')
+    file('amrfinder_db')
+
     script:
     """
     amrfinder_update -d db && mv \$(realpath db/latest) amrfinder_db
     """
-}
 
+    stub:
+    """
+    mkdir -p amrfinder_db
+    """
+}

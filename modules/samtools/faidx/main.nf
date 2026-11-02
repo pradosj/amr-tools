@@ -1,19 +1,27 @@
+nextflow.enable.types = true
 
 process SAMTOOLS_FAIDX {
     container 'quay.io/biocontainers/samtools:1.21--h50ea8bc_0'
-    memory '2 GB'
+    memory 2.GB
     cpus 1
-    time '15 min'
+    time 15.m
+
     input:
-    		tuple val(meta), path(fasta)
+    record(meta: Map, fasta: Path, args: String?)
+
     output:
-    		tuple val(meta), path ("*.fai")
+    record(
+        meta: meta,
+        fai: file("${fasta.name}.fai")
+    )
+
     script:
-		    """
-		    samtools faidx ${task.ext.args?:''} '${fasta}'
-		    """
-		stub:
-				"""
-				touch '${fasta}.fai'
-				"""
+    """
+    samtools faidx ${args ?: ''} '${fasta}'
+    """
+
+    stub:
+    """
+    touch '${fasta.name}.fai'
+    """
 }

@@ -1,21 +1,27 @@
-
+nextflow.enable.types = true
 
 process MOBTYPER {
-	  container "quay.io/biocontainers/mob_suite:3.1.9--pyhdfd78af_0"
-    memory '10 GB'
+    container "quay.io/biocontainers/mob_suite:3.1.9--pyhdfd78af_0"
+    memory 10.GB
     cpus 4
-    time '30 min'
+    time 30.m
+
     input:
-        tuple val(meta), path('assembly.fna')
+    record(meta: Map, fasta: Path, args: String?)
+
     output:
-				tuple val(meta), path('mobtyper.tsv')
+    record(
+        meta: meta,
+        tsv: file('mobtyper.tsv')
+    )
+
     script:
-		    """
-		    mob_typer ${task.ext.args?:''} --num_threads=${task.cpus} --multi -i 'assembly.fna' -o mobtyper.tsv
-		    """
-		stub:
-				"""
-				touch mobtyper.tsv
-				"""
-    
+    """
+    mob_typer ${args ?: ''} --num_threads=${task.cpus} --multi -i '${fasta}' -o mobtyper.tsv
+    """
+
+    stub:
+    """
+    touch mobtyper.tsv
+    """
 }
