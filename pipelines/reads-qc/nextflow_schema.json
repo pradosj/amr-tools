@@ -6,8 +6,8 @@
 			"type": "string",
 			"format": "file-path-pattern",
 			"exists": true,
-			"pattern": "^\\S+\\.(fastq\\.gz|fq\\.gz)$",
-			"description": "Path to FASTQ.GZ files containing ONT reads"
+			"pattern": "^\\S+\\.(bam|cram|fastq\\.gz|fq\\.gz)$",
+			"description": "Path to BAM, CRAM or FASTQ.GZ files containing ONT reads (BAM/CRAM are converted to FASTQ)"
 		},
 		"illumina": {
 			"type": "string",
