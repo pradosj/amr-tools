@@ -48,7 +48,7 @@ params {
 		plasmidfinder: record(skip: false, skip_longread: false, skip_shortread: false, args: ''),
 		resfinder:     record(skip: false, skip_longread: false, skip_shortread: false, args: ''),
 		cgemlst:       record(skip: false, args: ''),
-		MLST:          record(skip: false, args: ''),
+		MLST:          record(skip: false, args: ''),    // args '' to autodetect the species
 		prokka:        record(skip: true, args: '--kingdom Bacteria')
 	)
 }
@@ -173,7 +173,7 @@ workflow {
 		))
 
 	// Filter reads
-	if (!params.reads_filter.skip) {
+	if (!params.reads_filter?.skip) {
 		def rd_flt_ch = READS_FILTER(params.reads_filter, sr_rec, lr_rec)
 		sr_rec = rd_flt_ch.short_filtered
 		lr_rec = rd_flt_ch.long_filtered
@@ -201,8 +201,8 @@ workflow {
 	// Assemblies are identified by a meta map holding both sample_id and assembler_name
 	def asm_rec = given_asm_ch
 		.map({ r -> record(meta: r.meta + [assembler_name: 'none'], fasta: r.file1) })
-		.mix(assemblies.map({ r -> record(meta: r.meta + [assembler_name: params.assembler.name], fasta: r.fasta) }))
-	def asm_dir_ch = assemblies.map({ r -> record(meta: r.meta + [assembler_name: params.assembler.name], dir: r.dir) })
+		.mix(assemblies.map({ r -> record(meta: r.meta, fasta: r.fasta) }))
+	def asm_dir_ch = assemblies.map({ r -> record(meta: r.meta, dir: r.dir) })
 
 	// Reads of the sample of each assembly (a sample has a single assembly)
 	def asm_keys = asm_rec.map({ r -> record(meta: r.meta.subMap(['sample_id']), asm_meta: r.meta) })

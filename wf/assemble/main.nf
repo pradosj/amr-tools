@@ -22,7 +22,7 @@ record AssemblerArgs {
 
 // Options of ASSEMBLE (params.assembler)
 record AssemblerParams {
-	name: String?              // assembly strategy, e.g. long_flye_medaka
+	name: String?              // assembly strategy (default: long_flye_medaka)
 	args: AssemblerArgs?
 }
 
@@ -54,30 +54,32 @@ workflow ASSEMBLE {
 	long_reads: Channel<LongReads>
 
 	main:
+	def name = opts.name ?: 'long_flye_medaka'
 	def args = opts.args
 	def asm_ch = channel.empty()
-	if (opts.name == 'long_flye') {
+	if (name == 'long_flye') {
 		asm_ch = LONG_FLYE(long_reads, args?.flye)
-	} else if (opts.name == 'long_flye_medaka') {
+	} else if (name == 'long_flye_medaka') {
 		asm_ch = LONG_FLYE_MEDAKA(long_reads, args?.flye, args?.medaka)
-	} else if (opts.name == 'long_unicycler') {
+	} else if (name == 'long_unicycler') {
 		asm_ch = LONG_UNICYCLER(channel.empty(), long_reads, args?.unicycler)
-	} else if (opts.name == 'long_hybracter') {
+	} else if (name == 'long_hybracter') {
 		asm_ch = LONG_HYBRACTER(channel.empty(), long_reads, args?.hybracter)
-	} else if (opts.name == 'short_unicycler') {
+	} else if (name == 'short_unicycler') {
 		asm_ch = SHORT_UNICYCLER(short_reads, channel.empty(), args?.unicycler)
-	} else if (opts.name == 'short_spades') {
+	} else if (name == 'short_spades') {
 		asm_ch = SHORT_SPADES(short_reads, channel.empty(), args?.spades)
-	} else if (opts.name == 'hybrid_unicycler') {
+	} else if (name == 'hybrid_unicycler') {
 		asm_ch = HYBRID_UNICYCLER(short_reads, long_reads, args?.unicycler)
-	} else if (opts.name == 'hybrid_hybracter') {
+	} else if (name == 'hybrid_hybracter') {
 		asm_ch = HYBRID_HYBRACTER(short_reads, long_reads, args?.hybracter)
-	} else if (opts.name == 'hybrid_flye_medaka_pilon') {
+	} else if (name == 'hybrid_flye_medaka_pilon') {
 		asm_ch = HYBRID_FLYE_MEDAKA_PILON(short_reads, long_reads, args?.flye, args?.medaka)
 	} else {
-		error("Unknown assembler name: ${opts.name}")
+		error("Unknown assembler name: ${name}")
 	}
 
 	emit:
-	assemblies: Channel<Assembly> = asm_ch
+	assemblies: Channel<Assembly> = asm_ch    // meta holds sample_id and assembler_name
+		.map({ r -> r + record(meta: r.meta + [assembler_name: name]) })
 }

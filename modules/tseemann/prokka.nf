@@ -17,7 +17,7 @@ process PROKKA {
 
     script:
     """
-    prokka ${args ?: ''} --outdir 'prokka/' --cpus ${task.cpus} --prefix prokka ${fasta}
+    prokka ${args ?: '--kingdom Bacteria'} --outdir 'prokka/' --cpus ${task.cpus} --prefix prokka ${fasta}
     """
 
     stub:

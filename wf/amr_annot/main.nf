@@ -114,15 +114,15 @@ workflow AMR_ANNOT_ASSEMBLY {
 		mobtyper_ch = MOBTYPER(assemblies.map({ r -> r + record(args: opts.mobtyper?.args) }))
 	}
 
-	// PROKKA annotations
+	// PROKKA annotations (disabled unless skip is explicitly false)
 	def prokka_ch = channel.empty()
-	if (!opts.prokka?.skip) {
+	if (opts.prokka?.skip == false) {
 		prokka_ch = PROKKA(assemblies.map({ r -> r + record(args: opts.prokka?.args) }))
 	}
 
-	// Speciator
+	// Speciator (disabled unless skip is explicitly false)
 	def speciator_ch = channel.empty()
-	if (!opts.speciator?.skip) {
+	if (opts.speciator?.skip == false) {
 		speciator_ch = SPECIATOR(assemblies)
 	}
 
