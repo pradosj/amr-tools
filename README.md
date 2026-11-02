@@ -90,18 +90,18 @@ The output folder `results` has the following organization:
 
 # Standalone pipelines
 
-Each step of `amr-tools`, and a few other tools, can be run on its own from the `pipelines/` folder,
-e.g. `nextflow run pradosj/amr-tools/pipelines/amr-annot --fasta='assemblies/*.fasta'`.
+Each step of `amr-tools`, and a few other tools, can be run on its own from the `wf/` folder,
+e.g. `nextflow run pradosj/amr-tools/wf/amr-annot --fasta='assemblies/*.fasta'`.
 
 | Pipeline | Description |
 |:--|:--|
-| [`reads-qc`](pipelines/reads-qc) | Quality control of ONT and Illumina reads (NanoPlot, fastp, MultiQC) |
-| [`reads-filter`](pipelines/reads-filter) | Filtering and subsampling of the reads |
-| [`assemble`](pipelines/assemble) | De novo assembly from ONT and/or Illumina reads |
-| [`assemblies-qc`](pipelines/assemblies-qc) | Quality control of assemblies (statistics, reads alignments, CheckM2) |
-| [`amr-annot`](pipelines/amr-annot) | AMR and plasmid annotation of assemblies and reads, with a multi-sample report |
-| [`orgfinder`](pipelines/orgfinder) | Organism detection of assemblies with FastANI |
-| [`asm-compare`](pipelines/asm-compare) | Comparison of assemblies with a reference assembly |
-| [`gtf2gff`](pipelines/gtf2gff) | Conversion of a NCBI GTF into a GFF for `bcftools csq` |
+| [`reads-qc`](wf/reads-qc) | Quality control of ONT and Illumina reads (NanoPlot, fastp, MultiQC) |
+| [`reads-filter`](wf/reads-filter) | Filtering and subsampling of the reads |
+| [`assemble`](wf/assemble) | De novo assembly from ONT and/or Illumina reads |
+| [`assemblies-qc`](wf/assemblies-qc) | Quality control of assemblies (statistics, reads alignments, CheckM2) |
+| [`amr-annot`](wf/amr-annot) | AMR and plasmid annotation of assemblies and reads, with a multi-sample report |
+| [`orgfinder`](wf/orgfinder) | Organism detection of assemblies with FastANI |
+| [`asm-compare`](wf/asm-compare) | Comparison of assemblies with a reference assembly |
+| [`gtf2gff`](wf/gtf2gff) | Conversion of a NCBI GTF into a GFF for `bcftools csq` |
 
 See the README of each pipeline for its options.

@@ -13,7 +13,7 @@ curl -s https://get.nextflow.io | bash
 # Usage
 
 ```bash
-nextflow run pradosj/amr-tools/pipelines/amr-annot --fasta='assemblies/*.fasta' --ont='ont/*.fastq.gz' --illumina='illumina/*_R{1,2}.fastq.gz'
+nextflow run pradosj/amr-tools/wf/amr-annot --fasta='assemblies/*.fasta' --ont='ont/*.fastq.gz' --illumina='illumina/*_R{1,2}.fastq.gz'
 ```
 
 The sample id is taken from the file names. Reads are optional. Each tool can be enabled or disabled with `--amr.<tool>.skip` and given arguments with `--amr.<tool>.args`.
@@ -23,5 +23,5 @@ Outputs: `amr/` (results of the tools, by assembly and by reads sample) and `rep
 # Test the pipeline
 
 ```bash
-nextflow run pradosj/amr-tools/pipelines/amr-annot/main.nf -profile standard,test
+nextflow run pradosj/amr-tools/wf/amr-annot/main.nf -profile standard,test
 ```

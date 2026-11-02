@@ -16,12 +16,12 @@ curl -s https://get.nextflow.io | bash
 # Usage
 
 ```bash
-nextflow run pradosj/amr-tools/pipelines/orgfinder --query=query_assembly.fasta
+nextflow run pradosj/amr-tools/wf/orgfinder --query=query_assembly.fasta
 ```
 
 # Test the pipeline
 
 ```bash
-nextflow run pradosj/amr-tools/pipelines/orgfinder/main.nf -profile standard,test
+nextflow run pradosj/amr-tools/wf/orgfinder/main.nf -profile standard,test
 ```
 

@@ -14,12 +14,12 @@ curl -s https://get.nextflow.io | bash
 # Usage
 
 ```bash
-nextflow run pradosj/amr-tools/pipelines/gtf2gff/main.nf --gtf 'https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/014/365/GCF_000014365.2_ASM1436v2/GCF_000014365.2_ASM1436v2_genomic.gtf.gz'
+nextflow run pradosj/amr-tools/wf/gtf2gff/main.nf --gtf 'https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/014/365/GCF_000014365.2_ASM1436v2/GCF_000014365.2_ASM1436v2_genomic.gtf.gz'
 ```
 
 # Test the pipeline
 
 ```bash
-nextflow run pradosj/amr-tools/pipelines/gtf2gff/main.nf -profile standard,test
+nextflow run pradosj/amr-tools/wf/gtf2gff/main.nf -profile standard,test
 ```
 
