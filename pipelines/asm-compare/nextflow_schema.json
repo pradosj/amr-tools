@@ -31,6 +31,18 @@
 			"type": "boolean",
 			"description": "Set if the query should not be rotated in a preliminary step",
 			"default": false
+		},
+
+		"minimap2_args": {
+			"type": "string",
+			"description": "Extra arguments given to minimap2 (after -x asm5)",
+			"default": "-z1000000 -p 0.1 -Y --cs -a"
+		},
+
+		"mpileup_args": {
+			"type": "string",
+			"description": "Extra arguments given to bcftools mpileup",
+			"default": "--no-BAQ --indel-size 1000 --ff=UNMAP --ambig-reads=drop --gap-frac=0 --min-ireads=0"
 		}
 
 	}

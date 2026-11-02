@@ -1,21 +1,28 @@
+nextflow.enable.types = true
 
+// Render a quarto template; `files` and `extra` are staged next to the template, `args` holds quarto options (e.g. -P name:value)
 process QUARTO_RENDER {
-	  container "registry.gitlab.unige.ch/amr-genomics/rscript:v2"
-    memory '8 GB'
+    container "registry.gitlab.unige.ch/amr-genomics/rscript:v2"
+    memory 8.GB
     cpus 2
-    time '30 min'
+    time 30.m
+
     input:
-    		tuple(val(meta),path(files),val(params))
-    		each path('report_template.qmd')
-    		each path(extra)
+    record(meta: Map, template: Path, extra: Path?, files: List<Path>, args: String?)
+
+    stage:
+    stageAs(template, 'report_template.qmd')
+
     output:
-        tuple(val(meta),path('report_template.html'),emit:'html')
+    record(meta: meta, html: file('report_template.html'))
+
     script:
-				"""
-				HOME=/tmp quarto render ${task.ext.args?:''} 'report_template.qmd' ${params}
-				"""
-		stub:
-				"""
-				touch report_template.html
-				"""
+    """
+    HOME=/tmp quarto render 'report_template.qmd' ${args ?: ''}
+    """
+
+    stub:
+    """
+    touch report_template.html
+    """
 }

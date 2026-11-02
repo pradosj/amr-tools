@@ -1,117 +1,146 @@
+nextflow.enable.types = true
 
+include { MINIMAP2_ALIGN_ASM5                       } from './modules/minimap2/align_asm5'
+include { MINIMAP2_ALIGN_ASM5 as ROTATION_ALIGNMENT } from './modules/minimap2/align_asm5'
+include { BCFTOOLS_ASM5_MPILEUP                     } from './modules/bcftools/asm5_mpileup'
+include { QUARTO_RENDER                             } from './modules/quarto/render'
+include { validateParameters; paramsSummaryLog      } from 'plugin/nf-schema'
 
-include { MINIMAP2_ALIGN_ASM5   } from './modules/minimap2/align_asm5'
-include { BCFTOOLS_ASM5_MPILEUP } from './modules/bcftools/asm5_mpileup'
-include { QUARTO_RENDER         } from './modules/quarto/render'
-include { validateParameters; paramsSummaryLog; samplesheetToList } from 'plugin/nf-schema'
+params {
+	ref: Path
+	ref_gff: Path? = null
+	query: String
+	no_query_rotation: Boolean = false
+	minimap2_args: String? = '-z1000000 -p 0.1 -Y --cs -a'
+	mpileup_args: String? = '--no-BAQ --indel-size 1000 --ff=UNMAP --ambig-reads=drop --gap-frac=0 --min-ireads=0'
+}
+
+// A query assembly to compare with the reference assembly
+record Comparison {
+	meta: Map
+	ref: Path
+	query: Path
+}
 
 
 process ROTATE_FASTA {
-	  container "registry.gitlab.unige.ch/amr-genomics/rscript:v2"
-    memory '8 GB'
-    cpus 1
-    time '30 min'
-    input:
-    		tuple(val(meta),path("query.fasta"),path("aln.bam"))
-    		path(extra)
-    output:
-        tuple(val(meta),path('rotated_query.fasta'))
-    script:
-				"""
-				#!/usr/bin/env Rscript
-				source("assets/lib_bam.R")
-				rotate_queries("query.fasta","aln.bam") |>
-					writeXStringSet("rotated_query.fasta")
-				"""
+	container "registry.gitlab.unige.ch/amr-genomics/rscript:v2"
+	memory 8.GB
+	cpus 1
+	time 30.m
+
+	input:
+	record(meta: Map, query: Path, bam: Path)
+	assets: Path
+
+	stage:
+	stageAs(query, 'query.fasta')
+	stageAs(bam, 'aln.bam')
+	stageAs(assets, 'assets')
+
+	output:
+	record(meta: meta, fasta: file('rotated_query.fasta'))
+
+	script:
+	"""
+	#!/usr/bin/env Rscript
+	source("assets/lib_bam.R")
+	rotate_queries("query.fasta","aln.bam") |>
+		writeXStringSet("rotated_query.fasta")
+	"""
+
+	stub:
+	"""
+	touch rotated_query.fasta
+	"""
 }
 
+// Rotate the contigs of the queries to start at the same position as in the reference
 workflow ROTATE_QUERIES {
 	take:
-		query_ch  // [meta, path('ref.fasta'), path('qry.fasta')]
+	queries: Channel<Comparison>
+	minimap2_args: String?
+
 	main:
-		query_ch | MINIMAP2_ALIGN_ASM5
-		
-		def rotated_query_ch = ROTATE_FASTA(
-			query_ch
-			.map({m,_r,q -> [m,q]})
-			.combine(MINIMAP2_ALIGN_ASM5.out.bam,by:0),
-			file("${projectDir}/assets")
-		)
-		.combine(query_ch,by:0)
-		.map({m,rq,r,_q -> [m,r,rq]})
+	def aln_ch = ROTATION_ALIGNMENT(queries.map({ r -> r + record(args: minimap2_args) }))
+	def rotated_ch = ROTATE_FASTA(
+		queries
+			.join(aln_ch, by: 'meta')
+			.map({ r -> record(meta: r.meta as Map, query: r.query as Path, bam: r.bam as Path) }),
+		file("${projectDir}/assets")
+	)
+	def out_ch = queries
+		.join(rotated_ch, by: 'meta')
+		.map({ r -> record(meta: r.meta as Map, ref: r.ref as Path, query: r.fasta as Path) })
+
 	emit:
-		rotated_queries = rotated_query_ch
+	rotated_queries: Channel<Comparison> = out_ch
 }
 
 
 workflow {
 	main:
-		// Validate parameters and print summary of supplied ones
-		validateParameters()
-		log.info(paramsSummaryLog(workflow))
+	// Validate parameters and print summary of supplied ones
+	validateParameters()
+	log.info(paramsSummaryLog(workflow))
 
-		def ref = file(params.ref)
-		def ref_gff = params.ref_gff ? file(params.ref_gff) : []
-		def query_ch = channel.fromPath(params.query).map({f ->
-				def id = f.name.replaceAll(/\.(fasta|fna|fa)$/,'')
-				[[sample_id:id],ref,f]
-		})
+	def query_ch = channel.fromPath(params.query).map({ f ->
+		def id = f.name.replaceAll(/\.(fasta|fna|fa)$/, '')
+		record(meta: [sample_id: id], ref: params.ref, query: f)
+	})
 
-		if (!params.no_query_rotation) {
-			query_ch = ROTATE_QUERIES(query_ch)
-		}
+	def rotated_query_ch = channel.empty()
+	if (!params.no_query_rotation) {
+		query_ch = ROTATE_QUERIES(query_ch, params.minimap2_args)
+		rotated_query_ch = query_ch
+	}
 
-		// Map (rotated) queries to REF
-		query_ch
-		| MINIMAP2_ALIGN_ASM5
-		
-		MINIMAP2_ALIGN_ASM5.out.bam
-		| map({meta,bam -> [meta,ref,bam,ref_gff]})
-		| BCFTOOLS_ASM5_MPILEUP
+	// Map (rotated) queries to REF
+	def aln_ch = MINIMAP2_ALIGN_ASM5(query_ch.map({ r -> r + record(args: params.minimap2_args) }))
 
-		QUARTO_RENDER(
-			MINIMAP2_ALIGN_ASM5.out.bam
-				.combine(BCFTOOLS_ASM5_MPILEUP.out.txt,by:0)
-				.map({meta,bam,txt -> [meta,[bam,txt],"-P 'bam_file:${bam}' -P 'txt_file:${txt}'"]}),
-			file("${projectDir}/assets/bam_report.qmd"),
-			file("${projectDir}/assets")
-		)
+	// Call mutations
+	def mut_ch = BCFTOOLS_ASM5_MPILEUP(
+		aln_ch.map({ r -> record(meta: r.meta, ref: params.ref, bam: r.bam, gff: params.ref_gff, args: params.mpileup_args) })
+	)
+
+	// HTML report
+	def html_ch = QUARTO_RENDER(
+		aln_ch
+			.join(mut_ch, by: 'meta')
+			.map({ r -> record(
+				meta: r.meta as Map,
+				template: file("${projectDir}/assets/bam_report.qmd"),
+				extra: file("${projectDir}/assets"),
+				files: [r.bam as Path, r.txt as Path],
+				args: "-P 'bam_file:${(r.bam as Path).name}' -P 'txt_file:${(r.txt as Path).name}'"
+			) })
+	)
 
 	publish:
-		rotated_query_fa = query_ch.filter({!params.no_query_rotation}).map({m,_r,q -> [m,q]})
-		bam = MINIMAP2_ALIGN_ASM5.out.bam
-		bai = MINIMAP2_ALIGN_ASM5.out.bai
-		mut_vcf = BCFTOOLS_ASM5_MPILEUP.out.vcf
-		mut_vcf_csi = BCFTOOLS_ASM5_MPILEUP.out.vcf_csi
-		mut_txt = BCFTOOLS_ASM5_MPILEUP.out.txt
-		html = QUARTO_RENDER.out.html
+	rotated_query_fa = rotated_query_ch
+	alignment = aln_ch
+	mutations = mut_ch
+	html = html_ch
 }
 
 output {
-	rotated_query_fa {
-		path { m,x -> x >> "${m.sample_id}.rotated.fasta"}
+	rotated_query_fa: Channel<Comparison> {
+		path { r -> r.query >> "${r.meta.sample_id}.rotated.fasta" }
 	}
-	bam {
-		path { m,x -> x >> "${m.sample_id}.bam"}
+	alignment: Channel<Record> {
+		path { r ->
+			r.bam >> "${r.meta.sample_id}.bam"
+			r.bai >> "${r.meta.sample_id}.bai"
+		}
 	}
-	bai {
-		path { m,x -> x >> "${m.sample_id}.bai"}
+	mutations: Channel<Record> {
+		path { r ->
+			r.vcf >> "${r.meta.sample_id}.vcf.gz"
+			r.csi >> "${r.meta.sample_id}.vcf.gz.csi"
+			r.txt >> "${r.meta.sample_id}.txt"
+		}
 	}
-	mut_vcf {
-		path { m,x -> x >> "${m.sample_id}.vcf.gz"}
+	html: Channel<Record> {
+		path { r -> r.html >> "${r.meta.sample_id}.html" }
 	}
-	mut_vcf_csi {
-		path { m,x -> x >> "${m.sample_id}.vcf.gz.csi"}
-	}
-	mut_txt {
-		path { m,x -> x >> "${m.sample_id}.txt"}
-	}	
-	html {
-		path {  m,x -> x >> "${m.sample_id}.html"}
-	}
-	
 }
-
-
-
-
