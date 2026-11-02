@@ -75,7 +75,7 @@ workflow ASSEMBLIES_QC {
 		def checkm2_ch = channel.empty()
 		if (!opts.checkm2.skip) {
 			if (opts.checkm2.db) {
-				checkm2_db_ch = channel.FromPath(opts.checkm2.db)
+				checkm2_db_ch = channel.fromPath(opts.checkm2.db)
 			} else {
 				checkm2_db_ch = CHECKM2_DB()
 			}

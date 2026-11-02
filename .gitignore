@@ -12,3 +12,4 @@ results/
 .nf-test.log
 nextflow
 nf-test
+amr-tools.Rproj
