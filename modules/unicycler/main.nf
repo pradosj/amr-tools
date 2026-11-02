@@ -1,30 +1,36 @@
+nextflow.enable.types = true
+
 process UNICYCLER {
     container 'quay.io/biocontainers/unicycler:0.5.1--py312hdcc493e_4'
-    memory '20 GB'
+    memory 20.GB
     cpus 8
-    time '4h'
+    time 4.h
+
     input:
-        tuple val(meta), path(illumina), path(nanopore)
+    // short reads (reads, read2) and/or long reads
+    record(meta: Map, reads: Path?, read2: Path?, long_reads: Path?, args: String?)
+
     output:
-        tuple val(meta), path('unicycler',type:'dir')
+    record(
+        meta: meta,
+        dir: file('unicycler'),
+        fasta: file('unicycler/assembly.fasta')
+    )
+
     script:
-	      def nanopore_reads = nanopore?"-l $nanopore":''
-	      illumina = illumina instanceof List?illumina:[illumina]
-	      def short_reads = illumina?(illumina.size()==1?"-s ${illumina[0]}":"-1 ${illumina[0]} -2 ${illumina[1]}"):''
-		    """
-		    #${illumina.size()}
-		    #${illumina.size()}
-		    #${illumina.class}
-		    #${illumina.join(" ")}
-		    unicycler \\
-		        ${task.ext.args?:''} \\
-		        --threads ${task.cpus} \\
-		        ${short_reads} ${nanopore_reads} \\
-		        --out ./unicycler/
-		    """
-		stub:
-		"""
-		mkdir -p unicycler
-		touch unicycler/assembly.fasta
-		"""
+    def short_opts = !reads ? '' : (read2 ? "-1 ${reads} -2 ${read2}" : "-s ${reads}")
+    def long_opts = long_reads ? "-l ${long_reads}" : ''
+    """
+    unicycler \\
+        ${args ?: ''} \\
+        --threads ${task.cpus} \\
+        ${short_opts} ${long_opts} \\
+        --out ./unicycler/
+    """
+
+    stub:
+    """
+    mkdir -p unicycler
+    touch unicycler/assembly.fasta
+    """
 }

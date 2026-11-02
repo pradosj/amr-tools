@@ -1,24 +1,34 @@
+nextflow.enable.types = true
+
 process MEDAKA_CONSENSUS {
     container 'docker.io/ontresearch/medaka:shac4e11bfa4e65668b28739ba32edc3af12baf7574-amd64'
-    memory '10 GB'
+    memory 10.GB
     cpus 4
-    time '2h'
+    time 2.h
+
     input:
-        tuple val(meta), path('assembly.fasta'), path('long_reads.fastq.gz')
+    record(meta: Map, fasta: Path, reads: Path, args: String?)
+
     output:
-        tuple val(meta), path('medaka',type:'dir')
+    record(
+        meta: meta,
+        dir: file('medaka'),
+        fasta: file('medaka/consensus.fasta')
+    )
+
     script:
-		    """
-		    medaka_consensus \\
-		      ${task.ext.args?:'--bacteria'} \\
-			    -f -t ${task.cpus} \\
-			    -d assembly.fasta \\
-			    -i long_reads.fastq.gz \\
-			    -o medaka
-		    """
-		stub:		    
-		    """
-		    mkdir -p medaka/
-		    touch medaka/consensus.fasta
-		    """
+    """
+    medaka_consensus \\
+        ${args ?: '--bacteria'} \\
+        -f -t ${task.cpus} \\
+        -d ${fasta} \\
+        -i ${reads} \\
+        -o medaka
+    """
+
+    stub:
+    """
+    mkdir -p medaka/
+    touch medaka/consensus.fasta
+    """
 }

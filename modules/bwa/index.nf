@@ -1,18 +1,27 @@
+nextflow.enable.types = true
+
 process BWA_INDEX {
     container 'community.wave.seqera.io/library/bwa_htslib_samtools:56c9f8d5201889a4'
-    memory '5 GB'
+    memory 5.GB
     cpus 3
-    time '1h'
+    time 1.h
+
     input:
-	    tuple val(meta), path('ref.fasta')
+    record(meta: Object, fasta: Path, args: String?)
+
     output:
-	    tuple val(meta), path('index',type:'dir'), emit: index
+    record(
+        meta: meta,
+        index: file('index')
+    )
+
     script:
-	    """
-	    mkdir -p "index" && bwa index ${task.ext.args?:''} -p "index/index" ref.fasta
-	    """
-	  stub:
-	  	"""
-	  	mkdir -p index
-	  	"""
+    """
+    mkdir -p "index" && bwa index ${args ?: ''} -p "index/index" ${fasta}
+    """
+
+    stub:
+    """
+    mkdir -p index
+    """
 }

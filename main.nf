@@ -3,7 +3,7 @@
 include { SAMTOOLS_FASTQ as CONVERT_LONG_BAM_TO_FASTQ } from './modules/samtools/fastq' 
 include { READS_FILTER; ReadsFilterParams             } from './wf/reads_filter/main.nf'
 include { READS_QC as FILTERED_READS_QC               } from './wf/reads_qc/main.nf'
-include { ASSEMBLE                                    } from './wf/assemble/main.nf'
+include { ASSEMBLE; AssemblerParams                   } from './wf/assemble/main.nf'
 include { ASSEMBLIES_QC                               } from './wf/assemblies_qc/main.nf'
 include { AMR_ANNOT                                   } from './wf/amr_annot/main.nf'
 include { IDENTITY as COPY_ASSEMBLY_FASTA             } from './modules/identity/main.nf'
@@ -25,6 +25,7 @@ params {
 	csv:     Path? = null
 	reads:   ReadsParams = record(ont:null, illumina:null)
 	reads_filter: ReadsFilterParams = record(skip: false, long_limit: 1_000_000_000, short_limit: 1_000_000_000, chopper_args: '--quality 15 --minlength 200')
+	assembler: AssemblerParams = record(name: 'long_flye_medaka', args: record(flye: null, medaka: '--bacteria'))
 }
 
 // Convert [meta, reads] tuple channels into the reads records expected by typed subworkflows
@@ -99,15 +100,15 @@ workflow {
 			.map({s -> [s.subMap('sample_id'),s.assembly_fasta]}) 
 			| COPY_ASSEMBLY_FASTA
 		def assemblies = ASSEMBLE(
-				params.assembler.name,
-				sr_ch.join(asm_ch.todo.map({s -> [s.subMap('sample_id')]})),
-				lr_ch.join(asm_ch.todo.map({s -> [s.subMap('sample_id')]}))
+				params.assembler,
+				toShortReads(sr_ch.join(asm_ch.todo.map({s -> [s.subMap('sample_id')]}))),
+				toLongReads(lr_ch.join(asm_ch.todo.map({s -> [s.subMap('sample_id')]})))
 		)
 		def asm_fa_ch = channel.empty().mix(
 				asm_cpy.map({m,x -> [[m,[assembler_name:'none']],x]}),
-				assemblies.fasta.map({m,x -> [[m,[assembler_name:params.assembler.name]],x]})
+				assemblies.map({r -> [[r.meta,[assembler_name:params.assembler.name]],r.fasta]})
 		)
-		def asm_dir_channel = assemblies.dir.map({m,x -> [[m,[assembler_name:params.assembler.name]],x]})
+		def asm_dir_channel = assemblies.map({r -> [[r.meta,[assembler_name:params.assembler.name]],r.dir]})
 
 		// Compute assemblies QC stats
 		def asm_qc_ch = ASSEMBLIES_QC(

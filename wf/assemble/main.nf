@@ -1,4 +1,4 @@
-
+nextflow.enable.types = true
 
 include { LONG_FLYE                     } from './subworkflows/flye_medaka_pilon'
 include { LONG_FLYE_MEDAKA              } from './subworkflows/flye_medaka_pilon'
@@ -11,57 +11,73 @@ include { HYBRACTER as HYBRID_HYBRACTER } from './subworkflows/hybracter'
 include { HYBRID_FLYE_MEDAKA_PILON      } from './subworkflows/flye_medaka_pilon'
 
 
-workflow ASSEMBLE {
-	take:
-		assembler_name
-		fqs_ch    // channel: [ val(meta), path(short_reads) ]
-		fql_ch    // channel: [ val(meta), path(long_reads) ]
-	main:
-		def assemblies_fasta = channel.empty()
-		def assemblies_dir   = channel.empty()
-		
-		if (assembler_name == 'long_flye') {
-			LONG_FLYE(fql_ch)
-			assemblies_fasta = LONG_FLYE.out.fasta
-			assemblies_dir   = LONG_FLYE.out.dir
-		} else if (assembler_name == 'long_flye_medaka') {
-			LONG_FLYE_MEDAKA(fql_ch)
-			assemblies_fasta = LONG_FLYE_MEDAKA.out.fasta
-			assemblies_dir   = LONG_FLYE_MEDAKA.out.dir
-		} else if (assembler_name == 'long_unicycler') {
-			LONG_UNICYCLER(channel.empty(),fql_ch)
-			assemblies_fasta = LONG_UNICYCLER.out.fasta
-			assemblies_dir   = LONG_UNICYCLER.out.dir
-		} else if (assembler_name == 'long_hybracter') {
-			LONG_HYBRACTER(channel.empty(),fql_ch)
-			assemblies_fasta = LONG_HYBRACTER.out.fasta
-			assemblies_dir   = LONG_HYBRACTER.out.dir
-		} else if (assembler_name == 'short_unicycler') {
-			SHORT_UNICYCLER(fqs_ch,channel.empty())
-			assemblies_fasta = SHORT_UNICYCLER.out.fasta
-			assemblies_dir   = SHORT_UNICYCLER.out.dir
-		} else if (assembler_name == 'short_spades') {
-			SHORT_SPADES(fqs_ch,channel.empty())
-			assemblies_fasta = SHORT_SPADES.out.fasta
-			assemblies_dir   = SHORT_SPADES.out.dir
-		} else if (assembler_name == 'hybrid_unicycler') {
-			HYBRID_UNICYCLER(fqs_ch,fql_ch)
-			assemblies_fasta = HYBRID_UNICYCLER.out.fasta
-			assemblies_dir   = HYBRID_UNICYCLER.out.dir
-		} else if (assembler_name == 'hybrid_hybracter') {
-			HYBRID_HYBRACTER(fqs_ch,fql_ch)
-			assemblies_fasta = HYBRID_HYBRACTER.out.fasta
-			assemblies_dir   = HYBRID_HYBRACTER.out.dir
-		} else if (assembler_name == 'hybrid_flye_medaka_pilon') {
-			HYBRID_FLYE_MEDAKA_PILON(fqs_ch,fql_ch)
-			assemblies_fasta = HYBRID_FLYE_MEDAKA_PILON.out.fasta
-			assemblies_dir   = HYBRID_FLYE_MEDAKA_PILON.out.dir
-		} else {
-			error "Unknown assembler name :${assembler_name}"
-		}
-		
-	emit:
-		fasta = assemblies_fasta
-		dir = assemblies_dir
+// Arguments given to each assembly tool. Fields are nullable: modules fall back to their own defaults.
+record AssemblerArgs {
+	flye: String?
+	medaka: String?
+	spades: String?
+	unicycler: String?
+	hybracter: String?
 }
 
+// Options of ASSEMBLE (params.assembler)
+record AssemblerParams {
+	name: String               // assembly strategy, e.g. long_flye_medaka
+	args: AssemblerArgs?
+}
+
+// Short reads sample: read2 is null for single-end reads
+record ShortReads {
+	meta: Map
+	reads: Path
+	read2: Path?
+}
+
+// Long reads sample: one FASTQ per sample
+record LongReads {
+	meta: Map
+	reads: Path
+}
+
+// Assembly of a sample: assembler output folder and assembly FASTA
+record Assembly {
+	meta: Map
+	dir: Path
+	fasta: Path
+}
+
+
+workflow ASSEMBLE {
+	take:
+	opts: AssemblerParams
+	short_reads: Channel<ShortReads>
+	long_reads: Channel<LongReads>
+
+	main:
+	def args = opts.args
+	def asm_ch = channel.empty()
+	if (opts.name == 'long_flye') {
+		asm_ch = LONG_FLYE(long_reads, args?.flye)
+	} else if (opts.name == 'long_flye_medaka') {
+		asm_ch = LONG_FLYE_MEDAKA(long_reads, args?.flye, args?.medaka)
+	} else if (opts.name == 'long_unicycler') {
+		asm_ch = LONG_UNICYCLER(channel.empty(), long_reads, args?.unicycler)
+	} else if (opts.name == 'long_hybracter') {
+		asm_ch = LONG_HYBRACTER(channel.empty(), long_reads, args?.hybracter)
+	} else if (opts.name == 'short_unicycler') {
+		asm_ch = SHORT_UNICYCLER(short_reads, channel.empty(), args?.unicycler)
+	} else if (opts.name == 'short_spades') {
+		asm_ch = SHORT_SPADES(short_reads, channel.empty(), args?.spades)
+	} else if (opts.name == 'hybrid_unicycler') {
+		asm_ch = HYBRID_UNICYCLER(short_reads, long_reads, args?.unicycler)
+	} else if (opts.name == 'hybrid_hybracter') {
+		asm_ch = HYBRID_HYBRACTER(short_reads, long_reads, args?.hybracter)
+	} else if (opts.name == 'hybrid_flye_medaka_pilon') {
+		asm_ch = HYBRID_FLYE_MEDAKA_PILON(short_reads, long_reads, args?.flye, args?.medaka)
+	} else {
+		error("Unknown assembler name: ${opts.name}")
+	}
+
+	emit:
+	assemblies: Channel<Assembly> = asm_ch
+}

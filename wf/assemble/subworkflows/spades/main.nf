@@ -1,19 +1,42 @@
+nextflow.enable.types = true
 
 include { SPADES as SPADES_RUN } from './modules/spades'
-include { SPADES_ADAPT         } from './modules/spades/adapt'
 
+
+// Short reads sample: read2 is null for single-end reads
+record ShortReads {
+	meta: Map
+	reads: Path
+	read2: Path?
+}
+
+// Long reads sample: one FASTQ per sample
+record LongReads {
+	meta: Map
+	reads: Path
+}
+
+// Assembly of a sample: assembler output folder and assembly FASTA
+record Assembly {
+	meta: Map
+	dir: Path
+	fasta: Path
+}
+
+// Assemble each sample with its short reads and/or long reads
 workflow SPADES {
 	take:
-		fqs_ch
-		fql_ch
+	short_reads: Channel<ShortReads>
+	long_reads: Channel<LongReads>
+	args: String?
+
 	main:
-		SPADES_RUN(
-			fqs_ch
-			.join(fql_ch,remainder:true)
-			.map({meta,fqs,fql -> [meta,fqs?:[],fql?:[]]})
-		) 
-		| SPADES_ADAPT
+	def asm_ch = SPADES_RUN(
+		short_reads
+			.join(long_reads.map({ r -> record(meta: r.meta, long_reads: r.reads) }), by: 'meta', remainder: true)
+			.map({ r -> r + record(args: args) })
+	)
+
 	emit:
-		fasta = SPADES_ADAPT.out.fasta
-		dir   = SPADES_RUN.out
+	assemblies: Channel<Assembly> = asm_ch
 }

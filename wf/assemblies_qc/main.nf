@@ -62,9 +62,18 @@ workflow ASSEMBLIES_QC {
 		fql_ch
 	main:
 	
-		// Short reads alignment and statistics
-		BWA_MEM(BWA_INDEX(fa_ch).join(fqs_ch))
-		SAMTOOLS_STATS_SHORT(BWA_MEM.out.bam)
+		// Short reads alignment and statistics (BWA modules take and emit records)
+		def bwa_index_ch = BWA_INDEX(fa_ch.map({m,f -> record(meta: m, fasta: f)}))
+		def bwa_mem_ch = BWA_MEM(
+			bwa_index_ch.map({r -> [r.meta, r.index]})
+			.join(fqs_ch)
+			.map({m,idx,fqs ->
+				def fs = fqs instanceof List ? fqs : [fqs]
+				record(meta: m, index: idx, reads: fs[0], read2: fs.size() > 1 ? fs[1] : null)
+			})
+		)
+		def short_bam_ch = bwa_mem_ch.map({r -> [r.meta, r.bam]})
+		SAMTOOLS_STATS_SHORT(short_bam_ch)
 		
 		// Long reads alignment and statistics
 		MINIMAP2_ALIGN_ONT(fa_ch.join(fql_ch))
@@ -111,8 +120,8 @@ workflow ASSEMBLIES_QC {
 		long_bam_stats  = SAMTOOLS_STATS_LONG.out
 		long_vcf        = channel.empty()
 		
-		short_bam       = BWA_MEM.out.bam
-		short_bai       = BWA_MEM.out.bai
+		short_bam       = short_bam_ch
+		short_bai       = bwa_mem_ch.map({r -> [r.meta, r.bai]})
 		short_bam_stats = SAMTOOLS_STATS_SHORT.out
 		short_vcf       = channel.empty()
 		
