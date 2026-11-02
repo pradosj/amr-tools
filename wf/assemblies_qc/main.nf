@@ -48,7 +48,7 @@ process ASSEMBLIES_MULTIQC {
 		"""
 		#!/usr/bin/env Rscript
 		source("assets/lib_assembly_stats.R")
-		A <- rlang::inject(aggregate_assembly_stats(!!!(c(${[rds].flatten().collect({"'" + it + "'"}).join(",")}) |> map(readRDS) |> unname()))) 
+		A <- rlang::inject(aggregate_assembly_stats(!!!(c(${[rds].flatten().collect({f -> "'" + f + "'"}).join(",")}) |> map(readRDS) |> unname()))) 
 		A |> write.table(file="assemblies_multiqc.txt",sep="\\t",quote=FALSE,row.names=FALSE)
 		A |> openxlsx::write.xlsx("assemblies_multiqc.xlsx")
 		"""
@@ -71,11 +71,11 @@ workflow ASSEMBLIES_QC {
 		SAMTOOLS_STATS_LONG(MINIMAP2_ALIGN_ONT.out.bam)
 		
 		// Genome completness
-		def checkm2_db_ch = Channel.empty()
-		def checkm2_ch = Channel.empty()
+		def checkm2_db_ch = channel.empty()
+		def checkm2_ch = channel.empty()
 		if (!opts.checkm2.skip) {
 			if (opts.checkm2.db) {
-				checkm2_db_ch = Channel.FromPath(opts.checkm2.db)
+				checkm2_db_ch = channel.FromPath(opts.checkm2.db)
 			} else {
 				checkm2_db_ch = CHECKM2_DB()
 			}
@@ -91,14 +91,14 @@ workflow ASSEMBLIES_QC {
 			.join(SAMTOOLS_STATS_LONG.out,remainder:true)
 			.join(SAMTOOLS_STATS_SHORT.out,remainder:true)
 			.join(checkm2_ch,remainder:true)
-			.map({meta,x1,x2,x3,x4 -> [meta,[[x1,"assembly.fasta"],[x2,"long_reads.bam.stats"],[x3,"short_reads.bam.stats"],[x4,"checkm2_quality_report.tsv"]].findAll({x,y -> x})]})
+			.map({meta,x1,x2,x3,x4 -> [meta,[[x1,"assembly.fasta"],[x2,"long_reads.bam.stats"],[x3,"short_reads.bam.stats"],[x4,"checkm2_quality_report.tsv"]].findAll({x,_y -> x})]})
 			| ORGANIZE_FILES
 		
 		COMBINE_QC_STATS(ORGANIZE_FILES.out,"${moduleDir}/assets")
 
-		def assembly_multiqc_txt_ch = Channel.empty()
-		def assembly_multiqc_xlsx_ch = Channel.empty()
-		def rds = COMBINE_QC_STATS.out.rds.map({m,x -> x}).toList()
+		def assembly_multiqc_txt_ch = channel.empty()
+		def assembly_multiqc_xlsx_ch = channel.empty()
+		def rds = COMBINE_QC_STATS.out.rds.map({_m,x -> x}).toList()
 		if (rds) {
 			ASSEMBLIES_MULTIQC(rds,"${moduleDir}/assets")
 			assembly_multiqc_txt_ch  = ASSEMBLIES_MULTIQC.out.txt
@@ -109,12 +109,12 @@ workflow ASSEMBLIES_QC {
 		long_bam        = MINIMAP2_ALIGN_ONT.out.bam
 		long_bai        = MINIMAP2_ALIGN_ONT.out.bai
 		long_bam_stats  = SAMTOOLS_STATS_LONG.out
-		long_vcf        = Channel.empty()
+		long_vcf        = channel.empty()
 		
 		short_bam       = BWA_MEM.out.bam
 		short_bai       = BWA_MEM.out.bai
 		short_bam_stats = SAMTOOLS_STATS_SHORT.out
-		short_vcf       = Channel.empty()
+		short_vcf       = channel.empty()
 		
 		assembly_qc           = COMBINE_QC_STATS.out.rds
 		assembly_multiqc_txt  = assembly_multiqc_txt_ch

@@ -30,25 +30,25 @@ workflow {
 		log.info(paramsSummaryLog(workflow))
 
 		// Prepare reference database
-		def ref_ch = Channel.empty()
-		def db_dir = Channel.empty()
+		def ref_ch = channel.empty()
+		def db_dir = channel.empty()
 		if (params.ref.db != null) {
-			ref_ch = Channel.fromPath("${params.ref.db}/fna/*.fna").collect().map({[it]})
+			ref_ch = channel.fromPath("${params.ref.db}/fna/*.fna").collect().map({fs -> [fs]})
 		} else if (params.ref.fasta != null) {
-			ref_ch = Channel.fromPath(params.ref.fasta).collect().map({[it]})
+			ref_ch = channel.fromPath(params.ref.fasta).collect().map({fs -> [fs]})
 		} else {
 			ORGFINDER_DB_BUILD()
-			ref_ch = ORGFINDER_DB_BUILD.out.fasta.collect().map({[it]})
+			ref_ch = ORGFINDER_DB_BUILD.out.fasta.collect().map({fs -> [fs]})
 			db_dir = ORGFINDER_DB_BUILD.out.dir
 		}
-		def db_tsv = db_dir.map({it / "db.tsv"})
+		def db_tsv = db_dir.map({d -> d / "db.tsv"})
 		
 		// Prepare query genomes
-		def query_ch = Channel.empty()
+		def query_ch = channel.empty()
 		if (params.query!=null) {
-			query_ch = Channel.fromPath(params.query).map({
-					def id = it.name.replaceAll(/\.(fasta|fna|fa)$/,'')
-					[[sample_id:id],it]
+			query_ch = channel.fromPath(params.query).map({f ->
+					def id = f.name.replaceAll(/\.(fasta|fna|fa)$/,'')
+					[[sample_id:id],f]
 			})
 		}
 		

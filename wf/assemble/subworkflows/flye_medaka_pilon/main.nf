@@ -33,7 +33,7 @@ workflow LONG_FLYE_MEDAKA {
 		ORGANIZE_FILES(
 			LONG_FLYE.out.dir
 			.join(MEDAKA_CONSENSUS.out, remainder: true)
-			.map({meta,x1,x2 -> tuple(meta,[[x1,'01_flye'],[x2,'02_medaka']].findAll({x,y -> x}))})
+			.map({meta,x1,x2 -> tuple(meta,[[x1,'01_flye'],[x2,'02_medaka']].findAll({x,_y -> x}))})
 		)
 	emit:
 		fasta = MEDAKA_ADAPT.out.fasta
@@ -55,7 +55,7 @@ workflow HYBRID_FLYE_MEDAKA_PILON {
 			.join(PILON_POLISH_ROUND1.out.dir, remainder: true)
 			.join(PILON_POLISH_ROUND2.out.dir, remainder: true)
 			.join(PILON_POLISH_ROUND3.out.dir, remainder: true)
-			.map({meta,x1,x2,x3,x4 -> tuple(meta,[[x1,'01_flye_medaka'],[x2,'02_pilon_round1'],[x3,'03_pilon_round2'],[x4,'04_pilon_round3']].findAll({x,y -> x}))})
+			.map({meta,x1,x2,x3,x4 -> tuple(meta,[[x1,'01_flye_medaka'],[x2,'02_pilon_round1'],[x3,'03_pilon_round2'],[x4,'04_pilon_round3']].findAll({x,_y -> x}))})
 		)
 		fa_ch = LONG_FLYE_MEDAKA.out.fasta
 		.join(PILON_POLISH_ROUND3.out.fasta,remainder: true)

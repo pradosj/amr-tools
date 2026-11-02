@@ -51,7 +51,7 @@ process KRAKEN2_DB_BUILD {
 
 workflow KRAKEN2_DB {
   main:
-		fa_ch = NCBI_DOWNLOAD_GENOMES(Channel.of(
+		fa_ch = NCBI_DOWNLOAD_GENOMES(channel.of(
 			['Enterobacterales','--assembly-level complete'],
 			['Pseudomonas aeruginosa','--assembly-level complete'],
 			['Acinetobacter baumannii','--assembly-level complete'],

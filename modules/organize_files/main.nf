@@ -10,7 +10,7 @@ process ORGANIZE_FILES {
     	tuple(val(meta),path("output",type:'dir'))
     script:
     	def cmd = file_pairs
-    		.findAll({src,target -> src})
+    		.findAll({src,_target -> src})
     		.collect({src,target ->
 					def dest_path = "output/${target}"
 					if (src instanceof java.nio.file.Path) {	

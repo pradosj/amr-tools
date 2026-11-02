@@ -33,12 +33,12 @@ workflow ROTATE_QUERIES {
 		
 		def rotated_query_ch = ROTATE_FASTA(
 			query_ch
-			.map({m,r,q -> [m,q]})
+			.map({m,_r,q -> [m,q]})
 			.combine(MINIMAP2_ALIGN_ASM5.out.bam,by:0),
 			file("${projectDir}/assets")
 		)
 		.combine(query_ch,by:0)
-		.map({m,rq,r,q -> [m,r,rq]})
+		.map({m,rq,r,_q -> [m,r,rq]})
 	emit:
 		rotated_queries = rotated_query_ch
 }
@@ -52,9 +52,9 @@ workflow {
 
 		def ref = file(params.ref)
 		def ref_gff = params.ref_gff ? file(params.ref_gff) : []
-		def query_ch = Channel.fromPath(params.query).map({
-				def id = it.name.replaceAll(/\.(fasta|fna|fa)$/,'')
-				[[sample_id:id],ref,it]
+		def query_ch = channel.fromPath(params.query).map({f ->
+				def id = f.name.replaceAll(/\.(fasta|fna|fa)$/,'')
+				[[sample_id:id],ref,f]
 		})
 
 		if (!params.no_query_rotation) {
@@ -78,7 +78,7 @@ workflow {
 		)
 
 	publish:
-		rotated_query_fa = query_ch.filter({!params.no_query_rotation}).map({m,r,q -> [m,q]})
+		rotated_query_fa = query_ch.filter({!params.no_query_rotation}).map({m,_r,q -> [m,q]})
 		bam = MINIMAP2_ALIGN_ASM5.out.bam
 		bai = MINIMAP2_ALIGN_ASM5.out.bai
 		mut_vcf = BCFTOOLS_ASM5_MPILEUP.out.vcf

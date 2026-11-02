@@ -39,17 +39,17 @@ workflow {
 		
 		// Extract reads channels from samples channel
 		def sr_ch = samples
-				.filter({it.reads_short_1})
-				.map({[it.subMap('sample_id'),[it.reads_short_1,it.reads_short_2].findAll({it})]})
+				.filter({s -> s.reads_short_1})
+				.map({s -> [s.subMap('sample_id'),[s.reads_short_1,s.reads_short_2].findAll({f -> f})]})
 				| COPY_SHORT_READS
 		
 		def lr_ch = samples
-			.filter({it.reads_long})
-			.map({[it.subMap('sample_id'),it.reads_long]})
+			.filter({s -> s.reads_long})
+			.map({s -> [s.subMap('sample_id'),s.reads_long]})
 			| COPY_LONG_READS
 
 		// CONVERT long_reads given in BAM/CRAM format into FASTQ format
-		lr_ch = lr_ch.branch {meta,f -> 
+		lr_ch = lr_ch.branch {_meta,f -> 
 			bam: f.name =~ /\.(bam|cram)$/
 			fq: true
 		}
@@ -61,7 +61,7 @@ workflow {
 			sr_ch = rd_flt_ch.short_filtered
 			lr_ch = rd_flt_ch.long_filtered
 		}
-		def reads_multiqc_html_ch = Channel.empty()
+		def reads_multiqc_html_ch = channel.empty()
 		if (!params.reads_qc.skip) {
 			def qc_ch = FILTERED_READS_QC(sr_ch,lr_ch)
 			reads_multiqc_html_ch = qc_ch.multiqc_html
@@ -70,30 +70,30 @@ workflow {
 		
 		// Run denovo assembly process when 
 		// Determine assemblies that are done and thus that have to be run
-		def asm_ch = samples.branch {
-			done: it.assembly_fasta
+		def asm_ch = samples.branch {s ->
+			done: s.assembly_fasta
 			todo: true
 		}
 		def asm_cpy = asm_ch.done
-			.map({[it.subMap('sample_id'),it.assembly_fasta]}) 
+			.map({s -> [s.subMap('sample_id'),s.assembly_fasta]}) 
 			| COPY_ASSEMBLY_FASTA
 		def assemblies = ASSEMBLE(
 				params.assembler.name,
-				sr_ch.join(asm_ch.todo.map({[it.subMap('sample_id')]})),
-				lr_ch.join(asm_ch.todo.map({[it.subMap('sample_id')]}))
+				sr_ch.join(asm_ch.todo.map({s -> [s.subMap('sample_id')]})),
+				lr_ch.join(asm_ch.todo.map({s -> [s.subMap('sample_id')]}))
 		)
-		def asm_fa_ch = Channel.empty().mix(
-				asm_cpy.map({[[it[0],[assembler_name:'none']],it[1]]}),
-				assemblies.fasta.map({[[it[0],[assembler_name:params.assembler.name]],it[1]]})
+		def asm_fa_ch = channel.empty().mix(
+				asm_cpy.map({m,x -> [[m,[assembler_name:'none']],x]}),
+				assemblies.fasta.map({m,x -> [[m,[assembler_name:params.assembler.name]],x]})
 		)
-		def asm_dir_channel = assemblies.dir.map({[[it[0],[assembler_name:params.assembler.name]],it[1]]})
+		def asm_dir_channel = assemblies.dir.map({m,x -> [[m,[assembler_name:params.assembler.name]],x]})
 
 		// Compute assemblies QC stats
 		def asm_qc_ch = ASSEMBLIES_QC(
 			params.assemblies_qc,
 			asm_fa_ch,
-			sr_ch.combine(asm_fa_ch.map({m,x->m}),by:0).map({[[it[0],it[2]],it[1]]}),
-			lr_ch.combine(asm_fa_ch.map({m,x->m}),by:0).map({[[it[0],it[2]],it[1]]})
+			sr_ch.combine(asm_fa_ch.map({m,_x -> m}),by:0).map({m,r,a -> [[m,a],r]}),
+			lr_ch.combine(asm_fa_ch.map({m,_x -> m}),by:0).map({m,r,a -> [[m,a],r]})
 		)
 
 		// Finally run AMR annotations

@@ -17,8 +17,8 @@ workflow ASSEMBLE {
 		fqs_ch    // channel: [ val(meta), path(short_reads) ]
 		fql_ch    // channel: [ val(meta), path(long_reads) ]
 	main:
-		def assemblies_fasta = Channel.empty()
-		def assemblies_dir   = Channel.empty()
+		def assemblies_fasta = channel.empty()
+		def assemblies_dir   = channel.empty()
 		
 		if (assembler_name == 'long_flye') {
 			LONG_FLYE(fql_ch)
@@ -29,19 +29,19 @@ workflow ASSEMBLE {
 			assemblies_fasta = LONG_FLYE_MEDAKA.out.fasta
 			assemblies_dir   = LONG_FLYE_MEDAKA.out.dir
 		} else if (assembler_name == 'long_unicycler') {
-			LONG_UNICYCLER(Channel.empty(),fql_ch)
+			LONG_UNICYCLER(channel.empty(),fql_ch)
 			assemblies_fasta = LONG_UNICYCLER.out.fasta
 			assemblies_dir   = LONG_UNICYCLER.out.dir
 		} else if (assembler_name == 'long_hybracter') {
-			LONG_HYBRACTER(Channel.empty(),fql_ch)
+			LONG_HYBRACTER(channel.empty(),fql_ch)
 			assemblies_fasta = LONG_HYBRACTER.out.fasta
 			assemblies_dir   = LONG_HYBRACTER.out.dir
 		} else if (assembler_name == 'short_unicycler') {
-			SHORT_UNICYCLER(fqs_ch,Channel.empty())
+			SHORT_UNICYCLER(fqs_ch,channel.empty())
 			assemblies_fasta = SHORT_UNICYCLER.out.fasta
 			assemblies_dir   = SHORT_UNICYCLER.out.dir
 		} else if (assembler_name == 'short_spades') {
-			SHORT_SPADES(fqs_ch,Channel.empty())
+			SHORT_SPADES(fqs_ch,channel.empty())
 			assemblies_fasta = SHORT_SPADES.out.fasta
 			assemblies_dir   = SHORT_SPADES.out.dir
 		} else if (assembler_name == 'hybrid_unicycler') {

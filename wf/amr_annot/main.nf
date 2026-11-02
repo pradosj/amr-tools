@@ -36,38 +36,38 @@ workflow AMR_ANNOT_ASSEMBLY {
 		def plasmidfinder_ch = asm_ch.filter({!opts.plasmidfinder.skip}) | PLASMIDFINDER
 
 		// NCBI AMRfinder+
-		def amrfinderplus_ch = Channel.empty()
+		def amrfinderplus_ch = channel.empty()
 		if (!opts.amrfinderplus.skip) {
 			def amrfinderplus_db = AMRFINDERPLUS_UPDATE()
 			amrfinderplus_ch = AMRFINDERPLUS_RUN(asm_ch,amrfinderplus_db)
 		}
 
 		// MOBsuite - MOBtyper
-		def mobtyper_ch = Channel.empty()
+		def mobtyper_ch = channel.empty()
 		if (!opts.mobtyper.skip) {
 			mobtyper_ch = asm_ch | MOBTYPER
 		}
 
 		// PROKKA annotations
-		def prokka_ch = Channel.empty()
+		def prokka_ch = channel.empty()
 		if (!opts.prokka.skip) {
 			prokka_ch = asm_ch | PROKKA
 		}
 
 		// Speciator
-		def speciator_ch = Channel.empty()
+		def speciator_ch = channel.empty()
 		if (!opts.speciator.skip) {
 			speciator_ch = asm_ch | SPECIATOR	
 		}
 		
-		def MLST_ch = Channel.empty()
+		def MLST_ch = channel.empty()
 		if (!opts.MLST.skip) {
 			MLST_ch = asm_ch | MLST
 		}
 
     // Run orgfinder to auto detect organism
-    def orgfinder_dir_ch = Channel.empty()
-    def orgfinder_name_ch = Channel.empty()
+    def orgfinder_dir_ch = channel.empty()
+    def orgfinder_name_ch = channel.empty()
     if (!opts.orgfinder.skip) {
     	ORGFINDER_DETECT(asm_ch)
     	orgfinder_dir_ch = ORGFINDER_DETECT.out.orgfinder
@@ -75,12 +75,12 @@ workflow AMR_ANNOT_ASSEMBLY {
     }
 
 		// MLST typing on detected org_name
-		def cgemlst_ch = Channel.empty()
+		def cgemlst_ch = channel.empty()
 		if (!opts.cgemlst.skip) {
 			cgemlst_ch = asm_ch
 				.join(orgfinder_name_ch)
 				.map({m,fa,org -> def arg=orgArgs[org]?:[:];[m,fa,arg.cgemlst]})
-				.filter({m,fa,arg -> arg})
+				.filter({_m,_fa,arg -> arg})
 				| CGEMLST
 		}
 
@@ -160,12 +160,12 @@ workflow AMR_ANNOT {
 			plasmidfinder_short = AMR_ANNOT_READS.out.plasmidfinder_short
 
 	    multireport_folder = MULTIREPORT.out.folder
-    	multireport_html   = MULTIREPORT.out.html.map({m,x -> x})
-    	multireport_xlsx   = MULTIREPORT.out.xlsx.map({m,x -> x})
-    	multireport_assemblies_tsv  = MULTIREPORT.out.assemblies_tsv.map({m,x -> x})
-    	multireport_contigs_tsv     = MULTIREPORT.out.contigs_tsv.map({m,x -> x})
-    	multireport_resistances_tsv = MULTIREPORT.out.resistances_tsv.map({m,x -> x})
-    	multireport_plasmidfinder_hits_tsv = MULTIREPORT.out.plasmidfinder_hits_tsv.map({m,x -> x})
+    	multireport_html   = MULTIREPORT.out.html.map({_m,x -> x})
+    	multireport_xlsx   = MULTIREPORT.out.xlsx.map({_m,x -> x})
+    	multireport_assemblies_tsv  = MULTIREPORT.out.assemblies_tsv.map({_m,x -> x})
+    	multireport_contigs_tsv     = MULTIREPORT.out.contigs_tsv.map({_m,x -> x})
+    	multireport_resistances_tsv = MULTIREPORT.out.resistances_tsv.map({_m,x -> x})
+    	multireport_plasmidfinder_hits_tsv = MULTIREPORT.out.plasmidfinder_hits_tsv.map({_m,x -> x})
 }
 
 

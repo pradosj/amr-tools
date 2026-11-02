@@ -57,7 +57,7 @@ workflow MULTIREPORT {
 		
 	main:
 		ORGANIZE_FILES(
-			Channel.empty().mix(
+			channel.empty().mix(
 				fa.map(           {m,file -> [file,"amr/assemblies/${m[0].sample_id}__${m[1].assembler_name}.fasta"]}),
 				fai.map(          {m,file -> [file,"amr/assemblies/${m[0].sample_id}__${m[1].assembler_name}.fasta.fai"]}),
 				org_name.map(     {m,val  -> [val ,"amr/assemblies/${m[0].sample_id}__${m[1].assembler_name}.amr/org_name.txt"]}),
@@ -74,18 +74,18 @@ workflow MULTIREPORT {
 				short_resfinder.map(    {m,file -> [file,"amr/reads/${m.sample_id}.reads_amr/resfinder_short"]}),
 				short_plasmidfinder.map({m,file -> [file,"amr/reads/${m.sample_id}.reads_amr/plasmidfinder_short"]})
 			)
-			.collect({[it]})
-			.map({["aggregated_folder",it]})
+			.collect({f -> [f]})
+			.map({fs -> ["aggregated_folder",fs]})
 		)
 
 		RMD_RENDER(
-			ORGANIZE_FILES.out.map({m,x -> ["multireport.html",x,"indir='${x}'"]}),
+			ORGANIZE_FILES.out.map({_m,x -> ["multireport.html",x,"indir='${x}'"]}),
 			file("${moduleDir}/assets/multireport.Rmd"),
 			file("${moduleDir}/assets/lib_typing.R")
 		)
 
 		MULTITABLE(
-			ORGANIZE_FILES.out.map({m,x -> ["multitable.xlsx",x]}),
+			ORGANIZE_FILES.out.map({_m,x -> ["multitable.xlsx",x]}),
 			file("${moduleDir}/assets/lib_typing.R")
 		)
 

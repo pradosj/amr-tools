@@ -18,18 +18,18 @@ workflow READS_QC {
 
 		// MultiQC
 		ORGANIZE_FILES(
-			Channel.empty().mix(
+			channel.empty().mix(
 				NANOPLOT.out.nanostat.map({meta,file -> [file,"${meta.sample_id}.nanostat"]}),
 				FASTP.out.json.map({meta,file -> [file,"${meta.sample_id}.fastp.json"]})
 			)
-			.collect({[it]})
-			.map({["multiqc.html",it]})
+			.collect({f -> [f]})
+			.map({fs -> ["multiqc.html",fs]})
 		)
-		MULTIQC(ORGANIZE_FILES.out,Channel.value(file("${moduleDir}/assets/multiqc_config.yml")))
+		MULTIQC(ORGANIZE_FILES.out,channel.value(file("${moduleDir}/assets/multiqc_config.yml")))
 	emit:
 		long_nanoplot     = NANOPLOT.out.nanoplot
 		long_nanostat     = NANOPLOT.out.nanostat
 		short_fastp_json  = FASTP.out.json
 		short_fastp_html  = FASTP.out.html
-		multiqc_html      = MULTIQC.out.html.map({m,x -> x})
+		multiqc_html      = MULTIQC.out.html.map({_m,x -> x})
 }

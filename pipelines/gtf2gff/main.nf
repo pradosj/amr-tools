@@ -29,9 +29,9 @@ workflow {
 		validateParameters()
 		log.info(paramsSummaryLog(workflow))
 
-		def gtf_ch = Channel.fromPath(params.gtf).map({
-				def id = it.name.replaceAll(/\.(gtf)$/,'')
-				[[sample_id:id],it]
+		def gtf_ch = channel.fromPath(params.gtf).map({f ->
+				def id = f.name.replaceAll(/\.(gtf)$/,'')
+				[[sample_id:id],f]
 		})
 		
 		GTF2GFF(gtf_ch,file("${projectDir}/assets"))

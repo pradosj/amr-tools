@@ -65,7 +65,7 @@ process STEP3_DB_BUILD {
 
 workflow ORGFINDER_DB_BUILD {
 	main:
-		def genomes_ch = Channel.of(
+		def genomes_ch = channel.of(
 			"taxon 'Pseudomonas aeruginosa'  --reference --assembly-level complete --include genome,seq-report",
 			"taxon 'Acinetobacter baumannii' --reference --assembly-level complete --include genome,seq-report",
 			"taxon 'Enterococcus'            --reference --assembly-level complete --include genome,seq-report",
@@ -84,7 +84,7 @@ workflow ORGFINDER_DB_BUILD {
 		)
 		| NCBI_DATASET_DOWNLOAD_GENOME
 		
-		def db_ch = genomes_ch
+		genomes_ch
 			.collect()
 			| STEP1_ACCESSIONS_TSV
 			| STEP2_MOLECULE_TYPES_TSV
