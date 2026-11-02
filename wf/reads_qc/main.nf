@@ -14,13 +14,13 @@ workflow READS_QC {
 		NANOPLOT(fql_ch)
 
 		// Run fastp once on each FASTQ-pair, and then expand to inputs sharing the same FASTQ
-		FASTP(fqs_ch)
+		def fastp_ch = FASTP(fqs_ch, null)
 
 		// MultiQC
 		ORGANIZE_FILES(
 			channel.empty().mix(
 				NANOPLOT.out.nanostat.map({meta,file -> [file,"${meta.sample_id}.nanostat"]}),
-				FASTP.out.json.map({meta,file -> [file,"${meta.sample_id}.fastp.json"]})
+				fastp_ch.map({r -> [r.json,"${r.meta.sample_id}.fastp.json"]})
 			)
 			.collect({f -> [f]})
 			.map({fs -> ["multiqc.html",fs]})
@@ -29,7 +29,7 @@ workflow READS_QC {
 	emit:
 		long_nanoplot     = NANOPLOT.out.nanoplot
 		long_nanostat     = NANOPLOT.out.nanostat
-		short_fastp_json  = FASTP.out.json
-		short_fastp_html  = FASTP.out.html
+		short_fastp_json  = fastp_ch.map({r -> [r.meta, r.json]})
+		short_fastp_html  = fastp_ch.map({r -> [r.meta, r.html]})
 		multiqc_html      = MULTIQC.out.html.map({_m,x -> x})
 }
