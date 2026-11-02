@@ -20,6 +20,6 @@ nextflow run pradosj/amr-tools/pipelines/gtf2gff/main.nf --gtf 'https://ftp.ncbi
 # Test the pipeline
 
 ```bash
-nextflow run pradosj/amr-tools/pipelines/asm-compare/main.nf -profile standard,test
+nextflow run pradosj/amr-tools/pipelines/gtf2gff/main.nf -profile standard,test
 ```
 
