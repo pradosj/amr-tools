@@ -67,12 +67,12 @@ workflow ROTATE_QUERIES {
 	def rotated_ch = ROTATE_FASTA(
 		queries
 			.join(aln_ch, by: 'meta')
-			.map({ r -> record(meta: r.meta as Map, query: r.query as Path, bam: r.bam as Path) }),
+			.map({ r -> record(meta: r.meta, query: r.query, bam: r.bam) }),
 		file("${projectDir}/assets")
 	)
 	def out_ch = queries
 		.join(rotated_ch, by: 'meta')
-		.map({ r -> record(meta: r.meta as Map, ref: r.ref as Path, query: r.fasta as Path) })
+		.map({ r -> record(meta: r.meta, ref: r.ref, query: r.fasta) })
 
 	emit:
 	rotated_queries: Channel<Comparison> = out_ch
@@ -109,10 +109,10 @@ workflow {
 		aln_ch
 			.join(mut_ch, by: 'meta')
 			.map({ r -> record(
-				meta: r.meta as Map,
+				meta: r.meta,
 				template: file("${projectDir}/assets/bam_report.qmd"),
 				extra: file("${projectDir}/assets"),
-				files: [r.bam as Path, r.txt as Path],
+				files: [r.bam, r.txt],
 				args: "-P 'bam_file:${(r.bam as Path).name}' -P 'txt_file:${(r.txt as Path).name}'"
 			) })
 	)
