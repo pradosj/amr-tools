@@ -25,11 +25,11 @@ workflow READS_QC {
 			.collect({f -> [f]})
 			.map({fs -> ["multiqc.html",fs]})
 		)
-		MULTIQC(ORGANIZE_FILES.out,channel.value(file("${moduleDir}/assets/multiqc_config.yml")))
+		def multiqc_ch = MULTIQC(ORGANIZE_FILES.out, file("${moduleDir}/assets/multiqc_config.yml"), null)
 	emit:
 		long_nanoplot     = nanoplot_ch.map({r -> [r.meta, r.nanoplot]})
 		long_nanostat     = nanoplot_ch.map({r -> [r.meta, r.nanostat]})
 		short_fastp_json  = fastp_ch.map({r -> [r.meta, r.json]})
 		short_fastp_html  = fastp_ch.map({r -> [r.meta, r.html]})
-		multiqc_html      = MULTIQC.out.html.map({_m,x -> x})
+		multiqc_html      = multiqc_ch.map({r -> r.html})
 }
