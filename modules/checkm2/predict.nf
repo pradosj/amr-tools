@@ -2,9 +2,10 @@ nextflow.enable.types = true
 
 process CHECKM2_PREDICT {
     container 'quay.io/biocontainers/checkm2:1.1.0--pyh7e72e81_1'
-    memory 10.GB
+    errorStrategy task.attempt < 2 ? 'retry' : 'ignore'    // one retry with more resources, then ignore the sample
+    memory 8.GB + 8.GB * (task.attempt - 1)
     cpus 4
-    time 30.m
+    time 30.m + 1.h * (task.attempt - 1)
 
     input:
     // db: CheckM2 database folder, as created by CHECKM2_DB

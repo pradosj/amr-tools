@@ -2,9 +2,10 @@ nextflow.enable.types = true
 
 process BWA_MEM {
     container 'community.wave.seqera.io/library/bwa_htslib_samtools:56c9f8d5201889a4'
-    memory 8.GB
+    errorStrategy task.attempt < 2 ? 'retry' : 'ignore'    // one retry with more resources, then ignore the sample
+    memory 8.GB + 8.GB * (task.attempt - 1)
     cpus 4
-    time 1.h
+    time 1.h + 1.h * (task.attempt - 1)
 
     input:
     // index: folder produced by BWA_INDEX; reads, read2: short reads

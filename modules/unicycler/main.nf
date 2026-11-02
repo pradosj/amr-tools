@@ -2,9 +2,10 @@ nextflow.enable.types = true
 
 process UNICYCLER {
     container 'quay.io/biocontainers/unicycler:0.5.1--py312hdcc493e_4'
-    memory 20.GB
+    errorStrategy task.attempt < 2 ? 'retry' : 'ignore'    // one retry with more resources, then ignore the sample
+    memory 20.GB + 20.GB * (task.attempt - 1)
     cpus 8
-    time 4.h
+    time 4.h + 8.h * (task.attempt - 1)
 
     input:
     // short reads (reads, read2) and/or long reads
