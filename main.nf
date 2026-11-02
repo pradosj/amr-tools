@@ -57,7 +57,7 @@ workflow {
 
 		// Filter reads
 		if (!params.reads_filter.skip) {
-			def rd_flt_ch = READS_FILTER(sr_ch,lr_ch)
+			def rd_flt_ch = READS_FILTER(params.reads_filter,sr_ch,lr_ch)
 			sr_ch = rd_flt_ch.short_filtered
 			lr_ch = rd_flt_ch.long_filtered
 		}
