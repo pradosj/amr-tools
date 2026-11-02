@@ -5,7 +5,7 @@ process IDENTITY {
     memory 2.GB
     cpus 1
     time 1.h
-    executor 'local'
+    label 'local'
 
     input:
     record(meta: Map, file1: Path, file2: Path?)
