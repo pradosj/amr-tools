@@ -224,20 +224,9 @@ workflow {
 	assemblies_checkm2      = asm_qc_ch.checkm2
 	assemblies_multiqc      = asm_qc_ch.multiqc
 
-	resfinder            = amr_annot_ch.resfinder
-	resfinder_long       = amr_annot_ch.resfinder_long
-	resfinder_short      = amr_annot_ch.resfinder_short
-	plasmidfinder        = amr_annot_ch.plasmidfinder
-	plasmidfinder_long   = amr_annot_ch.plasmidfinder_long
-	plasmidfinder_short  = amr_annot_ch.plasmidfinder_short
-	amrfinderplus        = amr_annot_ch.amrfinderplus
-	mobtyper             = amr_annot_ch.mobtyper
-	MLST                 = amr_annot_ch.MLST
-	prokka               = amr_annot_ch.prokka
-	cgemlst              = amr_annot_ch.cgemlst
-	orgfinder            = amr_annot_ch.orgfinder
-	amr_multireport_html   = amr_annot_ch.multireport_html
-	amr_multireport_tables = amr_annot_ch.multireport_tables
+	amr_assemblies  = amr_annot_ch.assemblies_results
+	amr_reads       = amr_annot_ch.reads_results
+	amr_multireport = amr_annot_ch.multireport
 }
 
 
@@ -279,49 +268,15 @@ output {
 		}
 	}
 
-	resfinder_long: Channel<Record> {
-		path { r -> r.dir >> "amr/reads/${r.meta.sample_id}/resfinder_long" }
+	amr_reads: Channel<Record> {
+		path { r -> r.path >> "amr/reads/${r.meta.sample_id}/${r.tool}" }
 	}
-	resfinder_short: Channel<Record> {
-		path { r -> r.dir >> "amr/reads/${r.meta.sample_id}/resfinder_short" }
+	amr_assemblies: Channel<Record> {
+		path { r -> r.path >> "amr/assemblies/${r.meta.sample_id}__${r.meta.assembler_name}.amr/${r.tool}" }
 	}
-	plasmidfinder_long: Channel<Record> {
-		path { r -> r.dir >> "amr/reads/${r.meta.sample_id}/plasmidfinder_long" }
-	}
-	plasmidfinder_short: Channel<Record> {
-		path { r -> r.dir >> "amr/reads/${r.meta.sample_id}/plasmidfinder_short" }
-	}
-
-	resfinder: Channel<Record> {
-		path { r -> r.dir >> "amr/assemblies/${r.meta.sample_id}__${r.meta.assembler_name}.amr/resfinder" }
-	}
-	plasmidfinder: Channel<Record> {
-		path { r -> r.dir >> "amr/assemblies/${r.meta.sample_id}__${r.meta.assembler_name}.amr/plasmidfinder" }
-	}
-	amrfinderplus: Channel<Record> {
-		path { r -> r.dir >> "amr/assemblies/${r.meta.sample_id}__${r.meta.assembler_name}.amr/amrfinderplus" }
-	}
-	mobtyper: Channel<Record> {
-		path { r -> r.tsv >> "amr/assemblies/${r.meta.sample_id}__${r.meta.assembler_name}.amr/mobtyper" }
-	}
-	MLST: Channel<Record> {
-		path { r -> r.txt >> "amr/assemblies/${r.meta.sample_id}__${r.meta.assembler_name}.amr/MLST" }
-	}
-	prokka: Channel<Record> {
-		path { r -> r.dir >> "amr/assemblies/${r.meta.sample_id}__${r.meta.assembler_name}.amr/prokka" }
-	}
-	orgfinder: Channel<Record> {
-		path { r -> r.dir >> "amr/assemblies/${r.meta.sample_id}__${r.meta.assembler_name}.amr/orgfinder" }
-	}
-	cgemlst: Channel<Record> {
-		path { r -> r.dir >> "amr/assemblies/${r.meta.sample_id}__${r.meta.assembler_name}.amr/cgemlst" }
-	}
-
-	amr_multireport_html: Channel<Path> {
-		path "reports/"
-	}
-	amr_multireport_tables: Channel<Record> {
+	amr_multireport: Channel<Record> {
 		path { r ->
+			r.html >> "reports/report.html"
 			r.xlsx >> "reports/multitable.xlsx"
 			r.assemblies_tsv >> "reports/multitable_assemblies.tsv"
 			r.contigs_tsv >> "reports/multitable_contigs.tsv"

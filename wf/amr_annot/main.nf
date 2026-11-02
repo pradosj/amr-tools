@@ -78,6 +78,17 @@ def readsEntry(meta: Map, name: String, path: Path) -> NamedEntry {
 	return record(name: "amr/reads/${meta.sample_id}.reads_amr/${name}", path: path, text: null)
 }
 
+// A result of an AMR tool, published under the given tool name
+record AmrResult {
+	meta: Map
+	tool: String
+	path: Path
+}
+
+def amrResult(meta: Map, tool: String, path: Path) -> AmrResult {
+	return record(meta: meta, tool: tool, path: path)
+}
+
 
 workflow AMR_ANNOT_ASSEMBLY {
 	take:
@@ -232,21 +243,22 @@ workflow AMR_ANNOT {
 		.mix(rds.plasmidfinder_short.map({ r -> readsEntry(r.meta as Map, 'plasmidfinder_short', r.dir as Path) }))
 	def report = MULTIREPORT(entries)
 
-	emit:
-	orgfinder: Channel<Record>           = asm.orgfinder
-	amrfinderplus: Channel<Record>       = asm.amrfinderplus
-	resfinder: Channel<Record>           = asm.resfinder
-	mobtyper: Channel<Record>            = asm.mobtyper
-	plasmidfinder: Channel<Record>       = asm.plasmidfinder
-	cgemlst: Channel<Record>             = asm.cgemlst
-	MLST: Channel<Record>                = asm.MLST
-	prokka: Channel<Record>              = asm.prokka
-	resfinder_long: Channel<Record>      = rds.resfinder_long
-	resfinder_short: Channel<Record>     = rds.resfinder_short
-	plasmidfinder_long: Channel<Record>  = rds.plasmidfinder_long
-	plasmidfinder_short: Channel<Record> = rds.plasmidfinder_short
+	// Results of the tools, by assembly and by reads sample
+	def asm_results_ch = asm.orgfinder.map({ r -> amrResult(r.meta as Map, 'orgfinder', r.dir as Path) })
+		.mix(asm.amrfinderplus.map({ r -> amrResult(r.meta as Map, 'amrfinderplus', r.dir as Path) }))
+		.mix(asm.resfinder.map({ r -> amrResult(r.meta as Map, 'resfinder', r.dir as Path) }))
+		.mix(asm.mobtyper.map({ r -> amrResult(r.meta as Map, 'mobtyper', r.tsv as Path) }))
+		.mix(asm.plasmidfinder.map({ r -> amrResult(r.meta as Map, 'plasmidfinder', r.dir as Path) }))
+		.mix(asm.cgemlst.map({ r -> amrResult(r.meta as Map, 'cgemlst', r.dir as Path) }))
+		.mix(asm.MLST.map({ r -> amrResult(r.meta as Map, 'MLST', r.txt as Path) }))
+		.mix(asm.prokka.map({ r -> amrResult(r.meta as Map, 'prokka', r.dir as Path) }))
+	def reads_results_ch = rds.resfinder_long.map({ r -> amrResult(r.meta as Map, 'resfinder_long', r.dir as Path) })
+		.mix(rds.resfinder_short.map({ r -> amrResult(r.meta as Map, 'resfinder_short', r.dir as Path) }))
+		.mix(rds.plasmidfinder_long.map({ r -> amrResult(r.meta as Map, 'plasmidfinder_long', r.dir as Path) }))
+		.mix(rds.plasmidfinder_short.map({ r -> amrResult(r.meta as Map, 'plasmidfinder_short', r.dir as Path) }))
 
-	multireport_folder: Channel<Path>   = report.folder
-	multireport_html: Channel<Path>     = report.html
-	multireport_tables: Channel<Record> = report.tables    // records with fields xlsx, assemblies_tsv, contigs_tsv, resistances_tsv, plasmidfinder_hits_tsv
+	emit:
+	assemblies_results: Channel<AmrResult> = asm_results_ch        // meta: [sample_id, assembler_name]
+	reads_results: Channel<AmrResult>      = reads_results_ch      // meta: [sample_id]
+	multireport: Channel<Record>           = report                // records with fields folder, html, xlsx, assemblies_tsv, contigs_tsv, resistances_tsv, plasmidfinder_hits_tsv
 }

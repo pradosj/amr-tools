@@ -13,7 +13,7 @@ record NamedEntry {
 
 // Gather the AMR results into a single folder, each entry under its given name
 process AMR_FOLDER {
-	executor 'local'
+	label 'local'
 	input:
 	entries: List<NamedEntry>
 	stage:
@@ -93,7 +93,7 @@ workflow MULTIREPORT {
 	def table_ch = MULTITABLE(folder_ch, lib)
 
 	emit:
-	folder: Channel<Path> = folder_ch
-	html: Channel<Path>   = html_ch
-	tables: Channel<Record> = table_ch    // records with fields xlsx, assemblies_tsv, contigs_tsv, resistances_tsv, plasmidfinder_hits_tsv
+	report: Channel<Record> = table_ch
+		.combine(html_ch).map({ t, h -> t + record(html: h) })
+		.combine(folder_ch).map({ t, d -> t + record(folder: d) })    // records with fields folder, html, xlsx, assemblies_tsv, contigs_tsv, resistances_tsv, plasmidfinder_hits_tsv
 }
