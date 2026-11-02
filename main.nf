@@ -210,7 +210,7 @@ workflow {
 	def asm_qc_ch = ASSEMBLIES_QC(params.assemblies_qc, asm_rec, asm_short_reads, asm_long_reads)
 
 	// Finally run AMR annotations
-	def amr_annot_ch = AMR_ANNOT(params.amr, asm_rec, sr_rec, lr_rec)
+	def amr_report_ch = AMR_ANNOT(params.amr, asm_rec, sr_rec, lr_rec)
 
 	publish:
 	checkm2_db = asm_qc_ch.checkm2_db
@@ -224,9 +224,7 @@ workflow {
 	assemblies_checkm2      = asm_qc_ch.checkm2
 	assemblies_multiqc      = asm_qc_ch.multiqc
 
-	amr_assemblies  = amr_annot_ch.assemblies_results
-	amr_reads       = amr_annot_ch.reads_results
-	amr_multireport = amr_annot_ch.multireport
+	amr_multireport = amr_report_ch
 }
 
 
@@ -268,14 +266,10 @@ output {
 		}
 	}
 
-	amr_reads: Channel<Record> {
-		path { r -> r.path >> "amr/reads/${r.meta.sample_id}/${r.tool}" }
-	}
-	amr_assemblies: Channel<Record> {
-		path { r -> r.path >> "amr/assemblies/${r.meta.sample_id}__${r.meta.assembler_name}.amr/${r.tool}" }
-	}
 	amr_multireport: Channel<Record> {
+		mode "copy"    // the folder holds symlinks to the task outputs
 		path { r ->
+			r.folder.resolve('amr') >> "amr"    // results of the AMR tools, as gathered for the multireport
 			r.html >> "reports/report.html"
 			r.xlsx >> "reports/multitable.xlsx"
 			r.assemblies_tsv >> "reports/multitable_assemblies.tsv"
