@@ -1,0 +1,42 @@
+{
+	"$schema": "https://json-schema.org/draft/2020-12/schema",
+	"type": "object",
+	"properties": {
+		"ont": {
+			"type": "string",
+			"format": "file-path-pattern",
+			"exists": true,
+			"pattern": "^\\S+\\.(bam|cram|fastq\\.gz|fq\\.gz)$",
+			"description": "Path to BAM, CRAM or FASTQ.GZ files containing ONT reads (BAM/CRAM are converted to FASTQ)"
+		},
+		"illumina": {
+			"type": "string",
+			"format": "file-path-pattern",
+			"exists": true,
+			"pattern": "^\\S+\\.(fastq\\.gz|fq\\.gz)$",
+			"description": "Path to FASTQ.GZ files containing short reads. Paired-end files are recognized when ending with regex pattern '_(R?[12])(_[0-9][0-9][0-9])?.(fq|fastq).gz$'"
+		},
+
+		"reads_filter": {
+			"title": "Parameters for tool reads_filter",
+			"type": "object",
+			"properties": {
+		    "long_limit": {
+		      "type": "integer",
+		      "description": "Limit the number input reads to this maximum total length (in bp), -1 to skip",
+		      "default": 1000000000
+		    },
+		    "short_limit": {
+		      "type": "integer",
+		      "description": "Limit the number input reads to this maximum total length (in bp), -1 to skip",
+		      "default": 1000000000
+		    },
+		    "chopper_args": {
+		      "type": "string",
+		      "description": "Arguments given to chopper (ONT reads)",
+		      "default": "--quality 15 --minlength 200"
+		    }
+			}
+		}
+	}
+}
