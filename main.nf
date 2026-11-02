@@ -29,8 +29,11 @@ params {
 
 // Convert [meta, reads] tuple channels into the reads records expected by typed subworkflows
 def toShortReads(ch) {
-	// a single-end sample comes as a single Path: always give a list
-	return ch.map({ m, f -> record(meta: m, reads: f instanceof List ? f : [f]) })
+	// a single-end sample comes as a single Path, a paired-end one as [R1, R2]
+	return ch.map({ m, f ->
+		def fs = f instanceof List ? f : [f]
+		record(meta: m, reads: fs[0], read2: fs.size() > 1 ? fs[1] : null)
+	})
 }
 
 def toLongReads(ch) {
@@ -82,7 +85,7 @@ workflow {
 
 		// Back to [meta, reads] tuples for the subworkflows not migrated yet
 		// (a single-end sample is given as a single Path, as before)
-		sr_ch = sr_rec.map({ r -> [r.meta, r.reads.size() == 1 ? r.reads[0] : r.reads] })
+		sr_ch = sr_rec.map({ r -> [r.meta, r.read2 ? [r.reads, r.read2] : r.reads] })
 		lr_ch = lr_rec.map({ r -> [r.meta, r.reads] })
 
 		

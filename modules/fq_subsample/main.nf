@@ -7,25 +7,33 @@ process FQ_SUBSAMPLE {
     time 30.m
 
     input:
-    record(meta: Map, reads: List<Path>, bp_limit: Long?)   // bp_limit: maximum total read length in bp (default 1_000_000_000), negative to keep all reads
+    record(meta: Map, reads: Path, read2: Path?, bp_limit: Long?)   // bp_limit: maximum total read length in bp (default 1_000_000_000), negative to keep all reads
 
     output:
     record(
         meta: meta,
-        reads: files('subsampled_reads_*.fastq.gz').toSorted()  // glob is unordered: sort to match input order (subsampled_reads_<input index>)
+        reads: file('subsampled_reads_1.fastq.gz'),
+        read2: file('subsampled_reads_2.fastq.gz', optional: true)
     )
 
     script:
     def limit = bp_limit != null ? bp_limit : 1_000_000_000L
+    def r2 = read2 ? "${read2}" : ''
     if (limit < 0) {
-        reads.withIndex().collect({ x, i -> "ln -s '${x}' 'subsampled_reads_${i+1}.fastq.gz'" }).join('\n')
+        """
+        ln -s '${reads}' 'subsampled_reads_1.fastq.gz'
+        ${read2 ? "ln -s '${read2}' 'subsampled_reads_2.fastq.gz'" : ''}
+        """
     } else {
         """
         set +o pipefail
-        fq_subsample.awk -v bp_limit=${limit} ${reads.join(' ')}
+        fq_subsample.awk -v bp_limit=${limit} ${reads} ${r2}
         """
     }
 
     stub:
-    reads.withIndex().collect({ _x, i -> "touch 'subsampled_reads_${i+1}.fastq.gz'" }).join('\n')
+    """
+    touch subsampled_reads_1.fastq.gz
+    ${read2 ? 'touch subsampled_reads_2.fastq.gz' : ''}
+    """
 }

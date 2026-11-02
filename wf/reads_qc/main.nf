@@ -6,10 +6,11 @@ include { ORGANIZE_FILES     } from './modules/organize_files'
 include { MULTIQC            } from './modules/multiqc'
 
 
-// Short reads sample: [R1] or [R1, R2]
+// Short reads sample: read2 is null for single-end reads
 record ShortReads {
 	meta: Map
-	reads: List<Path>
+	reads: Path
+	read2: Path?
 }
 
 // Long reads sample: one FASTQ per sample

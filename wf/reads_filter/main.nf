@@ -13,10 +13,11 @@ record ReadsFilterParams {
 	chopper_args: String?      // CHOPPER arguments
 }
 
-// Short reads sample: [R1] or [R1, R2]
+// Short reads sample: read2 is null for single-end reads
 record ShortReads {
 	meta: Map
-	reads: List<Path>
+	reads: Path
+	read2: Path?
 }
 
 // Long reads sample: one FASTQ per sample
@@ -36,13 +37,13 @@ workflow READS_FILTER {
 		long_reads.map({ r -> r + record(args: opts.chopper_args) })
 	)
 	def long_ch = FQ_SUBSAMPLE_LONG(
-		chopper_ch.map({ r -> r + record(reads: [r.reads], bp_limit: opts.long_limit as Long) })
+		chopper_ch.map({ r -> r + record(bp_limit: opts.long_limit as Long) })
 	)
 	def short_ch = FQ_SUBSAMPLE_SHORT(
 		short_reads.map({ r -> r + record(bp_limit: opts.short_limit as Long) })
 	)
 
 	emit:
-	long_filtered: Channel<LongReads>   = long_ch.map({ r -> r + record(reads: r.reads[0]) })
+	long_filtered: Channel<LongReads>   = long_ch
 	short_filtered: Channel<ShortReads> = short_ch
 }
