@@ -13,7 +13,7 @@ curl -s https://get.nextflow.io | bash
 # Usage
 
 ```bash
-nextflow run BioinfoSupport/amr-tools/pipelines/assemblies-qc --fasta='assemblies/*.fasta' --ont='ont/*.fastq.gz' --illumina='illumina/*_R{1,2}.fastq.gz'
+nextflow run pradosj/amr-tools/pipelines/assemblies-qc --fasta='assemblies/*.fasta' --ont='ont/*.fastq.gz' --illumina='illumina/*_R{1,2}.fastq.gz'
 ```
 
 The sample id is taken from the file names: the reads of a sample are aligned on the assembly with the same sample id. Reads are optional.
@@ -24,5 +24,5 @@ Outputs: `assemblies/<sample_id>__none.qc/checkm2_quality.tsv`, `reports/assembl
 # Test the pipeline
 
 ```bash
-nextflow run BioinfoSupport/amr-tools/pipelines/assemblies-qc/main.nf -profile standard,test
+nextflow run pradosj/amr-tools/pipelines/assemblies-qc/main.nf -profile standard,test
 ```

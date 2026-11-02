@@ -13,8 +13,8 @@ curl -s https://get.nextflow.io | bash
 # Usage
 
 ```bash
-nextflow run BioinfoSupport/amr-tools/pipelines/assemble --ont='ont/*.fastq.gz' --assembler.name=long_flye_medaka
-nextflow run BioinfoSupport/amr-tools/pipelines/assemble --ont='ont/*.fastq.gz' --illumina='illumina/*_R{1,2}.fastq.gz' --assembler.name=hybrid_unicycler
+nextflow run pradosj/amr-tools/pipelines/assemble --ont='ont/*.fastq.gz' --assembler.name=long_flye_medaka
+nextflow run pradosj/amr-tools/pipelines/assemble --ont='ont/*.fastq.gz' --illumina='illumina/*_R{1,2}.fastq.gz' --assembler.name=hybrid_unicycler
 ```
 
 ONT reads can also be given as BAM or CRAM files. The sample id is taken from the file names.

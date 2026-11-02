@@ -15,7 +15,7 @@ curl -s https://get.nextflow.io | bash
 # Usage
 
 ```bash
-nextflow run BioinfoSupport/amr-tools/pipelines/reads-filter --ont='ont/*.fastq.gz' --illumina='illumina/*_R{1,2}.fastq.gz'
+nextflow run pradosj/amr-tools/pipelines/reads-filter --ont='ont/*.fastq.gz' --illumina='illumina/*_R{1,2}.fastq.gz'
 ```
 
 ONT reads can also be given as BAM or CRAM files. The sample id is taken from the file names.
