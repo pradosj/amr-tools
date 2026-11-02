@@ -32,5 +32,5 @@ workflow PILON_POLISH {
 	def pilon_ch = PILON(fasta_ch.join(bam_ch, by: 'meta'))
 
 	emit:
-	polished: Channel<Assembly> = pilon_ch.map({ r -> record(meta: r.meta as Map, dir: r.dir, fasta: r.fasta) })
+	polished: Channel<Assembly> = pilon_ch
 }

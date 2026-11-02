@@ -1,142 +1,165 @@
+nextflow.enable.types = true
 
 include { MINIMAP2_ALIGN_ONT } from './modules/minimap2/align_ont'
 include { SAMTOOLS_STATS as SAMTOOLS_STATS_LONG  } from './modules/samtools/stats'
 include { SAMTOOLS_STATS as SAMTOOLS_STATS_SHORT } from './modules/samtools/stats'
 include { BWA_MEM            } from './modules/bwa/mem'
 include { BWA_INDEX          } from './modules/bwa/index'
-include { ORGANIZE_FILES     } from './modules/organize_files'
 include { CHECKM2_DB         } from './modules/checkm2/db'
 include { CHECKM2_PREDICT    } from './modules/checkm2/predict'
 
 
+// Options of CheckM2 (params.assemblies_qc.checkm2)
+record Checkm2Params {
+	skip: Boolean?
+	db: Path?                  // CheckM2 database folder, downloaded when null
+	args: String?
+}
 
+// Options of ASSEMBLIES_QC (params.assemblies_qc)
+record AssembliesQcParams {
+	checkm2: Checkm2Params?
+}
+
+// Assembly to check. meta holds both sample_id and assembler_name.
+record Assembly {
+	meta: Map
+	fasta: Path
+}
+
+// Short reads of the sample of an assembly (same meta as the assembly): read2 is null for single-end reads
+record ShortReads {
+	meta: Map
+	reads: Path
+	read2: Path?
+}
+
+// Long reads of the sample of an assembly (same meta as the assembly)
+record LongReads {
+	meta: Map
+	reads: Path
+}
+
+
+// Gather the QC statistics of an assembly into an RDS file
 process COMBINE_QC_STATS {
-  container "registry.gitlab.unige.ch/amr-genomics/rscript:main"
-  memory '8 GB'
-  cpus 2
-  time '30 min'
-  input:
-		tuple val(meta), path("stats")
-		path("assets") 
-  output:
-    tuple val(meta), path('qc.rds'), emit: 'rds'
-  script:
-		def builder = new groovy.json.JsonBuilder(meta)
-	  """
-		#!/usr/bin/env Rscript
-		source("assets/lib_assembly_stats.R")
-		stats <- read_assembly_stats("./stats")
-		stats[["meta"]] <- '${builder.toString()}'
-		stats[["sample_id"]] <- '${meta[0].sample_id}'
-		stats[["assembler_name"]] <- '${meta[1].assembler_name}'
-		saveRDS(stats,"qc.rds")
-		"""
+	container "registry.gitlab.unige.ch/amr-genomics/rscript:main"
+	memory 8.GB
+	cpus 2
+	time 30.m
+	input:
+	record(meta: Map, fasta: Path, long_stats: Path?, short_stats: Path?, checkm2: Path?)
+	lib: Path    // lib_assembly_stats.R
+	stage:
+	stageAs(fasta, 'stats/assembly.fasta')
+	stageAs(long_stats, 'stats/long_reads.bam.stats')
+	stageAs(short_stats, 'stats/short_reads.bam.stats')
+	stageAs(checkm2, 'stats/checkm2_quality_report.tsv')
+	output:
+	record(meta: meta, rds: file('qc.rds'))
+	script:
+	// meta is reported as [[sample_id], [assembler_name]]
+	def meta_json = new groovy.json.JsonBuilder([meta.subMap(['sample_id']), meta.subMap(['assembler_name'])]).toString()
+	"""
+	#!/usr/bin/env Rscript
+	source("${lib}")
+	stats <- read_assembly_stats("./stats")
+	stats[["meta"]] <- '${meta_json}'
+	stats[["sample_id"]] <- '${meta.sample_id}'
+	stats[["assembler_name"]] <- '${meta.assembler_name}'
+	saveRDS(stats,"qc.rds")
+	"""
+	stub:
+	"""
+	touch qc.rds
+	"""
 }
 
+// Aggregate the QC statistics of all the assemblies into a table
 process ASSEMBLIES_MULTIQC {
-  container "registry.gitlab.unige.ch/amr-genomics/rscript:main"
-  memory '8 GB'
-  cpus 2
-  time '30 min'
-  input:
-		path(rds,name: 'stats/qc*.rds')
-		path("assets") 
-  output:
-    path('assemblies_multiqc.xlsx'), emit: xlsx
-    path('assemblies_multiqc.txt'),  emit: txt
-  script:
-		"""
-		#!/usr/bin/env Rscript
-		source("assets/lib_assembly_stats.R")
-		A <- rlang::inject(aggregate_assembly_stats(!!!(c(${[rds].flatten().collect({f -> "'" + f + "'"}).join(",")}) |> map(readRDS) |> unname()))) 
-		A |> write.table(file="assemblies_multiqc.txt",sep="\\t",quote=FALSE,row.names=FALSE)
-		A |> openxlsx::write.xlsx("assemblies_multiqc.xlsx")
-		"""
+	container "registry.gitlab.unige.ch/amr-genomics/rscript:main"
+	memory 8.GB
+	cpus 2
+	time 30.m
+	input:
+	rds: List<Path>
+	lib: Path    // lib_assembly_stats.R
+	stage:
+	stageAs(rds, 'stats/qc*.rds')
+	output:
+	record(
+		xlsx: file('assemblies_multiqc.xlsx'),
+		txt: file('assemblies_multiqc.txt')
+	)
+	script:
+	"""
+	#!/usr/bin/env Rscript
+	source("${lib}")
+	A <- rlang::inject(aggregate_assembly_stats(!!!(c(${rds.collect({ f -> "'${f}'" }).join(",")}) |> map(readRDS) |> unname())))
+	A |> write.table(file="assemblies_multiqc.txt",sep="\\t",quote=FALSE,row.names=FALSE)
+	A |> openxlsx::write.xlsx("assemblies_multiqc.xlsx")
+	"""
+	stub:
+	"""
+	touch assemblies_multiqc.xlsx assemblies_multiqc.txt
+	"""
 }
+
 
 workflow ASSEMBLIES_QC {
 	take:
-		opts
-		fa_ch
-		fqs_ch
-		fql_ch
-	main:
-	
-		// Short reads alignment and statistics (BWA modules take and emit records)
-		def bwa_index_ch = BWA_INDEX(fa_ch.map({m,f -> record(meta: m, fasta: f)}))
-		def bwa_mem_ch = BWA_MEM(
-			bwa_index_ch.map({r -> [r.meta, r.index]})
-			.join(fqs_ch)
-			.map({m,idx,fqs ->
-				def fs = fqs instanceof List ? fqs : [fqs]
-				record(meta: m, index: idx, reads: fs[0], read2: fs.size() > 1 ? fs[1] : null)
-			})
-		)
-		def short_bam_ch = bwa_mem_ch.map({r -> [r.meta, r.bam]})
-		SAMTOOLS_STATS_SHORT(short_bam_ch)
-		
-		// Long reads alignment and statistics
-		MINIMAP2_ALIGN_ONT(fa_ch.join(fql_ch))
-		SAMTOOLS_STATS_LONG(MINIMAP2_ALIGN_ONT.out.bam)
-		
-		// Genome completness
-		def checkm2_db_ch = channel.empty()
-		def checkm2_ch = channel.empty()
-		if (!opts.checkm2.skip) {
-			if (opts.checkm2.db) {
-				checkm2_db_ch = channel.fromPath(opts.checkm2.db)
-			} else {
-				checkm2_db_ch = CHECKM2_DB()
-			}
-			CHECKM2_PREDICT(fa_ch,checkm2_db_ch)
-			checkm2_ch = CHECKM2_PREDICT.out
-		}
-		
-		//TODO: RUN VCF_LONG
-		//TODO: RUN VCF_SHORT
-		//TODO: HTML_REPORT()
-		//TODO: CHARACTERIZE_UNMAPPED_READS
-		fa_ch
-			.join(SAMTOOLS_STATS_LONG.out,remainder:true)
-			.join(SAMTOOLS_STATS_SHORT.out,remainder:true)
-			.join(checkm2_ch,remainder:true)
-			.map({meta,x1,x2,x3,x4 -> [meta,[[x1,"assembly.fasta"],[x2,"long_reads.bam.stats"],[x3,"short_reads.bam.stats"],[x4,"checkm2_quality_report.tsv"]].findAll({x,_y -> x})]})
-			| ORGANIZE_FILES
-		
-		COMBINE_QC_STATS(ORGANIZE_FILES.out,"${moduleDir}/assets")
+	opts: AssembliesQcParams
+	assemblies: Channel<Assembly>
+	short_reads: Channel<ShortReads>
+	long_reads: Channel<LongReads>
 
-		def assembly_multiqc_txt_ch = channel.empty()
-		def assembly_multiqc_xlsx_ch = channel.empty()
-		def rds = COMBINE_QC_STATS.out.rds.map({_m,x -> x}).toList()
-		if (rds) {
-			ASSEMBLIES_MULTIQC(rds,"${moduleDir}/assets")
-			assembly_multiqc_txt_ch  = ASSEMBLIES_MULTIQC.out.txt
-			assembly_multiqc_xlsx_ch = ASSEMBLIES_MULTIQC.out.xlsx
-		}
+	main:
+	def lib = file("${moduleDir}/assets/lib_assembly_stats.R")
+
+	// Short reads alignment and statistics
+	def short_bam_ch = BWA_MEM(BWA_INDEX(assemblies).join(short_reads, by: 'meta'))
+	def short_stats_ch = SAMTOOLS_STATS_SHORT(short_bam_ch)
+
+	// Long reads alignment and statistics
+	def long_bam_ch = MINIMAP2_ALIGN_ONT(assemblies.join(long_reads, by: 'meta'))
+	def long_stats_ch = SAMTOOLS_STATS_LONG(long_bam_ch)
+
+	// Genome completeness
+	def checkm2_db_ch = channel.empty()
+	def checkm2_ch = channel.empty()
+	if (!opts.checkm2?.skip) {
+		def db = opts.checkm2?.db ? channel.value(opts.checkm2.db) : CHECKM2_DB()
+		checkm2_db_ch = channel.empty().mix(db)
+		checkm2_ch = CHECKM2_PREDICT(assemblies.combine(db: db).map({ r -> r + record(args: opts.checkm2?.args) }))
+	}
+
+	//TODO: RUN VCF_LONG
+	//TODO: RUN VCF_SHORT
+	//TODO: HTML_REPORT()
+	//TODO: CHARACTERIZE_UNMAPPED_READS
+	def qc_ch = COMBINE_QC_STATS(
+		assemblies
+			.join(long_stats_ch.map({ r -> record(meta: r.meta, long_stats: r.stats) }), by: 'meta', remainder: true)
+			.join(short_stats_ch.map({ r -> record(meta: r.meta, short_stats: r.stats) }), by: 'meta', remainder: true)
+			.join(checkm2_ch.map({ r -> record(meta: r.meta, checkm2: r.report) }), by: 'meta', remainder: true),
+		lib
+	)
+
+	// no table when there is no assembly
+	def multiqc_ch = ASSEMBLIES_MULTIQC(
+		qc_ch.map({ r -> r.rds }).collect().flatMap({ fs -> fs.isEmpty() ? [] : [fs.toList()] }),
+		lib
+	)
 
 	emit:
-		long_bam        = MINIMAP2_ALIGN_ONT.out.bam
-		long_bai        = MINIMAP2_ALIGN_ONT.out.bai
-		long_bam_stats  = SAMTOOLS_STATS_LONG.out
-		long_vcf        = channel.empty()
-		
-		short_bam       = short_bam_ch
-		short_bai       = bwa_mem_ch.map({r -> [r.meta, r.bai]})
-		short_bam_stats = SAMTOOLS_STATS_SHORT.out
-		short_vcf       = channel.empty()
-		
-		assembly_qc           = COMBINE_QC_STATS.out.rds
-		assembly_multiqc_txt  = assembly_multiqc_txt_ch
-		assembly_multiqc_xlsx = assembly_multiqc_xlsx_ch
-		
-		checkm2    = checkm2_ch
-		checkm2_db = checkm2_db_ch
+	long_alignments: Channel<Record>  = long_bam_ch       // records with fields meta, bam, bai
+	short_alignments: Channel<Record> = short_bam_ch      // records with fields meta, bam, bai
+	assembly_qc: Channel<Record>      = qc_ch             // records with fields meta, rds
+	assembly_multiqc_txt: Channel<Path>  = multiqc_ch.map({ r -> r.txt })
+	assembly_multiqc_xlsx: Channel<Path> = multiqc_ch.map({ r -> r.xlsx })
+	checkm2: Channel<Record>          = checkm2_ch        // records with fields meta, report
+	checkm2_db: Channel<Path>         = checkm2_db_ch
 }
-
-
-
-
-
 
 
 

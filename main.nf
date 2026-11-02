@@ -4,7 +4,7 @@ include { SAMTOOLS_FASTQ as CONVERT_LONG_BAM_TO_FASTQ } from './modules/samtools
 include { READS_FILTER; ReadsFilterParams             } from './wf/reads_filter/main.nf'
 include { READS_QC as FILTERED_READS_QC               } from './wf/reads_qc/main.nf'
 include { ASSEMBLE; AssemblerParams                   } from './wf/assemble/main.nf'
-include { ASSEMBLIES_QC                               } from './wf/assemblies_qc/main.nf'
+include { ASSEMBLIES_QC; AssembliesQcParams           } from './wf/assemblies_qc/main.nf'
 include { AMR_ANNOT                                   } from './wf/amr_annot/main.nf'
 include { IDENTITY as COPY_ASSEMBLY_FASTA             } from './modules/identity/main.nf'
 include { IDENTITY as COPY_SHORT_READS                } from './modules/identity/main.nf'
@@ -26,6 +26,7 @@ params {
 	reads:   ReadsParams = record(ont:null, illumina:null)
 	reads_filter: ReadsFilterParams = record(skip: false, long_limit: 1_000_000_000, short_limit: 1_000_000_000, chopper_args: '--quality 15 --minlength 200')
 	assembler: AssemblerParams = record(name: 'long_flye_medaka', args: record(flye: null, medaka: '--bacteria'))
+	assemblies_qc: AssembliesQcParams = record(checkm2: record(skip: false, db: null, args: ''))
 }
 
 // Convert [meta, reads] tuple channels into the reads records expected by typed subworkflows
@@ -111,11 +112,12 @@ workflow {
 		def asm_dir_channel = assemblies.map({r -> [[r.meta,[assembler_name:params.assembler.name]],r.dir]})
 
 		// Compute assemblies QC stats
+		// (ASSEMBLIES_QC identifies an assembly by a single meta map holding sample_id and assembler_name)
 		def asm_qc_ch = ASSEMBLIES_QC(
 			params.assemblies_qc,
-			asm_fa_ch,
-			sr_ch.combine(asm_fa_ch.map({m,_x -> m}),by:0).map({m,r,a -> [[m,a],r]}),
-			lr_ch.combine(asm_fa_ch.map({m,_x -> m}),by:0).map({m,r,a -> [[m,a],r]})
+			asm_fa_ch.map({m,x -> record(meta: m[0] + m[1], fasta: x)}),
+			toShortReads(sr_ch.combine(asm_fa_ch.map({m,_x -> m}),by:0).map({m,r,a -> [m + a,r]})),
+			toLongReads(lr_ch.combine(asm_fa_ch.map({m,_x -> m}),by:0).map({m,r,a -> [m + a,r]}))
 		)
 
 		// Finally run AMR annotations
@@ -132,7 +134,7 @@ workflow {
 		
 		assemblies_fasta        = asm_fa_ch
 		assemblies_dir          = asm_dir_channel
-		assemblies_checkm2      = asm_qc_ch.checkm2
+		assemblies_checkm2      = asm_qc_ch.checkm2.map({r -> [[r.meta.subMap('sample_id'), r.meta.subMap('assembler_name')], r.report]})
 		assemblies_multiqc_txt  = asm_qc_ch.assembly_multiqc_txt.ifEmpty([])
 		assemblies_multiqc_xlsx = asm_qc_ch.assembly_multiqc_xlsx.ifEmpty([])
 

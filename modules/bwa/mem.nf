@@ -8,7 +8,7 @@ process BWA_MEM {
 
     input:
     // index: folder produced by BWA_INDEX; reads, read2: short reads
-    record(meta: Object, index: Path, reads: Path, read2: Path?, args: String?)
+    record(meta: Map, index: Path, reads: Path, read2: Path?, args: String?)
 
     output:
     record(

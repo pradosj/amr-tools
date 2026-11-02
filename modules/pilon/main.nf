@@ -7,7 +7,7 @@ process PILON {
     time 4.h
 
     input:
-    record(meta: Object, fasta: Path, bam: Path, bai: Path, args: String?)
+    record(meta: Map, fasta: Path, bam: Path, bai: Path, args: String?)
 
     output:
     record(

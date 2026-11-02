@@ -1,22 +1,29 @@
+nextflow.enable.types = true
 
 process CHECKM2_PREDICT {
-	  container 'quay.io/biocontainers/checkm2:1.1.0--pyh7e72e81_1'
-    memory '10 GB'
+    container 'quay.io/biocontainers/checkm2:1.1.0--pyh7e72e81_1'
+    memory 10.GB
     cpus 4
-    time '30 min'
+    time 30.m
+
     input:
-		    tuple val(meta), path('assembly.fasta')
-		    path('db')
+    // db: CheckM2 database folder, as created by CHECKM2_DB
+    record(meta: Map, fasta: Path, db: Path, args: String?)
+
     output:
-		    tuple val(meta), path("output/quality_report.tsv")
-		script:
-	    """
-	    checkm2 predict \\
-	        --input 'assembly.fasta' \\
-	        --output-directory 'output' \\
-	        --threads ${task.cpus} \\
-	        --database_path db/CheckM2_database/uniref100.KO.1.dmnd \\
-	        ${task.ext.args?:''}
+    record(
+        meta: meta,
+        report: file('output/quality_report.tsv')
+    )
+
+    script:
+    """
+    checkm2 predict \\
+        --input '${fasta}' \\
+        --output-directory 'output' \\
+        --threads ${task.cpus} \\
+        --database_path '${db}/CheckM2_database/uniref100.KO.1.dmnd' \\
+        ${args ?: ''}
     """
 
     stub:
@@ -24,4 +31,3 @@ process CHECKM2_PREDICT {
     mkdir -p output/ && touch output/quality_report.tsv
     """
 }
-

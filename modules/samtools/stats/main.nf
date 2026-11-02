@@ -1,19 +1,27 @@
+nextflow.enable.types = true
 
 process SAMTOOLS_STATS {
     container 'quay.io/biocontainers/samtools:1.21--h50ea8bc_0'
-    memory '12 GB'
+    memory 12.GB
     cpus 1
-    time '30 min'
+    time 30.m
+
     input:
-    		tuple val(meta), path("input.bam")
+    record(meta: Map, bam: Path, args: String?)
+
     output:
-    		tuple val(meta), path("input.bam.stats")
+    record(
+        meta: meta,
+        stats: file("${bam.name}.stats")
+    )
+
     script:
-				"""
-				samtools stats -@ ${task.cpus} ${task.ext.args?:''} input.bam > input.bam.stats
-				"""
-		stub:
-				"""
-				touch input.bam.stats
-				"""
+    """
+    samtools stats -@ ${task.cpus} ${args ?: ''} ${bam} > ${bam.name}.stats
+    """
+
+    stub:
+    """
+    touch ${bam.name}.stats
+    """
 }
