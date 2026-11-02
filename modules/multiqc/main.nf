@@ -11,10 +11,6 @@ process MULTIQC {
     config: Path
     args: String?
 
-    stage:
-    stageAs(db, 'db')
-    stageAs(config, 'config.yml')
-
     output:
     record(
         meta: meta,
@@ -23,7 +19,7 @@ process MULTIQC {
 
     script:
     """
-    multiqc ${args ?: ''} --force --config config.yml --filename multiqc.html db/
+    multiqc ${args ?: ''} --force --config ${config} --filename multiqc.html ${db}/
     """
 
     stub:
