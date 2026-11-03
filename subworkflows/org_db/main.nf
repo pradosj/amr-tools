@@ -91,9 +91,9 @@ process STEP3_DB_BUILD {
 
 	output:
 	record(
-		dir: file('orgfinder_db'),
-		fasta: files('orgfinder_db/fna/*.fna').toSorted(),
-		tsv: file('orgfinder_db/db.tsv')
+		dir: file('org_db'),
+		fasta: files('org_db/fna/*.fna').toSorted(),
+		tsv: file('org_db/db.tsv')
 	)
 
 	script:
@@ -103,13 +103,13 @@ process STEP3_DB_BUILD {
 
 	stub:
 	"""
-	mkdir -p orgfinder_db/fna
-	touch orgfinder_db/fna/GCF_000000000.1.fna orgfinder_db/db.tsv
+	mkdir -p org_db/fna
+	touch org_db/fna/GCF_000000000.1.fna org_db/db.tsv
 	"""
 }
 
 
-workflow ORGFINDER_DB_BUILD {
+workflow ORG_DB_BUILD {
 	main:
 	def queries = channel.of(
 		"taxon 'Pseudomonas aeruginosa'  --reference --assembly-level complete --include genome,seq-report",

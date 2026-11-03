@@ -2,7 +2,7 @@
 
 base_dir <- './'
 ncbi_dir <- fs::path(base_dir,"ncbi_db")
-db_dir <- fs::path(base_dir,"orgfinder_db")
+db_dir <- fs::path(base_dir,"org_db")
 
 #-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#
 # Load the list of reference genome downloaded from NCBI
