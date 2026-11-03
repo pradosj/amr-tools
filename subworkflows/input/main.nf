@@ -20,17 +20,24 @@ record AssembliesParams {
 	fasta: String?
 }
 
-// Short reads sample: read2 is null for single-end reads
+// Illumina reads of a sample: read2 is null for single-end reads
 record ShortReads {
-	meta: Map
-	reads: Path
+	meta: Map?
+	read1: Path
 	read2: Path?
 }
 
-// Long reads sample: one FASTQ per sample
+// ONT reads of a sample: one FASTQ
 record LongReads {
-	meta: Map
+	meta: Map?
 	reads: Path
+}
+
+// Sequencing reads of a sample: high quality ONT reads and/or Illumina reads
+record SeqReads {
+	meta: Map?
+	ont_hq: LongReads?
+	illumina: ShortReads?
 }
 
 // Assembly given as input: meta holds sample_id, and assembler_name 'none'
@@ -54,10 +61,11 @@ def shortReads(id: String, files: Bag<Path>) -> ShortReads {
 		log.error(msg)    // errors raised in operators are only reported in .nextflow.log
 		error(msg)
 	}
-	return record(meta: [sample_id: id], reads: fs[0], read2: fs.size() == 2 ? fs[1] : null)
+	return record(meta: [sample_id: id], read1: fs[0], read2: fs.size() == 2 ? fs[1] : null)
 }
 
-// ONT (one FASTQ, BAM or CRAM per sample, BAM/CRAM converted to FASTQ) and Illumina reads (single-end, or paired-end R1/R2)
+// ONT (one FASTQ, BAM or CRAM per sample, BAM/CRAM converted to FASTQ) and Illumina reads (single-end, or paired-end R1/R2):
+// by type of reads (short_reads, long_reads), and both types together by sample (seq_reads)
 workflow INPUT_READS {
 	take:
 	ont: String?
@@ -75,7 +83,7 @@ workflow INPUT_READS {
 			.mix(ONT_BAM_TO_FASTQ(
 				ont_ch
 					.filter({ r -> r.reads.name ==~ bam_re })
-					.map({ r -> record(meta: r.meta, bam: r.reads, args: null) })
+					.map({ r -> record(meta: r.meta, bam: r.reads) })
 			))
 	}
 	def short_ch = channel.empty()
@@ -89,7 +97,13 @@ workflow INPUT_READS {
 			.map({ id, files -> shortReads(id, files) })
 	}
 
+	def seq_ch = short_ch
+		.map({ r -> record(meta: r.meta, illumina: record(read1: r.read1, read2: r.read2)) })
+		.join(long_ch.map({ r -> record(meta: r.meta, ont_hq: record(reads: r.reads)) }), by: 'meta', remainder: true)
+		.map({ r -> record(meta: r.meta, ont_hq: r.ont_hq, illumina: r.illumina) })
+
 	emit:
+	seq_reads: Channel<SeqReads>     = seq_ch
 	short_reads: Channel<ShortReads> = short_ch
 	long_reads: Channel<LongReads>   = long_ch
 }

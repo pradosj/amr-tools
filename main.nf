@@ -177,7 +177,10 @@ workflow {
 	}
 	def reads_multiqc_ch = channel.empty()
 	if (!params.no_reads_qc) {
-		reads_multiqc_ch = FILTERED_READS_QC(sr_rec, lr_rec).multiqc
+		reads_multiqc_ch = FILTERED_READS_QC(
+			sr_rec.map({ r -> record(meta: r.meta, read1: r.reads, read2: r.read2) }),
+			lr_rec
+		).multiqc
 	}
 
 	// De novo assembly of the samples given without assembly

@@ -5,16 +5,16 @@ include { FASTP                                } from './modules/fastp'
 include { MULTIQC                              } from './modules/multiqc'
 
 
-// Short reads sample: read2 is null for single-end reads
+// Illumina reads of a sample: read2 is null for single-end reads
 record ShortReads {
-	meta: Map
-	reads: Path
+	meta: Map?
+	read1: Path
 	read2: Path?
 }
 
-// Long reads sample: one FASTQ per sample
+// ONT reads of a sample: one FASTQ
 record LongReads {
-	meta: Map
+	meta: Map?
 	reads: Path
 }
 
@@ -51,7 +51,7 @@ workflow READS_QC {
 
 	main:
 	def nanoplot_ch = NANOPLOT(long_reads)
-	def fastp_ch = FASTP(short_reads)
+	def fastp_ch = FASTP(short_reads.map({ r -> record(meta: r.meta, reads: r.read1, read2: r.read2) }))
 
 	// MultiQC
 	def multiqc_files_ch = nanoplot_ch
