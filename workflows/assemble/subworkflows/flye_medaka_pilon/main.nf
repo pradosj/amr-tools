@@ -23,11 +23,11 @@ record AssemblerArgs {
 	hybracter: String?
 }
 
-// Input of an assembler: the reads of a sample (short_reads2 is null for single-end reads) and the tools arguments
+// Input of an assembler: the reads of a sample (short_read2 is null for single-end reads) and the tools arguments
 record AssemblyInput {
 	meta: Map?
-	short_reads: Path?
-	short_reads2: Path?
+	short_read1: Path?
+	short_read2: Path?
 	long_reads: Path?
 	args: AssemblerArgs?
 }
@@ -108,12 +108,12 @@ workflow LONG_FLYE_MEDAKA {
 
 workflow HYBRID_FLYE_MEDAKA_PILON {
 	take:
-	samples: Channel<AssemblyInput>    // with long_reads, and short_reads for the Pilon polishing
+	samples: Channel<AssemblyInput>    // with long_reads, and short_read1/short_read2 for the Pilon polishing
 
 	main:
 	def short_reads = samples
-		.filter({ r -> r.short_reads })
-		.map({ r -> record(meta: r.meta, read1: r.short_reads, read2: r.short_reads2) })
+		.filter({ r -> r.short_read1 })
+		.map({ r -> record(meta: r.meta, read1: r.short_read1, read2: r.short_read2) })
 	def medaka_ch = LONG_FLYE_MEDAKA(samples)
 	def pilon1_ch = PILON_POLISH_ROUND1(medaka_ch, short_reads)
 	def pilon2_ch = PILON_POLISH_ROUND2(pilon1_ch, short_reads)

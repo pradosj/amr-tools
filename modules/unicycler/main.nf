@@ -17,8 +17,8 @@ process UNICYCLER {
     time 4.h + 8.h * (task.attempt - 1)
 
     input:
-    // short reads (short_reads, short_reads2) and/or long reads
-    record(meta: Map, short_reads: Path?, short_reads2: Path?, long_reads: Path?, args: AssemblerArgs?)
+    // short reads (short_read1, short_read2) and/or long reads
+    record(meta: Map, short_read1: Path?, short_read2: Path?, long_reads: Path?, args: AssemblerArgs?)
 
     output:
     record(
@@ -28,7 +28,7 @@ process UNICYCLER {
     )
 
     script:
-    def short_opts = !short_reads ? '' : (short_reads2 ? "-1 ${short_reads} -2 ${short_reads2}" : "-s ${short_reads}")
+    def short_opts = !short_read1 ? '' : (short_read2 ? "-1 ${short_read1} -2 ${short_read2}" : "-s ${short_read1}")
     def long_opts = long_reads ? "-l ${long_reads}" : ''
     """
     unicycler \\

@@ -23,11 +23,11 @@ record AssemblerParams {
 	args: AssemblerArgs?
 }
 
-// Input of an assembler: the reads of a sample (short_reads2 is null for single-end reads) and the tools arguments
+// Input of an assembler: the reads of a sample (short_read2 is null for single-end reads) and the tools arguments
 record AssemblyInput {
 	meta: Map?
-	short_reads: Path?
-	short_reads2: Path?
+	short_read1: Path?
+	short_read2: Path?
 	long_reads: Path?
 	args: AssemblerArgs?
 }
@@ -66,10 +66,10 @@ workflow ASSEMBLE {
 
 	// Inputs of the assemblers: long reads only, short reads only, or both (hybrid)
 	def long_input = long_reads.map({ r -> record(meta: r.meta, long_reads: r.reads, args: opts.args) })
-	def short_input = short_reads.map({ r -> record(meta: r.meta, short_reads: r.read1, short_reads2: r.read2, args: opts.args) })
+	def short_input = short_reads.map({ r -> record(meta: r.meta, short_read1: r.read1, short_read2: r.read2, args: opts.args) })
 	def hybrid_input = short_reads
 		.join(long_reads.map({ r -> record(meta: r.meta, long_reads: r.reads) }), by: 'meta', remainder: true)
-		.map({ r -> record(meta: r.meta, short_reads: r.read1, short_reads2: r.read2, long_reads: r.long_reads, args: opts.args) })
+		.map({ r -> record(meta: r.meta, short_read1: r.read1, short_read2: r.read2, long_reads: r.long_reads, args: opts.args) })
 
 	def asm_ch = channel.empty()
 	if (name == 'long_flye') {
