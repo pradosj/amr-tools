@@ -9,6 +9,17 @@ include { SAMTOOLS_FASTQ as ONT_BAM_TO_FASTQ } from './modules/samtools/fastq'
 
 // ---------------------------------------
 
+// Input reads given as glob patterns (params.reads)
+record ReadsParams {
+	ont: String?
+	illumina: String?
+}
+
+// Input assemblies given as a glob pattern (params.assemblies)
+record AssembliesParams {
+	fasta: String?
+}
+
 // Short reads sample: read2 is null for single-end reads
 record ShortReads {
 	meta: Map

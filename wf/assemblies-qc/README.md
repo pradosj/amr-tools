@@ -13,7 +13,7 @@ curl -s https://get.nextflow.io | bash
 # Usage
 
 ```bash
-nextflow run pradosj/amr-tools/wf/assemblies-qc --fasta='assemblies/*.fasta' --ont='ont/*.fastq.gz' --illumina='illumina/*_R{1,2}.fastq.gz'
+nextflow run pradosj/amr-tools/wf/assemblies-qc --assemblies.fasta='assemblies/*.fasta' --reads.ont='ont/*.fastq.gz' --reads.illumina='illumina/*_R{1,2}.fastq.gz'
 ```
 
 The sample id is taken from the file names: the reads of a sample are aligned on the assembly with the same sample id. Reads are optional.

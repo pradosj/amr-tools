@@ -7,7 +7,7 @@ include { BWA_MEM            } from './modules/bwa/mem'
 include { BWA_INDEX          } from './modules/bwa/index'
 include { CHECKM2_DB         } from './modules/checkm2/db'
 include { CHECKM2_PREDICT    } from './modules/checkm2/predict'
-include { READS_INPUT; ASSEMBLIES_INPUT    } from './conf/inputs.nf'
+include { READS_INPUT; ASSEMBLIES_INPUT; ReadsParams; AssembliesParams    } from './conf/inputs.nf'
 include { validateParameters; paramsSummaryLog } from 'plugin/nf-schema'
 
 
@@ -207,9 +207,8 @@ process IGV_SCRIPT {
 
 // Input assemblies and reads given as glob patterns (the sample_id is taken from the file names), and ASSEMBLIES_QC options
 params {
-	fasta: String? = null
-	ont: String? = null
-	illumina: String? = null
+	assemblies: AssembliesParams = record(fasta: null)
+	reads: ReadsParams = record(ont: null, illumina: null)
 	assemblies_qc: AssembliesQcParams = record(checkm2: record(skip: false, db: null, args: ''))
 }
 
@@ -219,8 +218,8 @@ workflow {
 	validateParameters()
 	log.info(paramsSummaryLog(workflow))
 
-	def assemblies = ASSEMBLIES_INPUT(params.fasta)
-	def reads = READS_INPUT(params.ont, params.illumina)
+	def assemblies = ASSEMBLIES_INPUT(params.assemblies?.fasta)
+	def reads = READS_INPUT(params.reads?.ont, params.reads?.illumina)
 
 	// Reads of the sample of each assembly
 	def asm_keys = assemblies.map({ r -> record(meta: r.meta.subMap(['sample_id']), asm_meta: r.meta) })

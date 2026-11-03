@@ -6,7 +6,7 @@ include { HYBRID_FLYE_MEDAKA_PILON      } from './subworkflows/flye_medaka_pilon
 include { UNICYCLER                     } from './modules/unicycler'
 include { SPADES                        } from './modules/spades'
 include { HYBRACTER                     } from './modules/hybracter'
-include { READS_INPUT                   } from './conf/inputs.nf'
+include { READS_INPUT; ReadsParams                   } from './conf/inputs.nf'
 include { validateParameters; paramsSummaryLog } from 'plugin/nf-schema'
 
 
@@ -98,8 +98,7 @@ workflow ASSEMBLE {
 
 // Input reads given as glob patterns (the sample_id is taken from the file names), and ASSEMBLE options
 params {
-	ont: String? = null
-	illumina: String? = null
+	reads: ReadsParams = record(ont: null, illumina: null)
 	assembler: AssemblerParams = record(name: 'long_flye_medaka', args: record(flye: null, medaka: '--bacteria', spades: null, unicycler: null, hybracter: null))
 	verbose: Boolean = false
 }
@@ -110,7 +109,7 @@ workflow {
 	validateParameters()
 	log.info(paramsSummaryLog(workflow))
 
-	def reads = READS_INPUT(params.ont, params.illumina)
+	def reads = READS_INPUT(params.reads?.ont, params.reads?.illumina)
 	def assemblies = ASSEMBLE(params.assembler, reads.short_reads, reads.long_reads)
 
 	publish:

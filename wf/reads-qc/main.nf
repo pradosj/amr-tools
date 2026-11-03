@@ -3,13 +3,12 @@ nextflow.enable.types = true
 include { NANOPLOT                             } from './modules/nanoplot'
 include { FASTP                                } from './modules/fastp'
 include { MULTIQC                              } from './modules/multiqc'
-include { READS_INPUT                          } from './conf/inputs.nf'
+include { READS_INPUT; ReadsParams                          } from './conf/inputs.nf'
 include { validateParameters; paramsSummaryLog } from 'plugin/nf-schema'
 
 // Input reads given as glob patterns, the sample_id is taken from the file names
 params {
-	ont: String? = null
-	illumina: String? = null
+	reads: ReadsParams = record(ont: null, illumina: null)
 }
 
 // Short reads sample: read2 is null for single-end reads
@@ -85,7 +84,7 @@ workflow {
 	validateParameters()
 	log.info(paramsSummaryLog(workflow))
 
-	def reads = READS_INPUT(params.ont, params.illumina)
+	def reads = READS_INPUT(params.reads?.ont, params.reads?.illumina)
 	def qc = READS_QC(reads.short_reads, reads.long_reads)
 
 	publish:

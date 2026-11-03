@@ -3,7 +3,7 @@ nextflow.enable.types = true
 include { FQ_SUBSAMPLE as FQ_SUBSAMPLE_LONG  } from './modules/fq_subsample'
 include { CHOPPER as CHOPPER_LONG            } from './modules/chopper'
 include { FQ_SUBSAMPLE as FQ_SUBSAMPLE_SHORT } from './modules/fq_subsample'
-include { READS_INPUT                        } from './conf/inputs.nf'
+include { READS_INPUT; ReadsParams                        } from './conf/inputs.nf'
 include { validateParameters; paramsSummaryLog } from 'plugin/nf-schema'
 
 
@@ -52,8 +52,7 @@ workflow READS_FILTER {
 
 // Input reads given as glob patterns (the sample_id is taken from the file names), and READS_FILTER options
 params {
-	ont: String? = null
-	illumina: String? = null
+	reads: ReadsParams = record(ont: null, illumina: null)
 	reads_filter: ReadsFilterParams = record(long_limit: 1_000_000_000, short_limit: 1_000_000_000, chopper_args: '--quality 15 --minlength 200')
 }
 
@@ -63,7 +62,7 @@ workflow {
 	validateParameters()
 	log.info(paramsSummaryLog(workflow))
 
-	def reads = READS_INPUT(params.ont, params.illumina)
+	def reads = READS_INPUT(params.reads?.ont, params.reads?.illumina)
 	def filtered = READS_FILTER(params.reads_filter, reads.short_reads, reads.long_reads)
 
 	publish:

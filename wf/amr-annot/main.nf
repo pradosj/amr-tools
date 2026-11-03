@@ -4,7 +4,7 @@ include { AMR_ANNOT_ASSEMBLY } from './subworkflows/amr_annot_assembly'
 include { AMR_ANNOT_READS    } from './subworkflows/amr_annot_reads'
 include { SAMTOOLS_FAIDX     } from './modules/samtools/faidx'
 include { MULTIREPORT        } from './subworkflows/multireport'
-include { READS_INPUT; ASSEMBLIES_INPUT } from './conf/inputs.nf'
+include { READS_INPUT; ASSEMBLIES_INPUT; ReadsParams; AssembliesParams } from './conf/inputs.nf'
 include { validateParameters; paramsSummaryLog } from 'plugin/nf-schema'
 
 
@@ -94,9 +94,8 @@ workflow AMR_ANNOT {
 
 // Input assemblies and reads given as glob patterns (the sample_id is taken from the file names), and AMR_ANNOT options
 params {
-	fasta: String? = null
-	ont: String? = null
-	illumina: String? = null
+	assemblies: AssembliesParams = record(fasta: null)
+	reads: ReadsParams = record(ont: null, illumina: null)
 	amr: AmrParams = record(
 		orgfinder:     record(skip: false, args: ''),
 		speciator:     record(skip: true, args: ''),
@@ -116,8 +115,8 @@ workflow {
 	validateParameters()
 	log.info(paramsSummaryLog(workflow))
 
-	def assemblies = ASSEMBLIES_INPUT(params.fasta)
-	def reads = READS_INPUT(params.ont, params.illumina)
+	def assemblies = ASSEMBLIES_INPUT(params.assemblies?.fasta)
+	def reads = READS_INPUT(params.reads?.ont, params.reads?.illumina)
 	def report = AMR_ANNOT(params.amr, assemblies, reads.short_reads, reads.long_reads)
 
 	publish:

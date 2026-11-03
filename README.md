@@ -91,7 +91,7 @@ The output folder `results` has the following organization:
 # Standalone pipelines
 
 Each step of `amr-tools`, and a few other tools, can be run on its own from the `wf/` folder,
-e.g. `nextflow run pradosj/amr-tools/wf/amr-annot --fasta='assemblies/*.fasta'`.
+e.g. `nextflow run pradosj/amr-tools/wf/amr-annot --assemblies.fasta='assemblies/*.fasta'`.
 
 | Pipeline | Description |
 |:--|:--|
