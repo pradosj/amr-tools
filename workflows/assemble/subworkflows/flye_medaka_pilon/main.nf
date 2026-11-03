@@ -14,10 +14,22 @@ record ShortReads {
 	read2: Path?
 }
 
-// ONT reads of a sample: one FASTQ
-record LongReads {
+// Arguments of the assembly tools (each assembler reads its own field)
+record AssemblerArgs {
+	flye: String?
+	medaka: String?
+	spades: String?
+	unicycler: String?
+	hybracter: String?
+}
+
+// Input of an assembler: the reads of a sample (short_reads2 is null for single-end reads) and the tools arguments
+record AssemblyInput {
 	meta: Map?
-	reads: Path
+	short_reads: Path?
+	short_reads2: Path?
+	long_reads: Path?
+	args: AssemblerArgs?
 }
 
 // Assembly of a sample: assembler output folder and assembly FASTA
@@ -56,11 +68,10 @@ process ASSEMBLY_FOLDER {
 
 workflow LONG_FLYE {
 	take:
-	long_reads: Channel<LongReads>
-	flye_args: String?
+	samples: Channel<AssemblyInput>    // with long_reads
 
 	main:
-	def flye_ch = FLYE(long_reads.map({ r -> r + record(args: flye_args) }))
+	def flye_ch = FLYE(samples.map({ r -> record(meta: r.meta, reads: r.long_reads, args: r.args?.flye) }))
 
 	emit:
 	assemblies: Channel<Genome> = flye_ch
@@ -69,17 +80,14 @@ workflow LONG_FLYE {
 
 workflow LONG_FLYE_MEDAKA {
 	take:
-	long_reads: Channel<LongReads>
-	flye_args: String?
-	medaka_args: String?
+	samples: Channel<AssemblyInput>    // with long_reads
 
 	main:
-	def flye_ch = LONG_FLYE(long_reads, flye_args)
+	def flye_ch = LONG_FLYE(samples)
 	def medaka_ch = MEDAKA_CONSENSUS(
 		flye_ch
 			.map({ r -> record(meta: r.meta, fasta: r.fasta) })
-			.join(long_reads, by: 'meta')
-			.map({ r -> r + record(args: medaka_args) })
+			.join(samples.map({ r -> record(meta: r.meta, reads: r.long_reads, args: r.args?.medaka) }), by: 'meta')
 	)
 	def folder_ch = ASSEMBLY_FOLDER(
 		flye_ch.map({ r -> record(meta: r.meta, flye: r.dir) })
@@ -100,13 +108,13 @@ workflow LONG_FLYE_MEDAKA {
 
 workflow HYBRID_FLYE_MEDAKA_PILON {
 	take:
-	short_reads: Channel<ShortReads>
-	long_reads: Channel<LongReads>
-	flye_args: String?
-	medaka_args: String?
+	samples: Channel<AssemblyInput>    // with long_reads, and short_reads for the Pilon polishing
 
 	main:
-	def medaka_ch = LONG_FLYE_MEDAKA(long_reads, flye_args, medaka_args)
+	def short_reads = samples
+		.filter({ r -> r.short_reads })
+		.map({ r -> record(meta: r.meta, read1: r.short_reads, read2: r.short_reads2) })
+	def medaka_ch = LONG_FLYE_MEDAKA(samples)
 	def pilon1_ch = PILON_POLISH_ROUND1(medaka_ch, short_reads)
 	def pilon2_ch = PILON_POLISH_ROUND2(pilon1_ch, short_reads)
 	def pilon3_ch = PILON_POLISH_ROUND3(pilon2_ch, short_reads)

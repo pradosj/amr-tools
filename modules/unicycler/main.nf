@@ -1,5 +1,14 @@
 nextflow.enable.types = true
 
+// Arguments of the assembly tools (each assembler reads its own field)
+record AssemblerArgs {
+	flye: String?
+	medaka: String?
+	spades: String?
+	unicycler: String?
+	hybracter: String?
+}
+
 process UNICYCLER {
     container 'quay.io/biocontainers/unicycler:0.5.1--py312hdcc493e_4'
     errorStrategy task.attempt < 2 ? 'retry' : 'ignore'    // one retry with more resources, then ignore the sample
@@ -9,7 +18,7 @@ process UNICYCLER {
 
     input:
     // short reads (short_reads, short_reads2) and/or long reads
-    record(meta: Map, short_reads: Path?, short_reads2: Path?, long_reads: Path?, args: String?)
+    record(meta: Map, short_reads: Path?, short_reads2: Path?, long_reads: Path?, args: AssemblerArgs?)
 
     output:
     record(
@@ -23,7 +32,7 @@ process UNICYCLER {
     def long_opts = long_reads ? "-l ${long_reads}" : ''
     """
     unicycler \\
-        ${args ?: ''} \\
+        ${args?.unicycler ?: ''} \\
         --threads ${task.cpus} \\
         ${short_opts} ${long_opts} \\
         --out ./unicycler/

@@ -23,6 +23,15 @@ record AssemblerParams {
 	args: AssemblerArgs?
 }
 
+// Input of an assembler: the reads of a sample (short_reads2 is null for single-end reads) and the tools arguments
+record AssemblyInput {
+	meta: Map?
+	short_reads: Path?
+	short_reads2: Path?
+	long_reads: Path?
+	args: AssemblerArgs?
+}
+
 // Illumina reads of a sample: read2 is null for single-end reads
 record ShortReads {
 	meta: Map?
@@ -54,38 +63,37 @@ workflow ASSEMBLE {
 
 	main:
 	def name = opts.name ?: 'long_flye_medaka'
-	def args = opts.args
+
+	// Inputs of the assemblers: long reads only, short reads only, or both (hybrid)
+	def long_input = long_reads.map({ r -> record(meta: r.meta, long_reads: r.reads, args: opts.args) })
+	def short_input = short_reads.map({ r -> record(meta: r.meta, short_reads: r.read1, short_reads2: r.read2, args: opts.args) })
+	def hybrid_input = short_reads
+		.join(long_reads.map({ r -> record(meta: r.meta, long_reads: r.reads) }), by: 'meta', remainder: true)
+		.map({ r -> record(meta: r.meta, short_reads: r.read1, short_reads2: r.read2, long_reads: r.long_reads, args: opts.args) })
+
 	def asm_ch = channel.empty()
 	if (name == 'long_flye') {
-		asm_ch = LONG_FLYE(long_reads, args?.flye)
+		asm_ch = LONG_FLYE(long_input)
 	} else if (name == 'long_flye_medaka') {
-		asm_ch = LONG_FLYE_MEDAKA(long_reads, args?.flye, args?.medaka)
+		asm_ch = LONG_FLYE_MEDAKA(long_input)
 	} else if (name == 'long_unicycler') {
-		asm_ch = UNICYCLER(long_reads.map({ r -> record(meta: r.meta, long_reads: r.reads, args: args?.unicycler) }))
+		asm_ch = UNICYCLER(long_input)
 	} else if (name == 'long_hybracter') {
-		asm_ch = HYBRACTER(long_reads.map({ r -> record(meta: r.meta, long_reads: r.reads, args: args?.hybracter) }))
+		asm_ch = HYBRACTER(long_input)
 	} else if (name == 'short_unicycler') {
-		asm_ch = UNICYCLER(short_reads.map({ r -> record(meta: r.meta, short_reads: r.read1, short_reads2: r.read2, args: args?.unicycler) }))
+		asm_ch = UNICYCLER(short_input)
 	} else if (name == 'short_spades') {
-		asm_ch = SPADES(short_reads.map({ r -> record(meta: r.meta, short_reads: r.read1, short_reads2: r.read2, args: args?.spades) }))
+		asm_ch = SPADES(short_input)
 	} else if (name == 'hybrid_unicycler') {
 		// samples with a single type of reads are assembled with it alone
-		asm_ch = UNICYCLER(
-			short_reads
-				.join(long_reads.map({ r -> record(meta: r.meta, long_reads: r.reads) }), by: 'meta', remainder: true)
-				.map({ r -> record(meta: r.meta, short_reads: r.read1, short_reads2: r.read2, long_reads: r.long_reads, args: args?.unicycler) })
-		)
+		asm_ch = UNICYCLER(hybrid_input)
 	} else if (name == 'hybrid_hybracter') {
 		// samples with long reads only are assembled with `hybracter long-single`,
 		// samples with short reads only are dropped (hybracter needs long reads)
-		asm_ch = HYBRACTER(
-			short_reads
-				.join(long_reads.map({ r -> record(meta: r.meta, long_reads: r.reads) }), by: 'meta', remainder: true)
-				.filter({ r -> r.long_reads != null })
-				.map({ r -> record(meta: r.meta, short_reads: r.read1, short_reads2: r.read2, long_reads: r.long_reads, args: args?.hybracter) })
-		)
+		asm_ch = HYBRACTER(hybrid_input.filter({ r -> r.long_reads != null }))
 	} else if (name == 'hybrid_flye_medaka_pilon') {
-		asm_ch = HYBRID_FLYE_MEDAKA_PILON(short_reads, long_reads, args?.flye, args?.medaka)
+		// samples with short reads only are dropped (flye needs long reads)
+		asm_ch = HYBRID_FLYE_MEDAKA_PILON(hybrid_input.filter({ r -> r.long_reads != null }))
 	} else {
 		error("Unknown assembler name: ${name}")
 	}

@@ -1,5 +1,14 @@
 nextflow.enable.types = true
 
+// Arguments of the assembly tools (each assembler reads its own field)
+record AssemblerArgs {
+	flye: String?
+	medaka: String?
+	spades: String?
+	unicycler: String?
+	hybracter: String?
+}
+
 process HYBRACTER {
     container "quay.io/gbouras13/hybracter:0.11.2"
     memory 20.GB
@@ -8,7 +17,7 @@ process HYBRACTER {
 
     input:
     // long reads, plus optional short reads (short_reads, short_reads2) for a hybrid assembly
-    record(meta: Map, short_reads: Path?, short_reads2: Path?, long_reads: Path?, args: String?)
+    record(meta: Map, short_reads: Path?, short_reads2: Path?, long_reads: Path?, args: AssemblerArgs?)
 
     output:
     record(
@@ -23,7 +32,7 @@ process HYBRACTER {
     def long_opts = long_reads ? "-l ${long_reads}" : ''
     """
     hybracter ${cmd} \\
-        ${args ?: ''} \\
+        ${args?.hybracter ?: ''} \\
         --threads ${task.cpus} \\
         --auto \\
         ${short_opts} ${long_opts} \\
