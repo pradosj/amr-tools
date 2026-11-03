@@ -21,10 +21,12 @@ record LongReads {
 }
 
 // Assembly of a sample: assembler output folder and assembly FASTA
-record Assembly {
+record Genome {
 	meta: Map
 	dir: Path
 	fasta: Path
+	gff: Path?
+	info: Path?
 }
 
 // A file or folder to put in the assembly folder under the given name
@@ -61,7 +63,7 @@ workflow LONG_FLYE {
 	def flye_ch = FLYE(long_reads.map({ r -> r + record(args: flye_args) }))
 
 	emit:
-	assemblies: Channel<Assembly> = flye_ch
+	assemblies: Channel<Genome> = flye_ch
 }
 
 
@@ -90,7 +92,7 @@ workflow LONG_FLYE_MEDAKA {
 	)
 
 	emit:
-	assemblies: Channel<Assembly> = medaka_ch
+	assemblies: Channel<Genome> = medaka_ch
 		.map({ r -> record(meta: r.meta, fasta: r.fasta) })
 		.join(folder_ch, by: 'meta')
 }
@@ -129,5 +131,5 @@ workflow HYBRID_FLYE_MEDAKA_PILON {
 		.map({ r -> record(meta: r.meta, fasta: r.fasta3 ?: r.fasta0) })
 
 	emit:
-	assemblies: Channel<Assembly> = fasta_ch.join(folder_ch, by: 'meta')
+	assemblies: Channel<Genome> = fasta_ch.join(folder_ch, by: 'meta')
 }

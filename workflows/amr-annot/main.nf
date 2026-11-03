@@ -34,9 +34,11 @@ record AmrParams {
 }
 
 // Assembly to annotate. meta holds both sample_id and assembler_name.
-record Assembly {
+record Genome {
 	meta: Map
 	fasta: Path
+	gff: Path?
+	info: Path?
 }
 
 // Short reads sample: read2 is null for single-end reads
@@ -56,7 +58,7 @@ record LongReads {
 workflow AMR_ANNOT {
 	take:
 	opts: AmrParams
-	assemblies: Channel<Assembly>       // meta: [sample_id, assembler_name]
+	assemblies: Channel<Genome>       // meta: [sample_id, assembler_name]
 	short_reads: Channel<ShortReads>    // meta: [sample_id]
 	long_reads: Channel<LongReads>      // meta: [sample_id]
 

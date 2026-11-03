@@ -34,9 +34,11 @@ record LongReads {
 }
 
 // Assembly given as input: meta holds sample_id, and assembler_name 'none'
-record Assembly {
+record Genome {
 	meta: Map
 	fasta: Path
+	gff: Path?
+	info: Path?
 }
 
 // Paired-end Illumina file names end with _1, _2, _R1 or _R2 (optionally followed by _001)
@@ -106,5 +108,5 @@ workflow INPUT_ASSEMBLIES {
 	}
 
 	emit:
-	assemblies: Channel<Assembly> = asm_ch
+	assemblies: Channel<Genome> = asm_ch
 }

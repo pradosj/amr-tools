@@ -32,16 +32,18 @@ record AmrAssemblyParams {
 }
 
 // Assembly to annotate. meta holds both sample_id and assembler_name.
-record Assembly {
+record Genome {
 	meta: Map
 	fasta: Path
+	gff: Path?
+	info: Path?
 }
 
 
 workflow AMR_ANNOT_ASSEMBLY {
 	take:
 	opts: AmrAssemblyParams
-	assemblies: Channel<Assembly>
+	assemblies: Channel<Genome>
 
 	main:
 	def org_args = new groovy.json.JsonSlurper().parseText(file("${moduleDir}/assets/default_org_args.json").text) as Map

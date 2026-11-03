@@ -13,16 +13,18 @@ record ShortReads {
 }
 
 // Assembly of a sample: assembler output folder and assembly FASTA
-record Assembly {
+record Genome {
 	meta: Map
 	dir: Path
 	fasta: Path
+	gff: Path?
+	info: Path?
 }
 
 // Polish assemblies with short reads: map the short reads on the assembly, then run Pilon
 workflow PILON_POLISH {
 	take:
-	assemblies: Channel<Assembly>
+	assemblies: Channel<Genome>
 	short_reads: Channel<ShortReads>
 
 	main:
@@ -32,5 +34,5 @@ workflow PILON_POLISH {
 	def pilon_ch = PILON(fasta_ch.join(bam_ch, by: 'meta'))
 
 	emit:
-	polished: Channel<Assembly> = pilon_ch
+	polished: Channel<Genome> = pilon_ch
 }

@@ -22,9 +22,11 @@ record AssembliesQcParams {
 }
 
 // Assembly to check. meta holds both sample_id and assembler_name.
-record Assembly {
+record Genome {
 	meta: Map
 	fasta: Path
+	gff: Path?
+	info: Path?
 }
 
 // Short reads of the sample of an assembly (same meta as the assembly): read2 is null for single-end reads
@@ -111,7 +113,7 @@ process ASSEMBLIES_MULTIQC {
 workflow ASSEMBLIES_QC {
 	take:
 	opts: AssembliesQcParams
-	assemblies: Channel<Assembly>
+	assemblies: Channel<Genome>
 	short_reads: Channel<ShortReads>
 	long_reads: Channel<LongReads>
 

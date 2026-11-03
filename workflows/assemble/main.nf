@@ -37,10 +37,12 @@ record LongReads {
 }
 
 // Assembly of a sample: assembler output folder and assembly FASTA
-record Assembly {
+record Genome {
 	meta: Map
 	dir: Path
 	fasta: Path
+	gff: Path?
+	info: Path?
 }
 
 
@@ -89,6 +91,6 @@ workflow ASSEMBLE {
 	}
 
 	emit:
-	assemblies: Channel<Assembly> = asm_ch    // meta holds sample_id and assembler_name
+	assemblies: Channel<Genome> = asm_ch    // meta holds sample_id and assembler_name
 		.map({ r -> r + record(meta: r.meta + [assembler_name: name]) })
 }
