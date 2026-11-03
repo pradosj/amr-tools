@@ -4,8 +4,31 @@
 	
 	"properties": {
 		"db": {
-			"type": "string",
-			"description": "Databases folder (as built by wf/db, or the db/ folder of a previous run), or tar archive of it (path or URL), with the sub-folders checkm2/, org_db/ and amrfinderplus/. A database missing from the folder is built; an archive must hold all the needed databases."
+			"title": "Databases",
+			"type": "object",
+			"description": "Databases folder of the pipelines: a database missing from it is built (and saved to <output dir>/db). The folder can also be given as a tar archive of it (path or URL), that must hold all the needed databases.",
+			"properties": {
+				"basedir": {
+					"type": "string",
+					"default": "results/db",
+					"description": "Databases folder, as built by wf/db or the db/ folder of a previous run, or tar archive of it (path or URL)"
+				},
+				"checkm2": {
+					"type": "string",
+					"default": "checkm2",
+					"description": "CheckM2 database, relative to basedir"
+				},
+				"org_db": {
+					"type": "string",
+					"default": "org_db",
+					"description": "orgfinder database, relative to basedir"
+				},
+				"amrfinderplus": {
+					"type": "string",
+					"default": "amrfinderplus",
+					"description": "AMRFinderPlus database, relative to basedir"
+				}
+			}
 		},
 		
 		"csv": {
@@ -105,11 +128,6 @@
 							"args": {
 							  "type": "string",
 							  "default": ""
-							},
-							"db": {
-							  "type": "string",
-								"format": "directory-path",
-								"exists": true
 							}
 						}
 					}
@@ -132,11 +150,6 @@
 							"args": {
 							  "type": "string",
 							  "default": ""
-							},
-							"db": {
-							  "type": "string",
-								"format": "directory-path",
-								"exists": true
 							}
 						}
 					},
@@ -163,12 +176,6 @@
 							"args": {
 							  "type": "string",
 							  "default": ""
-							},
-							"db": {
-							  "type": "string",
-								"format": "directory-path",
-								"exists": true,
-								"description": "AMRFinderPlus database folder (takes precedence over --db)"
 							}
 						}
 					},

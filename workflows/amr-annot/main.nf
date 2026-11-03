@@ -12,14 +12,6 @@ record ToolParams {
 	args: String?
 }
 
-// Options of a tool with a database (params.amr.orgfinder, params.amr.amrfinderplus): db is the database folder
-// (read by the pipelines, see DATABASES), args are given to the tool (fastANI for orgfinder)
-record DbToolParams {
-	skip: Boolean?
-	db: Path?
-	args: String?
-}
-
 // Options of a tool that can also run on the reads
 record ReadsToolParams {
 	skip: Boolean?             // skip on the assemblies
@@ -30,9 +22,9 @@ record ReadsToolParams {
 
 // Options of AMR_ANNOT (params.amr)
 record AmrParams {
-	orgfinder: DbToolParams?
+	orgfinder: ToolParams?
 	speciator: ToolParams?
-	amrfinderplus: DbToolParams?
+	amrfinderplus: ToolParams?
 	mobtyper: ToolParams?
 	plasmidfinder: ReadsToolParams?
 	resfinder: ReadsToolParams?

@@ -11,7 +11,6 @@ include { CHECKM2_PREDICT    } from './modules/checkm2/predict'
 // Options of CheckM2 (params.assemblies_qc.checkm2)
 record Checkm2Params {
 	skip: Boolean?
-	db: Path?                  // CheckM2 database folder (read by the pipelines, see DATABASES)
 	args: String?
 }
 

@@ -55,7 +55,7 @@ Main options:
  - `--no_reads_filter`: assemble the given reads, without filtering them
  - `--no_reads_qc`: skip the reads QC report
  - `--amr.<tool>.skip` and `--amr.<tool>.args`: disable or configure an AMR annotation tool
- - `--db`: databases folder or archive, see [Databases](#databases)
+ - `--db.basedir`: databases folder (default `results/db`, built when missing) or archive, see [Databases](#databases)
  - `--verbose`: also publish the assembler output folders
 
 See `nextflow_schema.json` for all the options.
@@ -63,24 +63,25 @@ See `nextflow_schema.json` for all the options.
 ## Databases
 
 The pipeline uses three databases: CheckM2, the orgfinder reference genomes (built from NCBI, the longest) and AMRFinderPlus.
-A database that is not given is downloaded or built, and saved to `results/db/`. To reuse them, give a databases
-folder with `--db`:
+They are read from the databases folder `--db.basedir` (default `results/db`), each in its sub-folder `--db.checkm2`,
+`--db.org_db`, `--db.amrfinderplus` (paths relative to `basedir`, default `checkm2`, `org_db`, `amrfinderplus`).
+A database missing from the folder is built and saved to `<output dir>/db/`: with the default options, the first run
+fills `results/db` and the next runs reuse it.
 
 ```bash
-# build all the databases once, in a folder, with a tar archive of them (amr-tools-db.tar.gz)
-nextflow run pradosj/amr-tools/wf/db -output-dir /data/amr-tools-db
+# build all the databases once (results/db/), with a tar archive of them (results/amr-tools-db.tar.gz)
+nextflow run pradosj/amr-tools/wf/db
 
-# use them (the db/ folder of a previous run works too: --db=results/db)
-nextflow run pradosj/amr-tools --db=/data/amr-tools-db --reads.ont='ont/*.fastq.gz'
+# use a databases folder, or a tar archive of it given as a path or an URL
+nextflow run pradosj/amr-tools --db.basedir=/data/amr-tools/db --reads.ont='ont/*.fastq.gz'
+nextflow run pradosj/amr-tools --db.basedir=https://example.org/amr-tools-db.tar.gz --reads.ont='ont/*.fastq.gz'
 
-# or use the archive, from a path or an URL
-nextflow run pradosj/amr-tools --db=https://example.org/amr-tools-db.tar.gz --reads.ont='ont/*.fastq.gz'
+# use another version of a database of the folder
+nextflow run pradosj/amr-tools --db.basedir=/data/amr-tools/db --db.amrfinderplus=amrfinderplus_2026-01 --reads.ont='ont/*.fastq.gz'
 ```
 
-The folder holds `checkm2/`, `org_db/` and `amrfinderplus/`; a database missing from it is built. An archive is extracted
-once (cached by `-resume`) and must hold all the needed databases. A single database can also be given with
-`--assemblies_qc.checkm2.db`, `--amr.orgfinder.db` or `--amr.amrfinderplus.db`, which take precedence over `--db`. Databases given with `--db` are
-used as is: rebuild them with `wf/db` to update them (AMRFinderPlus is otherwise downloaded on each run).
+An archive is extracted once (cached by `-resume`) and must hold all the needed databases. The databases of the folder
+are used as is: to update a database, delete its folder (or give another `--db.<name>`) to build it again.
 
 ## HPC
 
@@ -102,7 +103,7 @@ The output folder `results` has the following organization:
 
  - `results/reports`: Folder containing final reports, with QC metrics and annotations
 
- - `results/db`: databases built by the run (`checkm2/`, `org_db/`, `amrfinderplus/`), to give with `--db` in the next runs
+ - `results/db`: databases built by the run (`checkm2/`, `org_db/`, `amrfinderplus/`), found by the next runs with the default `--db.basedir`
  
  - `results/assemblies`: FASTA of assembled genomes, and CheckM2 results
 

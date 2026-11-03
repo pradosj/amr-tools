@@ -6,7 +6,7 @@ include { READS_QC as FILTERED_READS_QC               } from './workflows/reads-
 include { ASSEMBLE; AssemblerParams                   } from './workflows/assemble/main.nf'
 include { ASSEMBLIES_QC; AssembliesQcParams           } from './workflows/assemblies-qc/main.nf'
 include { AMR_ANNOT; AmrParams                        } from './workflows/amr-annot/main.nf'
-include { DATABASES                                   } from './subworkflows/db/main.nf'
+include { DATABASES; DbParams                         } from './subworkflows/db/main.nf'
 include { IDENTITY as COPY_ASSEMBLY_FASTA             } from './modules/identity/main.nf'
 include { IDENTITY as COPY_SHORT_READS                } from './modules/identity/main.nf'
 include { IDENTITY as COPY_LONG_READS                 } from './modules/identity/main.nf'
@@ -30,7 +30,7 @@ record AssembliesParams {
 
 params {
 	verbose: Boolean = false
-	db:      String? = null    // databases folder, or tar archive of it (path or URL): checkm2/, org_db/, amrfinderplus/
+	db:      DbParams = record(basedir: 'results/db', checkm2: 'checkm2', org_db: 'org_db', amrfinderplus: 'amrfinderplus')    // databases folder (built when missing), or tar archive of it (path or URL)
 	csv:     Path? = null
 	reads:   ReadsParams = record(ont: null, illumina: null)
 	assemblies: AssembliesParams = record(fasta: null, info: null)
@@ -38,11 +38,11 @@ params {
 	no_reads_qc: Boolean = false
 	reads_filter: ReadsFilterParams = record(long_limit: 1_000_000_000, short_limit: 1_000_000_000, chopper_args: '--quality 15 --minlength 200')
 	assembler: AssemblerParams = record(name: 'long_flye_medaka', args: record(flye: null, medaka: '--bacteria', spades: null, unicycler: null, hybracter: null))
-	assemblies_qc: AssembliesQcParams = record(checkm2: record(skip: false, db: null, args: ''))
+	assemblies_qc: AssembliesQcParams = record(checkm2: record(skip: false, args: ''))
 	amr: AmrParams = record(
-		orgfinder:     record(skip: false, db: null, args: ''),
+		orgfinder:     record(skip: false, args: ''),
 		speciator:     record(skip: true, args: ''),
-		amrfinderplus: record(skip: false, db: null, args: ''),
+		amrfinderplus: record(skip: false, args: ''),
 		mobtyper:      record(skip: false, args: ''),
 		plasmidfinder: record(skip: false, skip_longread: false, skip_shortread: false, args: ''),
 		resfinder:     record(skip: false, skip_longread: false, skip_shortread: false, args: ''),
@@ -211,12 +211,9 @@ workflow {
 	def asm_short_reads = asm_keys.join(sr_rec, by: 'meta').map({ r -> record(meta: r.asm_meta, read1: r.read1, read2: r.read2) })
 	def asm_long_reads = asm_keys.join(lr_rec, by: 'meta').map({ r -> record(meta: r.asm_meta, reads: r.reads) })
 
-	// Databases: given, from --db, or built
+	// Databases: from the databases folder --db.basedir, or built
 	def dbs = DATABASES(
 		params.db,
-		params.assemblies_qc?.checkm2?.db,
-		params.amr?.orgfinder?.db,
-		params.amr?.amrfinderplus?.db,
 		!params.assemblies_qc?.checkm2?.skip,
 		!params.amr?.orgfinder?.skip,
 		!params.amr?.amrfinderplus?.skip
