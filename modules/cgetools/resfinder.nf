@@ -8,8 +8,8 @@ process RESFINDER {
     time 1.h
 
     input:
-    // either an assembly (fasta), short reads (reads, read2) or long reads
-    record(meta: Map, fasta: Path?, reads: Path?, read2: Path?, long_reads: Path?, args: String?)
+    // either an assembly (fasta), short reads (short_read1, short_read2) or long reads
+    record(meta: Map, fasta: Path?, short_read1: Path?, short_read2: Path?, long_reads: Path?, args: String?)
 
     output:
     record(
@@ -20,8 +20,8 @@ process RESFINDER {
     script:
     def input = fasta ? "-ifa ${fasta}"
         : long_reads ? "--nanopore -ifq ${long_reads}"
-        : read2 ? "-ifq ${reads} ${read2}"
-        : "-ifq ${reads}"
+        : short_read2 ? "-ifq ${short_read1} ${short_read2}"
+        : "-ifq ${short_read1}"
     """
     python -m resfinder ${args ?: ''} ${input} --kma_threads ${task.cpus} -acq -d -j resfinder/data.json -o 'resfinder/'
     """

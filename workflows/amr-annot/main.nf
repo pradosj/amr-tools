@@ -43,14 +43,14 @@ record Genome {
 
 // Short reads sample: read2 is null for single-end reads
 record ShortReads {
-	meta: Map
-	reads: Path
+	meta: Map?
+	read1: Path
 	read2: Path?
 }
 
 // Long reads sample: one FASTQ per sample
 record LongReads {
-	meta: Map
+	meta: Map?
 	reads: Path
 }
 

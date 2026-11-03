@@ -213,7 +213,7 @@ workflow {
 	def asm_qc_ch = ASSEMBLIES_QC(params.assemblies_qc, asm_rec, asm_short_reads, asm_long_reads)
 
 	// Finally run AMR annotations
-	def amr_report_ch = AMR_ANNOT(params.amr, asm_rec, sr_rec.map({ r -> record(meta: r.meta, reads: r.read1, read2: r.read2) }), lr_rec)
+	def amr_report_ch = AMR_ANNOT(params.amr, asm_rec, sr_rec, lr_rec)
 
 	publish:
 	checkm2_db = asm_qc_ch.checkm2_db

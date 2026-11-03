@@ -21,14 +21,14 @@ record AmrReadsParams {
 
 // Short reads sample: read2 is null for single-end reads
 record ShortReads {
-	meta: Map
-	reads: Path
+	meta: Map?
+	read1: Path
 	read2: Path?
 }
 
 // Long reads sample: one FASTQ per sample
 record LongReads {
-	meta: Map
+	meta: Map?
 	reads: Path
 }
 
@@ -54,11 +54,11 @@ workflow AMR_ANNOT_READS {
 	}
 	def plasmidfinder_short_ch = channel.empty()
 	if (!opts.plasmidfinder?.skip_shortread) {
-		plasmidfinder_short_ch = PLASMIDFINDER_SHORTREAD(short_reads.map({ r -> r + record(args: opts.plasmidfinder?.args) }))
+		plasmidfinder_short_ch = PLASMIDFINDER_SHORTREAD(short_reads.map({ r -> record(meta: r.meta, short_read1: r.read1, short_read2: r.read2, args: opts.plasmidfinder?.args) }))
 	}
 	def resfinder_short_ch = channel.empty()
 	if (!opts.resfinder?.skip_shortread) {
-		resfinder_short_ch = RESFINDER_SHORTREAD(short_reads.map({ r -> r + record(args: opts.resfinder?.args) }))
+		resfinder_short_ch = RESFINDER_SHORTREAD(short_reads.map({ r -> record(meta: r.meta, short_read1: r.read1, short_read2: r.read2, args: opts.resfinder?.args) }))
 	}
 
 	emit:
