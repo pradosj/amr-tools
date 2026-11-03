@@ -23,16 +23,16 @@ record AssemblerParams {
 	args: AssemblerArgs?
 }
 
-// Short reads sample: read2 is null for single-end reads
+// Illumina reads of a sample: read2 is null for single-end reads
 record ShortReads {
-	meta: Map
-	reads: Path
+	meta: Map?
+	read1: Path
 	read2: Path?
 }
 
-// Long reads sample: one FASTQ per sample
+// ONT reads of a sample: one FASTQ
 record LongReads {
-	meta: Map
+	meta: Map?
 	reads: Path
 }
 
@@ -65,15 +65,15 @@ workflow ASSEMBLE {
 	} else if (name == 'long_hybracter') {
 		asm_ch = HYBRACTER(long_reads.map({ r -> record(meta: r.meta, long_reads: r.reads, args: args?.hybracter) }))
 	} else if (name == 'short_unicycler') {
-		asm_ch = UNICYCLER(short_reads.map({ r -> record(meta: r.meta, short_reads: r.reads, short_reads2: r.read2, args: args?.unicycler) }))
+		asm_ch = UNICYCLER(short_reads.map({ r -> record(meta: r.meta, short_reads: r.read1, short_reads2: r.read2, args: args?.unicycler) }))
 	} else if (name == 'short_spades') {
-		asm_ch = SPADES(short_reads.map({ r -> record(meta: r.meta, short_reads: r.reads, short_reads2: r.read2, args: args?.spades) }))
+		asm_ch = SPADES(short_reads.map({ r -> record(meta: r.meta, short_reads: r.read1, short_reads2: r.read2, args: args?.spades) }))
 	} else if (name == 'hybrid_unicycler') {
 		// samples with a single type of reads are assembled with it alone
 		asm_ch = UNICYCLER(
 			short_reads
 				.join(long_reads.map({ r -> record(meta: r.meta, long_reads: r.reads) }), by: 'meta', remainder: true)
-				.map({ r -> record(meta: r.meta, short_reads: r.reads, short_reads2: r.read2, long_reads: r.long_reads, args: args?.unicycler) })
+				.map({ r -> record(meta: r.meta, short_reads: r.read1, short_reads2: r.read2, long_reads: r.long_reads, args: args?.unicycler) })
 		)
 	} else if (name == 'hybrid_hybracter') {
 		// samples with long reads only are assembled with `hybracter long-single`,
@@ -82,7 +82,7 @@ workflow ASSEMBLE {
 			short_reads
 				.join(long_reads.map({ r -> record(meta: r.meta, long_reads: r.reads) }), by: 'meta', remainder: true)
 				.filter({ r -> r.long_reads != null })
-				.map({ r -> record(meta: r.meta, short_reads: r.reads, short_reads2: r.read2, long_reads: r.long_reads, args: args?.hybracter) })
+				.map({ r -> record(meta: r.meta, short_reads: r.read1, short_reads2: r.read2, long_reads: r.long_reads, args: args?.hybracter) })
 		)
 	} else if (name == 'hybrid_flye_medaka_pilon') {
 		asm_ch = HYBRID_FLYE_MEDAKA_PILON(short_reads, long_reads, args?.flye, args?.medaka)

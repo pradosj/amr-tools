@@ -7,16 +7,16 @@ include { PILON_POLISH as PILON_POLISH_ROUND2 } from './subworkflows/pilon_polis
 include { PILON_POLISH as PILON_POLISH_ROUND3 } from './subworkflows/pilon_polish'
 
 
-// Short reads sample: read2 is null for single-end reads
+// Illumina reads of a sample: read2 is null for single-end reads
 record ShortReads {
-	meta: Map
-	reads: Path
+	meta: Map?
+	read1: Path
 	read2: Path?
 }
 
-// Long reads sample: one FASTQ per sample
+// ONT reads of a sample: one FASTQ
 record LongReads {
-	meta: Map
+	meta: Map?
 	reads: Path
 }
 

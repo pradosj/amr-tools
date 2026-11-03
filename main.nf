@@ -151,7 +151,7 @@ workflow {
 		samples
 			.filter({ s -> s.reads_short_1 })
 			.map({ s -> record(meta: [sample_id: s.sample_id], file1: s.reads_short_1, file2: s.reads_short_2) })
-	).map({ r -> record(meta: r.meta, reads: r.file1, read2: r.file2) })
+	).map({ r -> record(meta: r.meta, read1: r.file1, read2: r.file2) })
 	def lr_copy = COPY_LONG_READS(
 		samples
 			.filter({ s -> s.reads_long })
@@ -171,14 +171,14 @@ workflow {
 
 	// Filter reads
 	if (!params.no_reads_filter) {
-		def rd_flt_ch = READS_FILTER(params.reads_filter, sr_rec.map({ r -> record(meta: r.meta, read1: r.reads, read2: r.read2) }), lr_rec)
-		sr_rec = rd_flt_ch.short_filtered.map({ r -> record(meta: r.meta, reads: r.read1, read2: r.read2) })
+		def rd_flt_ch = READS_FILTER(params.reads_filter, sr_rec, lr_rec)
+		sr_rec = rd_flt_ch.short_filtered
 		lr_rec = rd_flt_ch.long_filtered
 	}
 	def reads_multiqc_ch = channel.empty()
 	if (!params.no_reads_qc) {
 		reads_multiqc_ch = FILTERED_READS_QC(
-			sr_rec.map({ r -> record(meta: r.meta, read1: r.reads, read2: r.read2) }),
+			sr_rec,
 			lr_rec
 		).multiqc
 	}
@@ -206,14 +206,14 @@ workflow {
 
 	// Reads of the sample of each assembly (a sample has a single assembly)
 	def asm_keys = asm_rec.map({ r -> record(meta: r.meta.subMap(['sample_id']), asm_meta: r.meta) })
-	def asm_short_reads = asm_keys.join(sr_rec, by: 'meta').map({ r -> record(meta: r.asm_meta, reads: r.reads, read2: r.read2) })
+	def asm_short_reads = asm_keys.join(sr_rec, by: 'meta').map({ r -> record(meta: r.asm_meta, reads: r.read1, read2: r.read2) })
 	def asm_long_reads = asm_keys.join(lr_rec, by: 'meta').map({ r -> record(meta: r.asm_meta, reads: r.reads) })
 
 	// Compute assemblies QC stats
 	def asm_qc_ch = ASSEMBLIES_QC(params.assemblies_qc, asm_rec, asm_short_reads, asm_long_reads)
 
 	// Finally run AMR annotations
-	def amr_report_ch = AMR_ANNOT(params.amr, asm_rec, sr_rec, lr_rec)
+	def amr_report_ch = AMR_ANNOT(params.amr, asm_rec, sr_rec.map({ r -> record(meta: r.meta, reads: r.read1, read2: r.read2) }), lr_rec)
 
 	publish:
 	checkm2_db = asm_qc_ch.checkm2_db
@@ -241,7 +241,7 @@ output {
 	}
 	reads_short_filtered: Channel<Record> {
 		path { r ->
-			r.reads >> "reads/filtered_short/${r.meta.sample_id}_R1.fastq.gz"
+			r.read1 >> "reads/filtered_short/${r.meta.sample_id}_R1.fastq.gz"
 			r.read2 >> "reads/filtered_short/${r.meta.sample_id}_R2.fastq.gz"
 		}
 	}

@@ -5,10 +5,10 @@ include { BWA_MEM     } from './modules/bwa/mem'
 include { PILON       } from './modules/pilon'
 
 
-// Short reads sample: read2 is null for single-end reads
+// Illumina reads of a sample: read2 is null for single-end reads
 record ShortReads {
-	meta: Map
-	reads: Path
+	meta: Map?
+	read1: Path
 	read2: Path?
 }
 
@@ -30,7 +30,7 @@ workflow PILON_POLISH {
 	main:
 	def fasta_ch = assemblies.map({ r -> record(meta: r.meta, fasta: r.fasta) })
 	def index_ch = BWA_INDEX(fasta_ch)
-	def bam_ch = BWA_MEM(index_ch.join(short_reads, by: 'meta'))
+	def bam_ch = BWA_MEM(index_ch.join(short_reads.map({ r -> record(meta: r.meta, reads: r.read1, read2: r.read2) }), by: 'meta'))
 	def pilon_ch = PILON(fasta_ch.join(bam_ch, by: 'meta'))
 
 	emit:

@@ -19,9 +19,7 @@ workflow {
 	log.info(paramsSummaryLog(workflow))
 
 	def reads = INPUT_READS(params.reads?.ont, params.reads?.illumina)
-	// short reads records of the not yet converted workflow
-	def short_reads = reads.short_reads.map({ r -> record(meta: r.meta, reads: r.read1, read2: r.read2) })
-	def assemblies = ASSEMBLE(params.assembler, short_reads, reads.long_reads)
+	def assemblies = ASSEMBLE(params.assembler, reads.short_reads, reads.long_reads)
 
 	publish:
 	assemblies_fasta = assemblies
