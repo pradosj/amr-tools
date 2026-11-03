@@ -38,16 +38,24 @@ process FASTANI_TO_ORGFINDER {
 	stageAs(script_file, 'fastani2orgfinder.R')
 
 	output:
-	record(meta: meta, tsv: file('output.orgfinder'))
+	record(
+		meta: meta,
+		tsv: file('output.orgfinder'),
+		org_name: env('ORG_NAME'),    // best hit: organism name, assembly accession and ANI (empty when no hit)
+		org_acc: env('ORG_ACC'),
+		ani: env('ORG_ANI')
+	)
 
 	script:
 	"""
 	Rscript fastani2orgfinder.R
+	source org.env
 	"""
 
 	stub:
 	"""
 	touch output.orgfinder
+	export ORG_NAME="xxx" ORG_ACC="xxx" ORG_ANI="90"
 	"""
 }
 
@@ -79,5 +87,5 @@ workflow ORGFINDER {
 
 	emit:
 	fastani: Channel<Record>   = fastani_ch      // records with fields meta, tsv
-	orgfinder: Channel<Record> = orgfinder_ch    // records with fields meta, tsv
+	orgfinder: Channel<Record> = orgfinder_ch    // records with fields meta, tsv, org_name, org_acc, ani
 }

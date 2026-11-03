@@ -16,9 +16,10 @@ out <- readr::read_tsv(fastani_file,col_names = c("query","ref","ANI","bi_frag",
 	dplyr::relocate(query,assembly_acc) 
 readr::write_tsv(out,file='output.orgfinder')
 
-
-
-
-
-
-
+# Best hit (highest ANI): accession, organism name and ANI, as shell variables
+best <- dplyr::slice_max(out,ANI,n=1,with_ties=FALSE)
+writeLines(c(
+	sprintf('ORG_ACC="%s"',c(best$assembly_acc,"")[1]),
+	sprintf('ORG_NAME="%s"',c(best$org_name,"")[1]),
+	sprintf('ORG_ANI="%s"',c(best$ANI,"")[1])
+),"org.env")
