@@ -196,6 +196,34 @@ process CORE_GENOME {
 }
 
 
+// A file or folder of the report data, and its name in the report_data folder
+record NamedFile {
+	name: String
+	path: Path
+}
+
+// Gather the files of the report in the report_data folder, each under its given name
+process REPORT_FOLDER {
+	label 'local'
+
+	input:
+	record(meta: Map, entries: List<NamedFile>)
+
+	stage:
+	stageAs(entries.collect({ e -> e.path }), 'in/?/*')    // files may share the same name
+
+	output:
+	record(meta: meta, dir: file('report_data'))
+
+	script:
+	def cmds = entries.collect({ e -> "mv '${e.path}' 'report_data/${e.name}'" }).join('\n')
+	"""
+	mkdir report_data
+	${cmds}
+	"""
+}
+
+
 // Lineage of a set of plasmids: rotate the plasmids on a shared region, annotate them, find their core
 // genes (typed with pyMLST) and their core genome (compared with FastANI), and render an HTML report
 workflow PLASMID_LINEAGE {
@@ -268,8 +296,8 @@ workflow PLASMID_LINEAGE {
 		args: opts.fastani_args ?: '--fragLen 500'
 	) }))
 
-	// HTML report of each set of plasmids
-	def report_ch = QUARTO_RENDER(
+	// HTML report of each set of plasmids, from its files gathered in a folder under explicit names
+	def report_data_ch = REPORT_FOLDER(
 		fasta_ch.map({ r -> record(meta: r.meta, plasmids: r.fasta) })
 			.join(self_ch.map({ r -> record(meta: r.meta, self_blast: r.tsv) }), by: 'meta')
 			.join(rotated_ch.map({ r -> record(meta: r.meta, rotated: r.fasta) }), by: 'meta')
@@ -280,19 +308,30 @@ workflow PLASMID_LINEAGE {
 			.join(core_genome_ch.map({ r -> record(meta: r.meta, core_genome_tsv: r.tsv, genomes_tsv: r.genomes_tsv) }), by: 'meta')
 			.join(fastani_ch.map({ r -> record(meta: r.meta, fastani: r.tsv) }), by: 'meta')
 			.combine(amr.multireport)
-			.map({ r, m -> record(
-				meta: r.meta,
-				template: file("${moduleDir}/assets/plasmid_lineage.qmd"),
-				extra: assets,
-				files: [
-					r.plasmids, r.self_blast, r.rotated, r.rotated_blast, r.dir,
-					r.genes_tsv, r.clusters_tsv, r.strains_tsv, r.pymlst,
-					r.core_genome_tsv, r.genomes_tsv, r.fastani,
-					m.resistances_tsv as Path, m.plasmidfinder_hits_tsv as Path
-				],
-				args: "-P 'name:${r.meta.sample_id}'" + (n_core != null ? " -P 'core_genome_count:${n_core}'" : '')
-			) })
+			.map({ r, m -> record(meta: r.meta, entries: [
+				record(name: 'plasmids.fasta', path: r.plasmids),
+				record(name: 'plasmids.self.blastn', path: r.self_blast),
+				record(name: 'rotated.fasta', path: r.rotated),
+				record(name: 'rotated.self.blastn', path: r.rotated_blast),
+				record(name: 'prokka', path: r.dir),
+				record(name: 'core_genes.tsv', path: r.genes_tsv),
+				record(name: 'core_clusters.tsv', path: r.clusters_tsv),
+				record(name: 'pymlst_strains.tsv', path: r.strains_tsv),
+				record(name: 'pymlst', path: r.pymlst),
+				record(name: 'core_genome.tsv', path: r.core_genome_tsv),
+				record(name: 'fastani_genomes.tsv', path: r.genomes_tsv),
+				record(name: 'fastani.tsv', path: r.fastani),
+				record(name: 'multitable_resistances.tsv', path: m.resistances_tsv as Path),
+				record(name: 'multitable_plasmidfinder_hits.tsv', path: m.plasmidfinder_hits_tsv as Path)
+			]) })
 	)
+	def report_ch = QUARTO_RENDER(report_data_ch.map({ r -> record(
+		meta: r.meta,
+		template: file("${moduleDir}/assets/plasmid_lineage.qmd"),
+		extra: assets,
+		files: [r.dir],
+		args: "-P 'name:${r.meta.sample_id}'" + (n_core != null ? " -P 'core_genome_count:${n_core}'" : '')
+	) }))
 
 	emit:
 	rotated: Channel<Record>         = rotated_ch         // records with fields meta, fasta
