@@ -29,16 +29,16 @@ record Genome {
 	info: Path?
 }
 
-// Short reads of the sample of an assembly (same meta as the assembly): read2 is null for single-end reads
+// Illumina reads of the sample of an assembly (same meta as the assembly): read2 is null for single-end reads
 record ShortReads {
-	meta: Map
-	reads: Path
+	meta: Map?
+	read1: Path
 	read2: Path?
 }
 
-// Long reads of the sample of an assembly (same meta as the assembly)
+// ONT reads of the sample of an assembly (same meta as the assembly): one FASTQ
 record LongReads {
-	meta: Map
+	meta: Map?
 	reads: Path
 }
 

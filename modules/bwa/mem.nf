@@ -8,8 +8,8 @@ process BWA_MEM {
     time 1.h + 1.h * (task.attempt - 1)
 
     input:
-    // index: folder produced by BWA_INDEX; reads, read2: short reads
-    record(meta: Map, index: Path, reads: Path, read2: Path?, args: String?)
+    // index: folder produced by BWA_INDEX; read1, read2: short reads (ShortReads)
+    record(meta: Map, index: Path, read1: Path, read2: Path?, args: String?)
 
     output:
     record(
@@ -21,7 +21,7 @@ process BWA_MEM {
     script:
     def r2 = read2 ? "${read2}" : ''
     """
-    bwa mem ${args ?: ''} -t ${task.cpus} ${index}/index ${reads} ${r2} \\
+    bwa mem ${args ?: ''} -t ${task.cpus} ${index}/index ${read1} ${r2} \\
     | samtools sort -@ ${task.cpus} --write-index -O BAM -o out.bam##idx##out.bam.bai
     """
 

@@ -30,7 +30,7 @@ workflow PILON_POLISH {
 	main:
 	def fasta_ch = assemblies.map({ r -> record(meta: r.meta, fasta: r.fasta) })
 	def index_ch = BWA_INDEX(fasta_ch)
-	def bam_ch = BWA_MEM(index_ch.join(short_reads.map({ r -> record(meta: r.meta, reads: r.read1, read2: r.read2) }), by: 'meta'))
+	def bam_ch = BWA_MEM(index_ch.join(short_reads, by: 'meta'))
 	def pilon_ch = PILON(fasta_ch.join(bam_ch, by: 'meta'))
 
 	emit:
