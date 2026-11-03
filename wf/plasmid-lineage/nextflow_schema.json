@@ -1,0 +1,199 @@
+{
+	"$schema": "https://json-schema.org/draft/2020-12/schema",
+	"type": "object",
+	"required": ["fasta"],
+	"properties": {
+		"fasta": {
+			"type": "string",
+			"format": "file-path-pattern",
+			"exists": true,
+			"pattern": "^\\S+(\\.(fasta|fa|fna)|\\{\\S+\\})$",
+			"description": "Path to FASTA files containing the plasmids to compare (all the sequences form one set; sequence ids must be unique)"
+		},
+		"name": {
+			"type": "string",
+			"default": "plasmids",
+			"description": "Name of the set of plasmids, used as output folder"
+		},
+		"lineage": {
+			"title": "Options of the plasmid lineage analysis",
+			"type": "object",
+			"properties": {
+				"core_genome_count": {
+					"type": "integer",
+					"minimum": 1,
+					"description": "Minimum number of plasmids sharing a core gene or a core genome region (default: 80% of the plasmids)"
+				},
+				"blastn_args": {
+					"type": "string",
+					"default": "-perc_identity 70 -evalue 1e-3 -subject_besthit",
+					"description": "Options of BLASTN for the alignment of the plasmids"
+				},
+				"blastp_args": {
+					"type": "string",
+					"default": "-subject_besthit",
+					"description": "Options of BLASTP for the alignment of the proteins"
+				},
+				"prokka_args": {
+					"type": "string",
+					"default": "--kingdom Bacteria",
+					"description": "Options of prokka"
+				},
+				"pymlst_args": {
+					"type": "string",
+					"default": "--coverage 0.85 --identity 0.85",
+					"description": "Options of `wgMLST add`"
+				},
+				"fastani_args": {
+					"type": "string",
+					"default": "--fragLen 500",
+					"description": "Options of FastANI for the ANI of the core genomes"
+				}
+			}
+		},
+		"amr": {
+			"title": "Parameters for tool amr annotation",
+			"type": "object",
+			"properties": {
+					"orgfinder": {
+					  "type": "object",
+						"properties": {
+							"skip": {
+							  "type": "boolean",
+							  "default": true
+							},
+							"args": {
+							  "type": "string",
+							  "default": ""
+							},
+							"db": {
+							  "type": "string",
+								"format": "directory-path",
+								"exists": true
+							}
+						}
+					},
+					"speciator": {
+					  "type": "object",
+						"properties": {
+							"skip": {
+							  "type": "boolean",
+							  "default": true
+							},
+							"args": {
+							  "type": "string",
+							  "default": ""
+							}
+						}
+					},
+					"amrfinderplus": {
+					  "type": "object",
+						"properties": {
+							"skip": {
+							  "type": "boolean",
+							  "default": false
+							},
+							"args": {
+							  "type": "string",
+							  "default": ""
+							}
+						}
+					},
+					"mobtyper": {
+					  "type": "object",
+						"properties": {
+							"skip": {
+							  "type": "boolean",
+							  "default": false
+							},
+							"args": {
+							  "type": "string",
+							  "default": ""
+							}
+						}
+					},
+					"plasmidfinder": {
+					  "type": "object",
+						"properties": {
+							"skip": {
+							  "type": "boolean",
+							  "default": false
+							},
+							"skip_shortread": {
+							  "type": "boolean",
+							  "default": true
+							},
+							"skip_longread": {
+							  "type": "boolean",
+							  "default": true
+							},
+							"args": {
+							  "type": "string",
+							  "default": ""
+							}
+						}
+					},
+					"resfinder": {
+					  "type": "object",
+						"properties": {
+							"skip": {
+							  "type": "boolean",
+							  "default": false
+							},
+							"skip_shortread": {
+							  "type": "boolean",
+							  "default": true
+							},
+							"skip_longread": {
+							  "type": "boolean",
+							  "default": true
+							},
+							"args": {
+							  "type": "string",
+							  "default": ""
+							}
+						}
+					},
+					"cgemlst": {
+					  "type": "object",
+						"properties": {
+							"skip": {
+							  "type": "boolean",
+							  "default": true
+							},
+							"args": {
+							  "type": "string",
+							  "default": ""
+							}
+						}
+					},
+					"MLST": {
+					  "type": "object",
+						"properties": {
+							"skip": {
+							  "type": "boolean",
+							  "default": true
+							},
+							"args": {
+							  "type": "string",
+							  "default": ""
+							}
+						}
+					},
+					"prokka": {
+					  "type": "object",
+						"properties": {
+							"skip": {
+							  "type": "boolean",
+							  "default": true
+							},
+							"args": {
+							  "type": "string",
+							  "default": ""
+							}
+						}
+					}
+			}
+		}
+	}
+}

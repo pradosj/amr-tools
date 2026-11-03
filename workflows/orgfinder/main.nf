@@ -75,7 +75,7 @@ workflow ORGFINDER {
 	// Compute ANI of the genomes against all reference genomes
 	def fastani_ch = FASTANI(
 		genomes
-			.map({ r -> record(meta: r.meta, query: r.fasta) })
+			.map({ r -> record(meta: r.meta, query: [r.fasta]) })
 			.combine(refs: db.map({ d -> d.fasta }))
 			.map({ r -> r + record(args: fastani_args) })
 	)

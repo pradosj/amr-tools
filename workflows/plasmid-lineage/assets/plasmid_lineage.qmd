@@ -1,0 +1,344 @@
+---
+title: "Plasmid lineage: `r params$name`"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+format:
+  html:
+    toc: true
+    embed-resources: true
+    code-fold: true
+params:
+  name: "plasmids"           # name of the set of plasmids (sample_id of the annotation tables)
+  core_genome_count: null    # minimum number of plasmids sharing a core gene or region (null: 80% of the plasmids)
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+source("assets/lib_plasmid_lineage.R")
+library(tidygraph)
+library(ggraph)
+library(patchwork)
+
+fa <- read_fasta("plasmids.fasta")
+FA <- read_fasta("rotated.fasta")
+n_plasmids <- length(FA)
+n_core <- core_count(params$core_genome_count, n_plasmids)
+fig_h <- function(min = 4, per_seq = 0.5) max(min, per_seq * n_plasmids)
+
+seqlen <- tibble(seq = names(FA), seqlen = width(FA))
+```
+
+```{r annotations}
+# Positions of the AMR and plasmid typing annotations of the rotated plasmids
+pos_pat <- "([0-9]+)(-|\\.\\.)([0-9]+)(:([-+]))?"
+read_annotations <- function(f) {
+	read_tsv(f, col_types = cols(.default = "c")) |>
+		filter(sample_id == params$name) |>
+		mutate(
+			seq = contig_id,
+			start = str_extract(position, pos_pat, 1) |> as.integer(),
+			end = str_extract(position, pos_pat, 3) |> as.integer(),
+			strand = str_extract(position, pos_pat, 5)
+		)
+}
+res_gff <- read_annotations("multitable_resistances.tsv")
+inc_gff <- read_annotations("multitable_plasmidfinder_hits.tsv")
+
+plasmid_types <- tibble(contig_id = names(FA)) |>
+	left_join(
+		inc_gff |>
+			group_by(contig_id) |>
+			summarise(plasmid_types = str_c(sort(unique(plasmid_type)), collapse = ",")),
+		by = "contig_id"
+	) |>
+	mutate(plasmid_types = replace_na(plasmid_types, "none"))
+```
+
+# Plasmids
+
+`r n_plasmids` plasmids. Core genes and core genome regions are shared by at least `r n_core` plasmids.
+
+```{r}
+seqlen |>
+	left_join(plasmid_types, by = c(seq = "contig_id")) |>
+	left_join(
+		res_gff |>
+			group_by(seq) |>
+			summarise(resistances = str_c(sort(unique(resistance_name)), collapse = ", ")),
+		by = "seq"
+	) |>
+	knitr::kable(col.names = c("Plasmid", "Length (bp)", "Plasmid types", "Resistances"))
+```
+
+
+# ANI of the plasmids
+
+Mean identity of the BLASTN alignments (≥500 bp) of each pair of plasmids. The plasmids are ordered by
+single linkage clustering of their ANI in the rest of the report.
+
+```{r}
+#| fig-height: !expr fig_h(6)
+#| fig-width: !expr fig_h(6)
+aln <- read_blast6("plasmids.self.blastn")
+ani <- blast_ani(aln)
+ani_h <- ani_hclust(ani)
+ani_levels <- ani_h$labels[ani_h$order]
+
+ani |>
+	mutate(across(c(query_id, subject_id), ~ factor(., ani_levels))) |>
+	ggplot(aes(x = query_id, y = subject_id, fill = ani)) +
+		geom_tile() +
+		coord_equal() +
+		scale_fill_continuous(limits = c(98, 100), oob = scales::squish) +
+		theme(axis.text.x = element_text(angle = 30, hjust = 1, vjust = 1)) +
+		xlab("") + ylab("")
+```
+
+```{r}
+#| fig-height: 5
+plot(ani_h, xlab = "", sub = "", main = "Single linkage clustering on 100 - ANI")
+```
+
+
+# Alignments
+
+## Input plasmids
+
+```{r}
+#| fig-height: !expr fig_h(8, 1.2)
+#| fig-width: !expr fig_h(8, 1.2)
+aln |>
+	mutate(across(c(query_id, subject_id), ~ factor(., ani_levels))) |>
+	gg_pw_alignment()
+```
+
+## Rotated plasmids
+
+The plasmids are rotated to start at the longest region (≥1 kb) shared by at least 80% of them, on the
+strand of this region.
+
+```{r}
+#| fig-height: !expr fig_h(8, 1.2)
+#| fig-width: !expr fig_h(8, 1.2)
+ALN <- read_blast6("rotated.self.blastn") |>
+	mutate(across(c(query_id, subject_id), ~ factor(., ani_levels)))
+gg_pw_alignment(ALN)
+```
+
+Alignments (≥1 kb) of consecutive plasmids. The labels give the number of mismatches and of gap openings
+of each alignment. Resistance genes are drawn in red, plasmid replicons in yellow.
+
+```{r}
+#| fig-height: !expr fig_h(6, 0.6)
+#| fig-width: 15
+polygons <- alignment_polygons(ALN, ani_levels)
+seqlen_f <- mutate(seqlen, seq = factor(seq, ani_levels))
+gg_alignment_polygons(polygons, seqlen_f) +
+	geom_segment(aes(x = start, xend = end, y = seq, yend = seq), data = mutate(inc_gff, seq = factor(seq, ani_levels)), linewidth = 2, color = "yellow") +
+	geom_segment(aes(x = start, xend = end, y = seq, yend = seq), data = mutate(res_gff, seq = factor(seq, ani_levels)), linewidth = 2, color = "red") +
+	theme(panel.grid = element_blank())
+```
+
+
+# Core genes
+
+Clusters of reciprocal best BLASTP hits (covering >75% of the protein) of the prokka proteins, with one
+gene per plasmid. Core genes are in clusters found in at least `r n_core` plasmids.
+
+```{r}
+#| fig-height: 4
+clusters <- read_tsv("core_clusters.tsv", show_col_types = FALSE)
+p1 <- clusters |>
+	ggplot(aes(x = distinct_plasmid)) +
+		geom_bar() +
+		geom_vline(xintercept = n_core - 0.5, linetype = "dashed") +
+		xlab("Number of plasmids") + ylab("Number of gene clusters")
+p2 <- clusters |>
+	ggplot(aes(x = distinct_plasmid, y = mean_width)) +
+		geom_jitter(width = 0.2, height = 0) +
+		geom_vline(xintercept = n_core - 0.5, linetype = "dashed") +
+		xlab("Number of plasmids") + ylab("Mean gene length (bp)")
+p1 + p2
+```
+
+`r sum(clusters$is_core)` core genes.
+
+
+# pyMLST typing of the core genes
+
+```{r}
+strains <- read_tsv("pymlst_strains.tsv", show_col_types = FALSE)
+pyDistMat <- read.table("pymlst/distance.tsv", sep = "\t", skip = 1, row.names = 1, check.names = FALSE) |>
+	data.matrix()
+rownames(pyDistMat) <- strains$contig_id[match(rownames(pyDistMat), strains$strain)]
+colnames(pyDistMat) <- rownames(pyDistMat)
+h <- hclust(as.dist(pyDistMat), method = "single")
+
+mlst <- read.table("pymlst/mlst.tsv", sep = "\t", comment.char = "", header = TRUE, check.names = FALSE, colClasses = "character") |>
+	dplyr::rename(gene_id = `#GeneId`) |>
+	pivot_longer(!gene_id, names_to = "strain", values_to = "allele") |>
+	left_join(strains, by = "strain") |>
+	mutate(plasmid = factor(contig_id, h$labels[h$order])) |>
+	filter(!is.na(allele), allele != "") |>
+	group_by(gene_id) |>
+	mutate(allele_idx = as.integer(factor(allele))) |>
+	ungroup()
+```
+
+## Minimum spanning tree
+
+Number of distinct alleles between the plasmids.
+
+```{r}
+#| fig-height: 6
+#| fig-width: 8
+as_tbl_graph(pyDistMat + 1) |>
+	left_join(plasmid_types, by = c(name = "contig_id")) |>
+	convert(to_minimum_spanning_tree, weights = weight) |>
+	ggraph("stress") +
+		geom_edge_link(aes(label = weight - 1), color = "grey", label_size = 4, angle_calc = "along", label_dodge = unit(3, "mm")) +
+		geom_node_point(aes(color = plasmid_types), size = 5) +
+		geom_node_text(aes(label = name), size = 3, repel = TRUE, max.overlaps = Inf, point.padding = unit(4, "mm"), segment.colour = "lightgrey") +
+		theme_void()
+```
+
+## Alleles
+
+```{r}
+#| fig-height: !expr fig_h(4, 0.3)
+#| fig-width: 15
+mlst |>
+	ggplot(aes(x = gene_id, y = plasmid, fill = factor(allele_idx))) +
+		geom_tile() +
+		scale_fill_brewer() +
+		theme_classic() +
+		theme(axis.text.x = element_blank(), legend.position = "right") +
+		labs(fill = "allele") + xlab("All core genes") + ylab("")
+```
+
+Core genes with distinct alleles:
+
+```{r}
+#| fig-height: !expr fig_h(4, 0.3)
+#| fig-width: 15
+prokka_genes <- read_tsv("prokka/prokka.tsv", show_col_types = FALSE) |>
+	mutate(gene_id = str_replace(locus_tag, "_", "-")) |>
+	select(gene_id, length_bp, gene)
+mlst |>
+	group_by(gene_id) |>
+	filter(n_distinct(allele) > 1) |>
+	ungroup() |>
+	left_join(prokka_genes, by = "gene_id") |>
+	mutate(label = if_else(is.na(gene), gene_id, str_replace(gene, "_[0-9]*$", ""))) |>
+	ggplot(aes(x = label, y = plasmid, fill = factor(allele_idx))) +
+		geom_tile() +
+		scale_fill_brewer() +
+		theme_classic() +
+		theme(axis.text.x = element_text(angle = 45, hjust = 1), legend.position = "right") +
+		labs(fill = "allele") + xlab("Distinct core genes") + ylab("")
+```
+
+## Dendrogram
+
+Single linkage clustering on the number of distinct alleles.
+
+```{r}
+#| fig-height: !expr fig_h(5, 0.3)
+#| fig-width: 6
+as_tbl_graph(h) |>
+	left_join(plasmid_types, by = c(label = "contig_id")) |>
+	ggraph() +
+		coord_flip() +
+		scale_y_reverse() +
+		expand_limits(y = -max(h$height) / 2) +
+		geom_edge_elbow() +
+		geom_node_label(aes(label = label, filter = leaf, fill = plasmid_types), size = 3, hjust = 0, nudge_y = max(h$height) / 50) +
+		theme_void() +
+		theme(legend.position = "bottom")
+```
+
+
+# FastANI of the core genomes
+
+## Core genome
+
+Number of plasmids sharing each region of the rotated plasmids (BLASTN alignments ≥500 bp). Core regions
+(≥500 bp, shared by at least `r n_core` plasmids) are in black.
+
+```{r}
+#| fig-height: !expr fig_h(6, 0.8)
+#| fig-width: 12
+read_tsv("core_genome.tsv", show_col_types = FALSE) |>
+	filter(n_plasmids > 1) |>
+	mutate(seqnames = factor(seqnames, ani_levels)) |>
+	ggplot(aes(xmin = start, xmax = end, ymin = 0, ymax = n_plasmids, fill = is_core)) +
+		facet_grid(seqnames ~ .) +
+		geom_rect() +
+		scale_fill_manual(values = c("TRUE" = "black", "FALSE" = "grey")) +
+		scale_x_continuous(labels = scales::label_number(scale_cut = scales::cut_short_scale())) +
+		theme(strip.text.y.right = element_text(angle = 0)) +
+		theme(panel.spacing = unit(0, "mm")) +
+		theme(legend.position = "top") +
+		xlab("Genomic position") + ylab("Number of plasmids")
+```
+
+## Pairwise ANI
+
+```{r}
+genomes <- read_tsv("fastani_genomes.tsv", show_col_types = FALSE)
+core_ANI <- read_tsv("fastani.tsv", col_names = c("query", "ref", "ANI", "bi_frag", "query_frag"), show_col_types = FALSE) |>
+	mutate(
+		query_id = genomes$plasmid_id[match(basename(query), genomes$file)],
+		ref_id = genomes$plasmid_id[match(basename(ref), genomes$file)]
+	)
+
+# Distance 100 - ANI, symmetrised with the max; FastANI does not report pairs below ~80% ANI
+core_D <- core_ANI |>
+	mutate(D = 100 - ANI) |>
+	pivot_wider(id_cols = query_id, names_from = ref_id, values_from = D, values_fill = 100) |>
+	column_to_rownames("query_id") |>
+	as.matrix()
+core_D <- core_D[, rownames(core_D), drop = FALSE]
+core_h <- pmax(core_D, t(core_D)) |>
+	as.dist() |>
+	hclust(method = "single")
+core_levels <- core_h$labels[core_h$order]
+```
+
+```{r}
+#| fig-height: !expr fig_h(6, 0.4)
+#| fig-width: !expr fig_h(7, 0.4)
+plt_ani_mat <- core_ANI |>
+	mutate(ref_id = factor(ref_id, core_levels), query_id = factor(query_id, core_levels)) |>
+	ggplot(aes(x = query_id, y = ref_id, fill = ANI)) +
+		geom_tile() +
+		theme_bw() +
+		theme(panel.grid = element_blank()) +
+		theme(axis.text.x = element_text(angle = 30, hjust = 1, vjust = 1)) +
+		theme(legend.position = "top") +
+		xlab("") + ylab("") +
+		ggtitle("Pairwise ANI of the core genomes")
+plt_plasmid <- plasmid_types |>
+	mutate(ref_id = factor(contig_id, core_levels)) |>
+	ggplot(aes(x = "plasmid types", y = ref_id, fill = plasmid_types)) +
+		geom_tile() +
+		geom_text(aes(label = plasmid_types)) +
+		theme(legend.position = "none") +
+		theme(panel.grid = element_blank()) +
+		xlab("") + ylab("")
+plt_ani_mat + plt_plasmid + plot_layout(axes = "collect_y", widths = c(5, 1))
+```
+
+```{r}
+#| fig-height: !expr fig_h(5, 0.3)
+#| fig-width: 6
+as_tbl_graph(core_h) |>
+	left_join(plasmid_types, by = c(label = "contig_id")) |>
+	ggraph() +
+		coord_flip() +
+		scale_y_reverse() +
+		expand_limits(y = -max(core_h$height) / 2) +
+		geom_edge_elbow() +
+		geom_node_label(aes(label = label, filter = leaf, fill = plasmid_types), size = 3, hjust = 0, nudge_y = max(core_h$height) / 50) +
+		theme_void() +
+		theme(legend.position = "bottom")
+```

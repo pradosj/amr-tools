@@ -23,5 +23,6 @@ process PROKKA {
     stub:
     """
     mkdir -p prokka
+    touch prokka/prokka.faa prokka/prokka.ffn prokka/prokka.fna prokka/prokka.gff prokka/prokka.tsv
     """
 }
