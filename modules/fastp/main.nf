@@ -7,7 +7,7 @@ process FASTP {
     time 30.m
 
     input:
-    record(meta: Map, reads: Path, read2: Path?, args: String?)
+    record(meta: Map, read1: Path, read2: Path?, args: String?)    // ShortReads, plus args
 
     output:
     record(
@@ -20,7 +20,7 @@ process FASTP {
     def in2 = read2 ? "--in2 ${read2}" : ''
     """
     fastp \\
-        --in1 ${reads} ${in2} \\
+        --in1 ${read1} ${in2} \\
         --thread ${task.cpus} \\
         --json output.fastp.json \\
         --html output.fastp.html \\
