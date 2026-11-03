@@ -2,7 +2,7 @@ nextflow.enable.types = true
 
 include { AMR_ANNOT; AmrParams } from './workflows/amr-annot/main.nf'
 include { INPUT_READS; INPUT_ASSEMBLIES; ReadsParams; AssembliesParams } from './subworkflows/input/main.nf'
-include { DATABASES; DbParams } from './subworkflows/db/main.nf'
+include { DATABASES; DbParams; Db } from './subworkflows/db/main.nf'
 include { validateParameters; paramsSummaryLog } from 'plugin/nf-schema'
 
 
@@ -32,7 +32,7 @@ workflow {
 
 	def assemblies = INPUT_ASSEMBLIES(params.assemblies?.fasta)
 	def reads = INPUT_READS(params.reads?.ont, params.reads?.illumina)
-	def dbs = DATABASES(params.db, false, !params.amr?.orgfinder?.skip, !params.amr?.amrfinderplus?.skip)
+	def dbs = DATABASES(params.db, ((params.amr?.orgfinder?.skip ? [] : [Db.ORG_DB]) + (params.amr?.amrfinderplus?.skip ? [] : [Db.AMRFINDERPLUS])).toSet())
 	def amr_annot = AMR_ANNOT(params.amr, dbs.org_db, dbs.amrfinderplus, assemblies, reads.short_reads, reads.long_reads)
 
 	publish:

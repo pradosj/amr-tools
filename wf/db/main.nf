@@ -1,6 +1,6 @@
 nextflow.enable.types = true
 
-include { DATABASES; DB_FOLDER; DbParams } from './subworkflows/db/main.nf'
+include { DATABASES; DB_FOLDER; DbParams; Db } from './subworkflows/db/main.nf'
 include { TAR                  } from './modules/tar/tar.nf'
 include { validateParameters; paramsSummaryLog } from 'plugin/nf-schema'
 
@@ -17,7 +17,7 @@ workflow {
 	validateParameters()
 	log.info(paramsSummaryLog(workflow))
 
-	def dbs = DATABASES(params.db, true, true, true)
+	def dbs = DATABASES(params.db, [Db.CHECKM2, Db.ORG_DB, Db.AMRFINDERPLUS].toSet())
 	def archive_ch = channel.empty()
 	if (params.archive) {
 		def folder = DB_FOLDER(dbs.checkm2, dbs.org_db, dbs.amrfinderplus)

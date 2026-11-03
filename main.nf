@@ -6,7 +6,7 @@ include { READS_QC as FILTERED_READS_QC               } from './workflows/reads-
 include { ASSEMBLE; AssemblerParams                   } from './workflows/assemble/main.nf'
 include { ASSEMBLIES_QC; AssembliesQcParams           } from './workflows/assemblies-qc/main.nf'
 include { AMR_ANNOT; AmrParams                        } from './workflows/amr-annot/main.nf'
-include { DATABASES; DbParams                         } from './subworkflows/db/main.nf'
+include { DATABASES; DbParams; Db                     } from './subworkflows/db/main.nf'
 include { IDENTITY as COPY_ASSEMBLY_FASTA             } from './modules/identity/main.nf'
 include { IDENTITY as COPY_SHORT_READS                } from './modules/identity/main.nf'
 include { IDENTITY as COPY_LONG_READS                 } from './modules/identity/main.nf'
@@ -212,12 +212,12 @@ workflow {
 	def asm_long_reads = asm_keys.join(lr_rec, by: 'meta').map({ r -> record(meta: r.asm_meta, reads: r.reads) })
 
 	// Databases: from the databases folder --db.basedir, or built
-	def dbs = DATABASES(
-		params.db,
-		!params.assemblies_qc?.checkm2?.skip,
-		!params.amr?.orgfinder?.skip,
-		!params.amr?.amrfinderplus?.skip
-	)
+	def db_needs: Set<Db> = (
+		(params.assemblies_qc?.checkm2?.skip ? [] : [Db.CHECKM2]) +
+		(params.amr?.orgfinder?.skip ? [] : [Db.ORG_DB]) +
+		(params.amr?.amrfinderplus?.skip ? [] : [Db.AMRFINDERPLUS])
+	).toSet()
+	def dbs = DATABASES(params.db, db_needs)
 
 	// Compute assemblies QC stats
 	def asm_qc_ch = ASSEMBLIES_QC(params.assemblies_qc, dbs.checkm2, asm_rec, asm_short_reads, asm_long_reads)

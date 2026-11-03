@@ -38,6 +38,14 @@ process DB_FOLDER {
 }
 
 
+// A database of the pipelines
+enum Db {
+	CHECKM2,
+	ORG_DB,
+	AMRFINDERPLUS
+}
+
+
 // Databases folder of the pipelines (params.db). Fields are nullable: defaults are used when null.
 record DbParams {
 	basedir: String?          // databases folder (default: results/db), or tar archive of it (path or URL)
@@ -54,9 +62,7 @@ record DbParams {
 workflow DATABASES {
 	take:
 	opts: DbParams
-	need_checkm2: Boolean
-	need_org_db: Boolean
-	need_amrfinderplus: Boolean
+	needs: Set<Db>    // the databases needed by the pipeline (the others are null)
 
 	main:
 	def basedir = opts.basedir ?: 'results/db'
@@ -66,14 +72,14 @@ workflow DATABASES {
 	def is_archive = basedir ==~ /.+\.(tar|tar\.gz|tgz|tar\.bz2|tar\.xz)$/
 	def dir = is_archive ? null : file(basedir)
 	def root: Value<Path?> = channel.value(null)
-	if (is_archive && (need_checkm2 || need_org_db || need_amrfinderplus)) {
+	if (is_archive && !needs.isEmpty()) {
 		root = UNTAR(channel.value(record(archive: file(basedir), dir_name: 'db')))
 	}
 	def built_ch: Channel<BuiltDb> = channel.empty()
 
 	// CheckM2
 	def checkm2_ch: Value<Path?> = channel.value(null)
-	if (need_checkm2) {
+	if (Db.CHECKM2 in needs) {
 		if (is_archive) {
 			checkm2_ch = root.map({ d -> (d as Path).resolve(checkm2_path) })
 		} else if (dir.resolve(checkm2_path).exists()) {
@@ -87,7 +93,7 @@ workflow DATABASES {
 
 	// orgfinder
 	def org_db_ch: Value<Path?> = channel.value(null)
-	if (need_org_db) {
+	if (Db.ORG_DB in needs) {
 		if (is_archive) {
 			org_db_ch = root.map({ d -> (d as Path).resolve(org_db_path) })
 		} else if (dir.resolve(org_db_path).exists()) {
@@ -101,7 +107,7 @@ workflow DATABASES {
 
 	// AMRFinderPlus
 	def amrfinderplus_ch: Value<Path?> = channel.value(null)
-	if (need_amrfinderplus) {
+	if (Db.AMRFINDERPLUS in needs) {
 		if (is_archive) {
 			amrfinderplus_ch = root.map({ d -> (d as Path).resolve(amrfinderplus_path) })
 		} else if (dir.resolve(amrfinderplus_path).exists()) {

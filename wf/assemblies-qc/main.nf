@@ -2,7 +2,7 @@ nextflow.enable.types = true
 
 include { ASSEMBLIES_QC; AssembliesQcParams } from './workflows/assemblies-qc/main.nf'
 include { INPUT_READS; INPUT_ASSEMBLIES; ReadsParams; AssembliesParams    } from './subworkflows/input/main.nf'
-include { DATABASES; DbParams } from './subworkflows/db/main.nf'
+include { DATABASES; DbParams; Db } from './subworkflows/db/main.nf'
 include { validateParameters; paramsSummaryLog } from 'plugin/nf-schema'
 
 
@@ -28,7 +28,7 @@ workflow {
 	def asm_short_reads = asm_keys.join(reads.short_reads, by: 'meta').map({ r -> record(meta: r.asm_meta, read1: r.read1, read2: r.read2) })
 	def asm_long_reads = asm_keys.join(reads.long_reads, by: 'meta').map({ r -> record(meta: r.asm_meta, reads: r.reads) })
 
-	def dbs = DATABASES(params.db, !params.assemblies_qc?.checkm2?.skip, false, false)
+	def dbs = DATABASES(params.db, (params.assemblies_qc?.checkm2?.skip ? [] : [Db.CHECKM2]).toSet())
 	def qc = ASSEMBLIES_QC(params.assemblies_qc, dbs.checkm2, assemblies, asm_short_reads, asm_long_reads)
 
 	publish:
