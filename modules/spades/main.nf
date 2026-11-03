@@ -1,14 +1,5 @@
 nextflow.enable.types = true
 
-// Arguments of the assembly tools (each assembler reads its own field)
-record AssemblerArgs {
-	flye: String?
-	medaka: String?
-	spades: String?
-	unicycler: String?
-	hybracter: String?
-}
-
 process SPADES {
     container 'quay.io/biocontainers/spades:4.2.0--h8d6e82b_1'
     memory 20.GB
@@ -17,7 +8,7 @@ process SPADES {
 
     input:
     // short reads (short_read1, short_read2) and/or long reads
-    record(meta: Map, short_read1: Path?, short_read2: Path?, long_reads: Path?, args: AssemblerArgs?)
+    record(meta: Map, short_read1: Path?, short_read2: Path?, long_reads: Path?, args: String?)
 
     output:
     record(
@@ -31,7 +22,7 @@ process SPADES {
     def long_opts = long_reads ? "--nanopore '${long_reads}'" : ''
     """
     mkdir -p spades && spades.py \\
-        ${args?.spades ?: ''} \\
+        ${args ?: ''} \\
         --threads ${task.cpus} \\
         --memory ${task.memory.toGiga()} \\
         ${short_opts} ${long_opts} \\
