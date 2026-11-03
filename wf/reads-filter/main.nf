@@ -1,7 +1,7 @@
 nextflow.enable.types = true
 
 include { READS_FILTER; ReadsFilterParams } from './workflows/reads-filter/main.nf'
-include { READS_INPUT; ReadsParams                        } from './conf/inputs.nf'
+include { INPUT_READS; ReadsParams                        } from './subworkflows/input/main.nf'
 include { validateParameters; paramsSummaryLog } from 'plugin/nf-schema'
 
 
@@ -17,7 +17,7 @@ workflow {
 	validateParameters()
 	log.info(paramsSummaryLog(workflow))
 
-	def reads = READS_INPUT(params.reads?.ont, params.reads?.illumina)
+	def reads = INPUT_READS(params.reads?.ont, params.reads?.illumina)
 	def filtered = READS_FILTER(params.reads_filter, reads.short_reads, reads.long_reads)
 
 	publish:

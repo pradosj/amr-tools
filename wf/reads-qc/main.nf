@@ -1,7 +1,7 @@
 nextflow.enable.types = true
 
 include { READS_QC } from './workflows/reads-qc/main.nf'
-include { READS_INPUT; ReadsParams                          } from './conf/inputs.nf'
+include { INPUT_READS; ReadsParams                          } from './subworkflows/input/main.nf'
 include { validateParameters; paramsSummaryLog } from 'plugin/nf-schema'
 
 
@@ -16,7 +16,7 @@ workflow {
 	validateParameters()
 	log.info(paramsSummaryLog(workflow))
 
-	def reads = READS_INPUT(params.reads?.ont, params.reads?.illumina)
+	def reads = INPUT_READS(params.reads?.ont, params.reads?.illumina)
 	def qc = READS_QC(reads.short_reads, reads.long_reads)
 
 	publish:

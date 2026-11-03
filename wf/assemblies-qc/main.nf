@@ -1,7 +1,7 @@
 nextflow.enable.types = true
 
 include { ASSEMBLIES_QC; AssembliesQcParams } from './workflows/assemblies-qc/main.nf'
-include { READS_INPUT; ASSEMBLIES_INPUT; ReadsParams; AssembliesParams    } from './conf/inputs.nf'
+include { INPUT_READS; INPUT_ASSEMBLIES; ReadsParams; AssembliesParams    } from './subworkflows/input/main.nf'
 include { validateParameters; paramsSummaryLog } from 'plugin/nf-schema'
 
 
@@ -18,8 +18,8 @@ workflow {
 	validateParameters()
 	log.info(paramsSummaryLog(workflow))
 
-	def assemblies = ASSEMBLIES_INPUT(params.assemblies?.fasta)
-	def reads = READS_INPUT(params.reads?.ont, params.reads?.illumina)
+	def assemblies = INPUT_ASSEMBLIES(params.assemblies?.fasta)
+	def reads = INPUT_READS(params.reads?.ont, params.reads?.illumina)
 
 	// Reads of the sample of each assembly
 	def asm_keys = assemblies.map({ r -> record(meta: r.meta.subMap(['sample_id']), asm_meta: r.meta) })

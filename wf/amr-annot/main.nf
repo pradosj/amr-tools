@@ -1,7 +1,7 @@
 nextflow.enable.types = true
 
 include { AMR_ANNOT; AmrParams } from './workflows/amr-annot/main.nf'
-include { READS_INPUT; ASSEMBLIES_INPUT; ReadsParams; AssembliesParams } from './conf/inputs.nf'
+include { INPUT_READS; INPUT_ASSEMBLIES; ReadsParams; AssembliesParams } from './subworkflows/input/main.nf'
 include { validateParameters; paramsSummaryLog } from 'plugin/nf-schema'
 
 
@@ -28,8 +28,8 @@ workflow {
 	validateParameters()
 	log.info(paramsSummaryLog(workflow))
 
-	def assemblies = ASSEMBLIES_INPUT(params.assemblies?.fasta)
-	def reads = READS_INPUT(params.reads?.ont, params.reads?.illumina)
+	def assemblies = INPUT_ASSEMBLIES(params.assemblies?.fasta)
+	def reads = INPUT_READS(params.reads?.ont, params.reads?.illumina)
 	def report = AMR_ANNOT(params.amr, assemblies, reads.short_reads, reads.long_reads)
 
 	publish:

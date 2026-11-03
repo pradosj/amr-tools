@@ -56,7 +56,7 @@ def shortReads(id: String, files: Bag<Path>) -> ShortReads {
 }
 
 // ONT (one FASTQ, BAM or CRAM per sample, BAM/CRAM converted to FASTQ) and Illumina reads (single-end, or paired-end R1/R2)
-workflow READS_INPUT {
+workflow INPUT_READS {
 	take:
 	ont: String?
 	illumina: String?
@@ -93,7 +93,7 @@ workflow READS_INPUT {
 }
 
 // Assemblies FASTA files
-workflow ASSEMBLIES_INPUT {
+workflow INPUT_ASSEMBLIES {
 	take:
 	fasta: String?
 
