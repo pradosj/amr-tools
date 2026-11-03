@@ -50,7 +50,6 @@ record Genome {
 	meta: Map
 	dir: Path
 	fasta: Path
-	gff: Path?
 	info: Path?
 }
 
