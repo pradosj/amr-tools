@@ -36,10 +36,10 @@ workflow READS_FILTER {
 		long_reads.map({ r -> r + record(args: opts.chopper_args) })
 	)
 	def long_ch = FQ_SUBSAMPLE_LONG(
-		chopper_ch.map({ r -> record(meta: r.meta, read1: r.reads, bp_limit: opts.long_limit as Long) })
+		chopper_ch.map({ r -> record(meta: r.meta, read1: r.reads, bp_limit: opts.long_limit) })
 	).map({ r -> record(meta: r.meta, reads: r.read1) })
 	def short_ch = FQ_SUBSAMPLE_SHORT(
-		short_reads.map({ r -> r + record(bp_limit: opts.short_limit as Long) })
+		short_reads.map({ r -> r + record(bp_limit: opts.short_limit) })
 	)
 
 	emit:

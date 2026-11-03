@@ -11,7 +11,7 @@ BEGIN{
 	while(has_line) {
 
 		# Read a line from each input FASTQ
-		for(i=1;i<length(ARGV);i++){has_line = has_line && ("gzip -dc " ARGV[i] | getline line[i "_" current_line%4])}
+		for(i=1;i<length(ARGV);i++){has_line = has_line && (("gzip -dc " ARGV[i]) | getline line[i "_" current_line%4])}
 		
 		if (!has_line){exit 0}
 		
