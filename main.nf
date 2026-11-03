@@ -38,7 +38,7 @@ params {
 	assembler: AssemblerParams = record(name: 'long_flye_medaka', args: record(flye: null, medaka: '--bacteria', spades: null, unicycler: null, hybracter: null))
 	assemblies_qc: AssembliesQcParams = record(checkm2: record(skip: false, db: null, args: ''))
 	amr: AmrParams = record(
-		orgfinder:     record(skip: false, args: ''),
+		orgfinder:     record(skip: false, db: null, args: ''),
 		speciator:     record(skip: true, args: ''),
 		amrfinderplus: record(skip: false, args: ''),
 		mobtyper:      record(skip: false, args: ''),
@@ -213,7 +213,7 @@ workflow {
 	def asm_qc_ch = ASSEMBLIES_QC(params.assemblies_qc, asm_rec, asm_short_reads, asm_long_reads)
 
 	// Finally run AMR annotations
-	def amr_report_ch = AMR_ANNOT(params.amr, asm_rec, sr_rec, lr_rec)
+	def amr_annot_ch = AMR_ANNOT(params.amr, asm_rec, sr_rec, lr_rec)
 
 	publish:
 	checkm2_db = asm_qc_ch.checkm2_db
@@ -227,13 +227,17 @@ workflow {
 	assemblies_checkm2      = asm_qc_ch.checkm2
 	assemblies_multiqc      = asm_qc_ch.multiqc
 
-	amr_multireport = amr_report_ch
+	amr_multireport = amr_annot_ch.multireport
+	org_db = amr_annot_ch.org_db
 }
 
 
 output {
 	checkm2_db: Channel<Path> {
 		path { x -> x >> "db/checkm2" }
+	}
+	org_db: Channel<Path> {
+		path { x -> x >> "db/org_db" }
 	}
 
 	reads_long_filtered: Channel<Record> {

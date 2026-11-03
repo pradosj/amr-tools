@@ -12,6 +12,13 @@ record ToolParams {
 	args: String?
 }
 
+// Options of orgfinder (params.amr.orgfinder): db is a database folder built by ORG_DB_BUILD (built when null), args are given to fastANI
+record OrgfinderParams {
+	skip: Boolean?
+	db: Path?
+	args: String?
+}
+
 // Options of a tool that can also run on the reads
 record ReadsToolParams {
 	skip: Boolean?             // skip on the assemblies
@@ -22,7 +29,7 @@ record ReadsToolParams {
 
 // Options of AMR_ANNOT (params.amr)
 record AmrParams {
-	orgfinder: ToolParams?
+	orgfinder: OrgfinderParams?
 	speciator: ToolParams?
 	amrfinderplus: ToolParams?
 	mobtyper: ToolParams?
@@ -87,5 +94,6 @@ workflow AMR_ANNOT {
 	)
 
 	emit:
+	org_db: Channel<Path>        = asm.org_db    // orgfinder database, when built
 	multireport: Channel<Record> = report                // records with fields folder, html, xlsx, assemblies_tsv, contigs_tsv, resistances_tsv, plasmidfinder_hits_tsv
 }

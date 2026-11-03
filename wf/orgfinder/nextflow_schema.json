@@ -25,7 +25,7 @@
 				},
 				"db": {
 					"type": "string",
-					"format": "dir-path",
+					"format": "directory-path",
 					"exists": true,
 					"description": "Path to a directory with reference genome database",
 					"default": null

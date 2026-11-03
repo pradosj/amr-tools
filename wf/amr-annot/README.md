@@ -18,7 +18,9 @@ nextflow run pradosj/amr-tools/wf/amr-annot --assemblies.fasta='assemblies/*.fas
 
 The sample id is taken from the file names. Reads are optional. Each tool can be enabled or disabled with `--amr.<tool>.skip` and given arguments with `--amr.<tool>.args`.
 
-Outputs: `amr/` (results of the tools, by assembly and by reads sample) and `reports/` (HTML report and tables).
+orgfinder compares the assemblies to a database of NCBI reference genomes. The database is built on each run and saved to `db/org_db`; give it back with `--amr.orgfinder.db=results/db/org_db` to skip the build.
+
+Outputs: `amr/` (results of the tools, by assembly and by reads sample), `reports/` (HTML report and tables) and `db/org_db` (orgfinder database, when built).
 
 # Test the pipeline
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env Rscript
 
-db_tsv <- "./db.tsv"
+db_tsv <- "./db/db.tsv"
 fastani_file <- "./input.fastani"
 	
 db <- readr::read_tsv(db_tsv,col_types = "ccc")
@@ -14,7 +14,7 @@ out <- readr::read_tsv(fastani_file,col_names = c("query","ref","ANI","bi_frag",
 	) |>
 	dplyr::left_join(db,by="assembly_acc",relationship="many-to-one") |>
 	dplyr::relocate(query,assembly_acc) 
-readr::write_tsv(out,file='output.orgfinder')
+readr::write_tsv(out,file='orgfinder/ani.tsv')
 
 # Best hit (highest ANI): accession, organism name and ANI, as shell variables
 best <- dplyr::slice_max(out,ANI,n=1,with_ties=FALSE)

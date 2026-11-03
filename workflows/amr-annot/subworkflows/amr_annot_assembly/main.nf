@@ -2,7 +2,8 @@ nextflow.enable.types = true
 
 include { RESFINDER             } from './modules/cgetools/resfinder'
 include { PLASMIDFINDER         } from './modules/cgetools/plasmidfinder'
-include { ORGFINDER_DETECT      } from './modules/orgfinder/detect'
+include { ORGFINDER; OrgfinderDb  } from './workflows/orgfinder/main.nf'
+include { ORG_DB_BUILD          } from './subworkflows/org_db/main.nf'
 include { SPECIATOR             } from './modules/speciator'
 include { AMRFINDERPLUS_UPDATE  } from './modules/amrfinderplus/update'
 include { AMRFINDERPLUS_RUN     } from './modules/amrfinderplus/run'
@@ -18,9 +19,16 @@ record ToolParams {
 	args: String?
 }
 
+// Options of orgfinder (params.amr.orgfinder): db is a database folder built by ORG_DB_BUILD (built when null), args are given to fastANI
+record OrgfinderParams {
+	skip: Boolean?
+	db: Path?
+	args: String?
+}
+
 // Options of AMR_ANNOT_ASSEMBLY (the assembly part of params.amr)
 record AmrAssemblyParams {
-	orgfinder: ToolParams?
+	orgfinder: OrgfinderParams?
 	speciator: ToolParams?
 	amrfinderplus: ToolParams?
 	mobtyper: ToolParams?
@@ -92,10 +100,19 @@ workflow AMR_ANNOT_ASSEMBLY {
 		MLST_ch = MLST(assemblies.map({ r -> r + record(args: opts.MLST?.args) }))
 	}
 
-	// Run orgfinder to auto detect organism
+	// Run orgfinder to auto detect organism, with the given database or a database built from NCBI genomes
+	def org_db_ch = channel.empty()
 	def orgfinder_ch = channel.empty()
 	if (!opts.orgfinder?.skip) {
-		orgfinder_ch = ORGFINDER_DETECT(assemblies.map({ r -> r + record(args: opts.orgfinder?.args) }))
+		def db: Value<OrgfinderDb>
+		if (opts.orgfinder?.db) {
+			def dir = opts.orgfinder.db
+			db = channel.value(record(dir: dir, fasta: files("${dir}/fna/*.fna").toSorted(), tsv: file("${dir}/db.tsv")))
+		} else {
+			db = ORG_DB_BUILD()
+			org_db_ch = channel.empty().mix(db.map({ d -> d.dir }))
+		}
+		orgfinder_ch = ORGFINDER(db, assemblies, opts.orgfinder?.args).orgfinder
 	}
 
 	// MLST typing on detected org_name, when there is a scheme for it
@@ -116,6 +133,7 @@ workflow AMR_ANNOT_ASSEMBLY {
 
 	emit:
 	orgfinder: Channel<Record>     = orgfinder_ch       // records with fields meta, dir, org_name, org_acc, ani
+	org_db: Channel<Path>          = org_db_ch          // orgfinder database, when built
 	amrfinderplus: Channel<Record> = amrfinderplus_ch   // records with fields meta, dir
 	resfinder: Channel<Record>     = resfinder_ch       // records with fields meta, dir
 	mobtyper: Channel<Record>      = mobtyper_ch        // records with fields meta, tsv

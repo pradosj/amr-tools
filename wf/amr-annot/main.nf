@@ -10,7 +10,7 @@ params {
 	assemblies: AssembliesParams = record(fasta: null)
 	reads: ReadsParams = record(ont: null, illumina: null)
 	amr: AmrParams = record(
-		orgfinder:     record(skip: false, args: ''),
+		orgfinder:     record(skip: false, db: null, args: ''),
 		speciator:     record(skip: true, args: ''),
 		amrfinderplus: record(skip: false, args: ''),
 		mobtyper:      record(skip: false, args: ''),
@@ -30,13 +30,17 @@ workflow {
 
 	def assemblies = INPUT_ASSEMBLIES(params.assemblies?.fasta)
 	def reads = INPUT_READS(params.reads?.ont, params.reads?.illumina)
-	def report = AMR_ANNOT(params.amr, assemblies, reads.short_reads, reads.long_reads)
+	def amr_annot = AMR_ANNOT(params.amr, assemblies, reads.short_reads, reads.long_reads)
 
 	publish:
-	amr_multireport = report
+	amr_multireport = amr_annot.multireport
+	org_db = amr_annot.org_db
 }
 
 output {
+	org_db: Channel<Path> {
+		path { x -> x >> "db/org_db" }
+	}
 	amr_multireport: Channel<Record> {
 		mode "copy"    // the folder holds symlinks to the task outputs
 		path { r ->
