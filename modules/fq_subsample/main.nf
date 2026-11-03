@@ -7,12 +7,12 @@ process FQ_SUBSAMPLE {
     time 30.m
 
     input:
-    record(meta: Map, reads: Path, read2: Path?, bp_limit: Long?)   // bp_limit: maximum total read length in bp (default 1_000_000_000), negative to keep all reads
+    record(meta: Map, read1: Path, read2: Path?, bp_limit: Long?)   // ShortReads (or long reads as read1), bp_limit: maximum total read length in bp (default 1_000_000_000), negative to keep all reads
 
     output:
     record(
         meta: meta,
-        reads: file('subsampled_reads_1.fastq.gz'),
+        read1: file('subsampled_reads_1.fastq.gz'),
         read2: file('subsampled_reads_2.fastq.gz', optional: true)
     )
 
@@ -21,13 +21,13 @@ process FQ_SUBSAMPLE {
     def r2 = read2 ? "${read2}" : ''
     if (limit < 0) {
         """
-        ln -s '${reads}' 'subsampled_reads_1.fastq.gz'
+        ln -s '${read1}' 'subsampled_reads_1.fastq.gz'
         ${read2 ? "ln -s '${read2}' 'subsampled_reads_2.fastq.gz'" : ''}
         """
     } else {
         """
         set +o pipefail
-        fq_subsample.awk -v bp_limit=${limit} ${reads} ${r2}
+        fq_subsample.awk -v bp_limit=${limit} ${read1} ${r2}
         """
     }
 

@@ -12,16 +12,16 @@ record ReadsFilterParams {
 	chopper_args: String?      // CHOPPER arguments
 }
 
-// Short reads sample: read2 is null for single-end reads
+// Illumina reads of a sample: read2 is null for single-end reads
 record ShortReads {
-	meta: Map
-	reads: Path
+	meta: Map?
+	read1: Path
 	read2: Path?
 }
 
-// Long reads sample: one FASTQ per sample
+// ONT reads of a sample: one FASTQ
 record LongReads {
-	meta: Map
+	meta: Map?
 	reads: Path
 }
 
@@ -36,8 +36,8 @@ workflow READS_FILTER {
 		long_reads.map({ r -> r + record(args: opts.chopper_args) })
 	)
 	def long_ch = FQ_SUBSAMPLE_LONG(
-		chopper_ch.map({ r -> r + record(bp_limit: opts.long_limit as Long) })
-	)
+		chopper_ch.map({ r -> record(meta: r.meta, read1: r.reads, bp_limit: opts.long_limit as Long) })
+	).map({ r -> record(meta: r.meta, reads: r.read1) })
 	def short_ch = FQ_SUBSAMPLE_SHORT(
 		short_reads.map({ r -> r + record(bp_limit: opts.short_limit as Long) })
 	)

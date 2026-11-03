@@ -18,9 +18,7 @@ workflow {
 	log.info(paramsSummaryLog(workflow))
 
 	def reads = INPUT_READS(params.reads?.ont, params.reads?.illumina)
-	// short reads records of the not yet converted workflow
-	def short_reads = reads.short_reads.map({ r -> record(meta: r.meta, reads: r.read1, read2: r.read2) })
-	def filtered = READS_FILTER(params.reads_filter, short_reads, reads.long_reads)
+	def filtered = READS_FILTER(params.reads_filter, reads.short_reads, reads.long_reads)
 
 	publish:
 	reads_long_filtered = filtered.long_filtered
@@ -33,7 +31,7 @@ output {
 	}
 	reads_short_filtered: Channel<Record> {
 		path { r ->
-			r.reads >> "reads/filtered_short/${r.meta.sample_id}_R1.fastq.gz"
+			r.read1 >> "reads/filtered_short/${r.meta.sample_id}_R1.fastq.gz"
 			r.read2 >> "reads/filtered_short/${r.meta.sample_id}_R2.fastq.gz"
 		}
 	}

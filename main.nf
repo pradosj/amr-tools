@@ -171,8 +171,8 @@ workflow {
 
 	// Filter reads
 	if (!params.no_reads_filter) {
-		def rd_flt_ch = READS_FILTER(params.reads_filter, sr_rec, lr_rec)
-		sr_rec = rd_flt_ch.short_filtered
+		def rd_flt_ch = READS_FILTER(params.reads_filter, sr_rec.map({ r -> record(meta: r.meta, read1: r.reads, read2: r.read2) }), lr_rec)
+		sr_rec = rd_flt_ch.short_filtered.map({ r -> record(meta: r.meta, reads: r.read1, read2: r.read2) })
 		lr_rec = rd_flt_ch.long_filtered
 	}
 	def reads_multiqc_ch = channel.empty()
