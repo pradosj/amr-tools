@@ -55,9 +55,32 @@ Main options:
  - `--no_reads_filter`: assemble the given reads, without filtering them
  - `--no_reads_qc`: skip the reads QC report
  - `--amr.<tool>.skip` and `--amr.<tool>.args`: disable or configure an AMR annotation tool
+ - `--db`: databases folder or archive, see [Databases](#databases)
  - `--verbose`: also publish the assembler output folders
 
 See `nextflow_schema.json` for all the options.
+
+## Databases
+
+The pipeline uses three databases: CheckM2, the orgfinder reference genomes (built from NCBI, the longest) and AMRFinderPlus.
+A database that is not given is downloaded or built, and saved to `results/db/`. To reuse them, give a databases
+folder with `--db`:
+
+```bash
+# build all the databases once, in a folder, with a tar archive of them (amr-tools-db.tar.gz)
+nextflow run pradosj/amr-tools/wf/db -output-dir /data/amr-tools-db
+
+# use them (the db/ folder of a previous run works too: --db=results/db)
+nextflow run pradosj/amr-tools --db=/data/amr-tools-db --reads.ont='ont/*.fastq.gz'
+
+# or use the archive, from a path or an URL
+nextflow run pradosj/amr-tools --db=https://example.org/amr-tools-db.tar.gz --reads.ont='ont/*.fastq.gz'
+```
+
+The folder holds `checkm2/`, `org_db/` and `amrfinderplus/`; a database missing from it is built. An archive is extracted
+once (cached by `-resume`) and must hold all the needed databases. A single database can also be given with
+`--assemblies_qc.checkm2.db`, `--amr.orgfinder.db` or `--amr.amrfinderplus.db`, which take precedence over `--db`. Databases given with `--db` are
+used as is: rebuild them with `wf/db` to update them (AMRFinderPlus is otherwise downloaded on each run).
 
 ## HPC
 
@@ -79,7 +102,7 @@ The output folder `results` has the following organization:
 
  - `results/reports`: Folder containing final reports, with QC metrics and annotations
 
- - `results/db`: Folder of databases used
+ - `results/db`: databases built by the run (`checkm2/`, `org_db/`, `amrfinderplus/`), to give with `--db` in the next runs
  
  - `results/assemblies`: FASTA of assembled genomes, and CheckM2 results
 
@@ -104,5 +127,6 @@ e.g. `nextflow run pradosj/amr-tools/wf/amr-annot --assemblies.fasta='assemblies
 | [`plasmid-lineage`](wf/plasmid-lineage) | Lineage of a set of plasmids: rotation, annotation, pyMLST typing of the core genes, FastANI of the core genome |
 | [`asm-compare`](wf/asm-compare) | Comparison of assemblies with a reference assembly |
 | [`gtf2gff`](wf/gtf2gff) | Conversion of a NCBI GTF into a GFF for `bcftools csq` |
+| [`db`](wf/db) | Build the databases of the pipelines (CheckM2, orgfinder, AMRFinderPlus) and a tar archive of them |
 
 See the README of each pipeline for its options.

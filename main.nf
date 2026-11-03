@@ -6,6 +6,7 @@ include { READS_QC as FILTERED_READS_QC               } from './workflows/reads-
 include { ASSEMBLE; AssemblerParams                   } from './workflows/assemble/main.nf'
 include { ASSEMBLIES_QC; AssembliesQcParams           } from './workflows/assemblies-qc/main.nf'
 include { AMR_ANNOT; AmrParams                        } from './workflows/amr-annot/main.nf'
+include { DATABASES                                   } from './subworkflows/db/main.nf'
 include { IDENTITY as COPY_ASSEMBLY_FASTA             } from './modules/identity/main.nf'
 include { IDENTITY as COPY_SHORT_READS                } from './modules/identity/main.nf'
 include { IDENTITY as COPY_LONG_READS                 } from './modules/identity/main.nf'
@@ -29,6 +30,7 @@ record AssembliesParams {
 
 params {
 	verbose: Boolean = false
+	db:      String? = null    // databases folder, or tar archive of it (path or URL): checkm2/, org_db/, amrfinderplus/
 	csv:     Path? = null
 	reads:   ReadsParams = record(ont: null, illumina: null)
 	assemblies: AssembliesParams = record(fasta: null, info: null)
@@ -40,7 +42,7 @@ params {
 	amr: AmrParams = record(
 		orgfinder:     record(skip: false, db: null, args: ''),
 		speciator:     record(skip: true, args: ''),
-		amrfinderplus: record(skip: false, args: ''),
+		amrfinderplus: record(skip: false, db: null, args: ''),
 		mobtyper:      record(skip: false, args: ''),
 		plasmidfinder: record(skip: false, skip_longread: false, skip_shortread: false, args: ''),
 		resfinder:     record(skip: false, skip_longread: false, skip_shortread: false, args: ''),
@@ -209,14 +211,25 @@ workflow {
 	def asm_short_reads = asm_keys.join(sr_rec, by: 'meta').map({ r -> record(meta: r.asm_meta, read1: r.read1, read2: r.read2) })
 	def asm_long_reads = asm_keys.join(lr_rec, by: 'meta').map({ r -> record(meta: r.asm_meta, reads: r.reads) })
 
+	// Databases: given, from --db, or built
+	def dbs = DATABASES(
+		params.db,
+		params.assemblies_qc?.checkm2?.db,
+		params.amr?.orgfinder?.db,
+		params.amr?.amrfinderplus?.db,
+		!params.assemblies_qc?.checkm2?.skip,
+		!params.amr?.orgfinder?.skip,
+		!params.amr?.amrfinderplus?.skip
+	)
+
 	// Compute assemblies QC stats
-	def asm_qc_ch = ASSEMBLIES_QC(params.assemblies_qc, asm_rec, asm_short_reads, asm_long_reads)
+	def asm_qc_ch = ASSEMBLIES_QC(params.assemblies_qc, dbs.checkm2, asm_rec, asm_short_reads, asm_long_reads)
 
 	// Finally run AMR annotations
-	def amr_annot_ch = AMR_ANNOT(params.amr, asm_rec, sr_rec, lr_rec)
+	def amr_annot_ch = AMR_ANNOT(params.amr, dbs.org_db, dbs.amrfinderplus, asm_rec, sr_rec, lr_rec)
 
 	publish:
-	checkm2_db = asm_qc_ch.checkm2_db
+	db = dbs.built
 
 	reads_long_filtered = lr_rec
 	reads_short_filtered = sr_rec
@@ -227,17 +240,13 @@ workflow {
 	assemblies_checkm2      = asm_qc_ch.checkm2
 	assemblies_multiqc      = asm_qc_ch.multiqc
 
-	amr_multireport = amr_annot_ch.multireport
-	org_db = amr_annot_ch.org_db
+	amr_multireport = amr_annot_ch
 }
 
 
 output {
-	checkm2_db: Channel<Path> {
-		path { x -> x >> "db/checkm2" }
-	}
-	org_db: Channel<Path> {
-		path { x -> x >> "db/org_db" }
+	db: Channel<Record> {
+		path { r -> r.dir >> "db/${r.name}" }    // databases built by this run: use --db=<output dir>/db in the next runs
 	}
 
 	reads_long_filtered: Channel<Record> {

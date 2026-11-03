@@ -3,6 +3,10 @@
   "type": "object",
 	
 	"properties": {
+		"db": {
+			"type": "string",
+			"description": "Databases folder (as built by wf/db, or the db/ folder of a previous run), or tar archive of it (path or URL), with the sub-folders checkm2/, org_db/ and amrfinderplus/. A database missing from the folder is built; an archive must hold all the needed databases."
+		},
 		
 		"csv": {
 			"type": "string",
@@ -159,6 +163,12 @@
 							"args": {
 							  "type": "string",
 							  "default": ""
+							},
+							"db": {
+							  "type": "string",
+								"format": "directory-path",
+								"exists": true,
+								"description": "AMRFinderPlus database folder (takes precedence over --db)"
 							}
 						}
 					},

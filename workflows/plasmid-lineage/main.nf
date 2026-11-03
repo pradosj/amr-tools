@@ -230,6 +230,8 @@ workflow PLASMID_LINEAGE {
 	take:
 	opts: PlasmidLineageParams
 	amr_opts: AmrParams
+	org_db: Value<Path?>              // databases of AMR_ANNOT (null when the tool is skipped)
+	amrfinderplus_db: Value<Path?>
 	plasmids: Channel<PlasmidSet>
 
 	main:
@@ -260,6 +262,8 @@ workflow PLASMID_LINEAGE {
 	// AMR and plasmid typing annotations of the rotated plasmids (one multireport for all the sets)
 	def amr = AMR_ANNOT(
 		amr_opts,
+		org_db,
+		amrfinderplus_db,
 		rotated_ch.map({ r -> record(meta: r.meta + [assembler_name: 'none'], fasta: r.fasta, gff: null, info: null) }),
 		channel.empty(),
 		channel.empty()
@@ -307,7 +311,7 @@ workflow PLASMID_LINEAGE {
 			.join(pymlst_ch.map({ r -> record(meta: r.meta, pymlst: r.dir) }), by: 'meta')
 			.join(core_genome_ch.map({ r -> record(meta: r.meta, core_genome_tsv: r.tsv, genomes_tsv: r.genomes_tsv) }), by: 'meta')
 			.join(fastani_ch.map({ r -> record(meta: r.meta, fastani: r.tsv) }), by: 'meta')
-			.combine(amr.multireport)
+			.combine(amr)
 			.map({ r, m -> record(meta: r.meta, entries: [
 				record(name: 'plasmids.fasta', path: r.plasmids),
 				record(name: 'plasmids.self.blastn', path: r.self_blast),
@@ -341,5 +345,5 @@ workflow PLASMID_LINEAGE {
 	core_genome: Channel<Record>     = core_genome_ch     // records with fields meta, tsv, genomes, genomes_tsv
 	fastani: Channel<Record>         = fastani_ch         // records with fields meta, tsv
 	report: Channel<Record>          = report_ch          // records with fields meta, html
-	amr_multireport: Channel<Record> = amr.multireport    // records with fields folder, html, xlsx, assemblies_tsv, contigs_tsv, resistances_tsv, plasmidfinder_hits_tsv
+	amr_multireport: Channel<Record> = amr    // records with fields folder, html, xlsx, assemblies_tsv, contigs_tsv, resistances_tsv, plasmidfinder_hits_tsv
 }

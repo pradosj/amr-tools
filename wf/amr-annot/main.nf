@@ -2,17 +2,19 @@ nextflow.enable.types = true
 
 include { AMR_ANNOT; AmrParams } from './workflows/amr-annot/main.nf'
 include { INPUT_READS; INPUT_ASSEMBLIES; ReadsParams; AssembliesParams } from './subworkflows/input/main.nf'
+include { DATABASES } from './subworkflows/db/main.nf'
 include { validateParameters; paramsSummaryLog } from 'plugin/nf-schema'
 
 
 // Input assemblies and reads given as glob patterns (the sample_id is taken from the file names), and AMR_ANNOT options
 params {
+	db: String? = null    // databases folder, or tar archive of it (path or URL): checkm2/, org_db/, amrfinderplus/
 	assemblies: AssembliesParams = record(fasta: null)
 	reads: ReadsParams = record(ont: null, illumina: null)
 	amr: AmrParams = record(
 		orgfinder:     record(skip: false, db: null, args: ''),
 		speciator:     record(skip: true, args: ''),
-		amrfinderplus: record(skip: false, args: ''),
+		amrfinderplus: record(skip: false, db: null, args: ''),
 		mobtyper:      record(skip: false, args: ''),
 		plasmidfinder: record(skip: false, skip_longread: false, skip_shortread: false, args: ''),
 		resfinder:     record(skip: false, skip_longread: false, skip_shortread: false, args: ''),
@@ -30,16 +32,17 @@ workflow {
 
 	def assemblies = INPUT_ASSEMBLIES(params.assemblies?.fasta)
 	def reads = INPUT_READS(params.reads?.ont, params.reads?.illumina)
-	def amr_annot = AMR_ANNOT(params.amr, assemblies, reads.short_reads, reads.long_reads)
+	def dbs = DATABASES(params.db, null, params.amr?.orgfinder?.db, params.amr?.amrfinderplus?.db, false, !params.amr?.orgfinder?.skip, !params.amr?.amrfinderplus?.skip)
+	def amr_annot = AMR_ANNOT(params.amr, dbs.org_db, dbs.amrfinderplus, assemblies, reads.short_reads, reads.long_reads)
 
 	publish:
-	amr_multireport = amr_annot.multireport
-	org_db = amr_annot.org_db
+	amr_multireport = amr_annot
+	db = dbs.built
 }
 
 output {
-	org_db: Channel<Path> {
-		path { x -> x >> "db/org_db" }
+	db: Channel<Record> {
+		path { r -> r.dir >> "db/${r.name}" }    // databases built by this run: use --db=<output dir>/db in the next runs
 	}
 	amr_multireport: Channel<Record> {
 		mode "copy"    // the folder holds symlinks to the task outputs

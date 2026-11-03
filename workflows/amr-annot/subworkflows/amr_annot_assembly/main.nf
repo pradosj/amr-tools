@@ -3,9 +3,7 @@ nextflow.enable.types = true
 include { RESFINDER             } from './modules/cgetools/resfinder'
 include { PLASMIDFINDER         } from './modules/cgetools/plasmidfinder'
 include { ORGFINDER; OrgfinderDb  } from './workflows/orgfinder/main.nf'
-include { ORG_DB_BUILD          } from './subworkflows/org_db/main.nf'
 include { SPECIATOR             } from './modules/speciator'
-include { AMRFINDERPLUS_UPDATE  } from './modules/amrfinderplus/update'
 include { AMRFINDERPLUS_RUN     } from './modules/amrfinderplus/run'
 include { PROKKA                } from './modules/tseemann/prokka'
 include { MLST                  } from './modules/tseemann/mlst'
@@ -19,8 +17,9 @@ record ToolParams {
 	args: String?
 }
 
-// Options of orgfinder (params.amr.orgfinder): db is a database folder built by ORG_DB_BUILD (built when null), args are given to fastANI
-record OrgfinderParams {
+// Options of a tool with a database (params.amr.orgfinder, params.amr.amrfinderplus): db is the database folder
+// (read by the pipelines, see DATABASES), args are given to the tool (fastANI for orgfinder)
+record DbToolParams {
 	skip: Boolean?
 	db: Path?
 	args: String?
@@ -28,9 +27,9 @@ record OrgfinderParams {
 
 // Options of AMR_ANNOT_ASSEMBLY (the assembly part of params.amr)
 record AmrAssemblyParams {
-	orgfinder: OrgfinderParams?
+	orgfinder: DbToolParams?
 	speciator: ToolParams?
-	amrfinderplus: ToolParams?
+	amrfinderplus: DbToolParams?
 	mobtyper: ToolParams?
 	plasmidfinder: ToolParams?
 	resfinder: ToolParams?
@@ -51,6 +50,8 @@ record Genome {
 workflow AMR_ANNOT_ASSEMBLY {
 	take:
 	opts: AmrAssemblyParams
+	org_db: Value<Path?>              // orgfinder database folder (null when orgfinder is skipped)
+	amrfinderplus_db: Value<Path?>    // AMRFinderPlus database folder (null when AMRFinderPlus is skipped)
 	assemblies: Channel<Genome>
 
 	main:
@@ -71,7 +72,6 @@ workflow AMR_ANNOT_ASSEMBLY {
 	// NCBI AMRfinder+
 	def amrfinderplus_ch = channel.empty()
 	if (!opts.amrfinderplus?.skip) {
-		def amrfinderplus_db = AMRFINDERPLUS_UPDATE()
 		amrfinderplus_ch = AMRFINDERPLUS_RUN(
 			assemblies.combine(db: amrfinderplus_db).map({ r -> r + record(args: opts.amrfinderplus?.args) })
 		)
@@ -100,18 +100,10 @@ workflow AMR_ANNOT_ASSEMBLY {
 		MLST_ch = MLST(assemblies.map({ r -> r + record(args: opts.MLST?.args) }))
 	}
 
-	// Run orgfinder to auto detect organism, with the given database or a database built from NCBI genomes
-	def org_db_ch = channel.empty()
+	// Run orgfinder to auto detect organism
 	def orgfinder_ch = channel.empty()
 	if (!opts.orgfinder?.skip) {
-		def db: Value<OrgfinderDb>
-		if (opts.orgfinder?.db) {
-			def dir = opts.orgfinder.db
-			db = channel.value(record(dir: dir, fasta: files("${dir}/fna/*.fna").toSorted(), tsv: file("${dir}/db.tsv")))
-		} else {
-			db = ORG_DB_BUILD()
-			org_db_ch = channel.empty().mix(db.map({ d -> d.dir }))
-		}
+		def db: Value<OrgfinderDb> = org_db.map({ d -> record(dir: d, fasta: files("${d}/fna/*.fna").toSorted(), tsv: (d as Path).resolve('db.tsv')) })
 		orgfinder_ch = ORGFINDER(db, assemblies, opts.orgfinder?.args).orgfinder
 	}
 
@@ -133,7 +125,6 @@ workflow AMR_ANNOT_ASSEMBLY {
 
 	emit:
 	orgfinder: Channel<Record>     = orgfinder_ch       // records with fields meta, dir, org_name, org_acc, ani
-	org_db: Channel<Path>          = org_db_ch          // orgfinder database, when built
 	amrfinderplus: Channel<Record> = amrfinderplus_ch   // records with fields meta, dir
 	resfinder: Channel<Record>     = resfinder_ch       // records with fields meta, dir
 	mobtyper: Channel<Record>      = mobtyper_ch        // records with fields meta, tsv

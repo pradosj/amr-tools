@@ -17,9 +17,9 @@ nextflow run pradosj/amr-tools/wf/assemblies-qc --assemblies.fasta='assemblies/*
 ```
 
 The sample id is taken from the file names: the reads of a sample are aligned on the assembly with the same sample id. Reads are optional.
-Options: `--assemblies_qc.checkm2.skip`, `--assemblies_qc.checkm2.db` (CheckM2 database folder, downloaded when not given), `--assemblies_qc.checkm2.args`.
+Options: `--assemblies_qc.checkm2.skip`, `--assemblies_qc.checkm2.db` (CheckM2 database folder), `--assemblies_qc.checkm2.args`, and `--db` (databases folder or archive, see [Databases](../../README.md#databases)). The CheckM2 database is downloaded when not given.
 
-Outputs: `assemblies/<sample_id>__none.qc/checkm2_quality.tsv`, `reports/assemblies_multiqc.{txt,xlsx}` and `db/checkm2` when the database is downloaded.
+Outputs: `assemblies/<sample_id>__none.qc/checkm2_quality.tsv`, `reports/assemblies_multiqc.{txt,xlsx}` and `db/checkm2` when the database is downloaded (give it back with `--db=results/db`).
 
 # Test the pipeline
 

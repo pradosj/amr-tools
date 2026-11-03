@@ -3,6 +3,10 @@
 	"type": "object",
 	"required": ["assemblies"],
 	"properties": {
+		"db": {
+			"type": "string",
+			"description": "Databases folder (as built by wf/db, or the db/ folder of a previous run), or tar archive of it (path or URL), with the sub-folders checkm2/, org_db/ and amrfinderplus/. A database missing from the folder is built; an archive must hold all the needed databases."
+		},
 		"assemblies": {
 			"title": "Assemblies definition",
 			"type": "object",

@@ -2,11 +2,13 @@ nextflow.enable.types = true
 
 include { PLASMID_LINEAGE; PlasmidLineageParams } from './workflows/plasmid-lineage/main.nf'
 include { AmrParams } from './workflows/plasmid-lineage/workflows/amr-annot/main.nf'
+include { DATABASES } from './subworkflows/db/main.nf'
 include { validateParameters; paramsSummaryLog } from 'plugin/nf-schema'
 
 
 // FASTA files of the plasmids to compare (glob, all the sequences form one set), PLASMID_LINEAGE and AMR_ANNOT options
 params {
+	db: String? = null    // databases folder, or tar archive of it (path or URL): checkm2/, org_db/, amrfinderplus/
 	fasta: String
 	name: String = 'plasmids'
 	lineage: PlasmidLineageParams = record(
@@ -20,7 +22,7 @@ params {
 	amr: AmrParams = record(
 		orgfinder:     record(skip: true, db: null, args: ''),
 		speciator:     record(skip: true, args: ''),
-		amrfinderplus: record(skip: false, args: ''),
+		amrfinderplus: record(skip: false, db: null, args: ''),
 		mobtyper:      record(skip: false, args: ''),
 		plasmidfinder: record(skip: false, skip_longread: true, skip_shortread: true, args: ''),
 		resfinder:     record(skip: false, skip_longread: true, skip_shortread: true, args: ''),
@@ -37,7 +39,8 @@ workflow {
 	log.info(paramsSummaryLog(workflow))
 
 	def plasmids = channel.of(record(meta: [sample_id: params.name], fasta: files(params.fasta).toSorted()))
-	def lineage = PLASMID_LINEAGE(params.lineage, params.amr, plasmids)
+	def dbs = DATABASES(params.db, null, params.amr?.orgfinder?.db, params.amr?.amrfinderplus?.db, false, !params.amr?.orgfinder?.skip, !params.amr?.amrfinderplus?.skip)
+	def lineage = PLASMID_LINEAGE(params.lineage, params.amr, dbs.org_db, dbs.amrfinderplus, plasmids)
 
 	publish:
 	rotated = lineage.rotated
@@ -48,9 +51,13 @@ workflow {
 	fastani = lineage.fastani
 	report = lineage.report
 	amr_multireport = lineage.amr_multireport
+	db = dbs.built
 }
 
 output {
+	db: Channel<Record> {
+		path { r -> r.dir >> "db/${r.name}" }    // databases built by this run: use --db=<output dir>/db in the next runs
+	}
 	rotated: Channel<Record> {
 		path { r -> r.fasta >> "${r.meta.sample_id}/rotated.fasta" }
 	}

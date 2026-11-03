@@ -12,8 +12,9 @@ record ToolParams {
 	args: String?
 }
 
-// Options of orgfinder (params.amr.orgfinder): db is a database folder built by ORG_DB_BUILD (built when null), args are given to fastANI
-record OrgfinderParams {
+// Options of a tool with a database (params.amr.orgfinder, params.amr.amrfinderplus): db is the database folder
+// (read by the pipelines, see DATABASES), args are given to the tool (fastANI for orgfinder)
+record DbToolParams {
 	skip: Boolean?
 	db: Path?
 	args: String?
@@ -29,9 +30,9 @@ record ReadsToolParams {
 
 // Options of AMR_ANNOT (params.amr)
 record AmrParams {
-	orgfinder: OrgfinderParams?
+	orgfinder: DbToolParams?
 	speciator: ToolParams?
-	amrfinderplus: ToolParams?
+	amrfinderplus: DbToolParams?
 	mobtyper: ToolParams?
 	plasmidfinder: ReadsToolParams?
 	resfinder: ReadsToolParams?
@@ -65,13 +66,15 @@ record LongReads {
 workflow AMR_ANNOT {
 	take:
 	opts: AmrParams
+	org_db: Value<Path?>              // orgfinder database folder (null when orgfinder is skipped)
+	amrfinderplus_db: Value<Path?>    // AMRFinderPlus database folder (null when AMRFinderPlus is skipped)
 	assemblies: Channel<Genome>       // meta: [sample_id, assembler_name]
 	short_reads: Channel<ShortReads>    // meta: [sample_id]
 	long_reads: Channel<LongReads>      // meta: [sample_id]
 
 	main:
 	def fai_ch = SAMTOOLS_FAIDX(assemblies)
-	def asm = AMR_ANNOT_ASSEMBLY(opts, assemblies)
+	def asm = AMR_ANNOT_ASSEMBLY(opts, org_db, amrfinderplus_db, assemblies)
 	def rds = AMR_ANNOT_READS(opts, short_reads, long_reads)
 
 	// Gather all the results in a folder for the multireport
@@ -94,6 +97,5 @@ workflow AMR_ANNOT {
 	)
 
 	emit:
-	org_db: Channel<Path>        = asm.org_db    // orgfinder database, when built
 	multireport: Channel<Record> = report                // records with fields folder, html, xlsx, assemblies_tsv, contigs_tsv, resistances_tsv, plasmidfinder_hits_tsv
 }

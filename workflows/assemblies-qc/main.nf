@@ -5,14 +5,13 @@ include { SAMTOOLS_STATS as SAMTOOLS_STATS_LONG  } from './modules/samtools/stat
 include { SAMTOOLS_STATS as SAMTOOLS_STATS_SHORT } from './modules/samtools/stats'
 include { BWA_MEM            } from './modules/bwa/mem'
 include { BWA_INDEX          } from './modules/bwa/index'
-include { CHECKM2_DB         } from './modules/checkm2/db'
 include { CHECKM2_PREDICT    } from './modules/checkm2/predict'
 
 
 // Options of CheckM2 (params.assemblies_qc.checkm2)
 record Checkm2Params {
 	skip: Boolean?
-	db: Path?                  // CheckM2 database folder, downloaded when null
+	db: Path?                  // CheckM2 database folder (read by the pipelines, see DATABASES)
 	args: String?
 }
 
@@ -113,6 +112,7 @@ process ASSEMBLIES_MULTIQC {
 workflow ASSEMBLIES_QC {
 	take:
 	opts: AssembliesQcParams
+	checkm2_db: Value<Path?>          // CheckM2 database folder (null when checkm2 is skipped)
 	assemblies: Channel<Genome>
 	short_reads: Channel<ShortReads>
 	long_reads: Channel<LongReads>
@@ -129,12 +129,9 @@ workflow ASSEMBLIES_QC {
 	def long_stats_ch = SAMTOOLS_STATS_LONG(long_bam_ch)
 
 	// Genome completeness
-	def checkm2_db_ch = channel.empty()
 	def checkm2_ch = channel.empty()
 	if (!opts.checkm2?.skip) {
-		def db = opts.checkm2?.db ? channel.value(opts.checkm2.db) : CHECKM2_DB()
-		checkm2_db_ch = channel.empty().mix(db)
-		checkm2_ch = CHECKM2_PREDICT(assemblies.combine(db: db).map({ r -> r + record(args: opts.checkm2?.args) }))
+		checkm2_ch = CHECKM2_PREDICT(assemblies.combine(db: checkm2_db).map({ r -> r + record(args: opts.checkm2?.args) }))
 	}
 
 	//TODO: RUN VCF_LONG
@@ -161,7 +158,6 @@ workflow ASSEMBLIES_QC {
 	assembly_qc: Channel<Record>      = qc_ch             // records with fields meta, rds
 	multiqc: Channel<Record>          = multiqc_ch        // records with fields txt, xlsx
 	checkm2: Channel<Record>          = checkm2_ch        // records with fields meta, report
-	checkm2_db: Channel<Path>         = checkm2_db_ch
 }
 
 

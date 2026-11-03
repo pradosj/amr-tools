@@ -4,7 +4,7 @@ process UNTAR {
     container 'docker.io/ubuntu:24.04'
     memory 4.GB
     cpus 2
-    time 1.h
+    time 4.h
 
     input:
     record(archive: Path, dir_name: String)
@@ -23,8 +23,14 @@ process UNTAR {
     tar -x${flag} -f "${archive}" -C "${dir_name}"
     """
 
-    stub:
+    stub:    // tree of the archive, with empty files (tar detects the compression when listing a file)
     """
     mkdir -p "${dir_name}"
+    tar -tf "${archive}" | while read -r p; do
+        case "\$p" in
+            */) mkdir -p "${dir_name}/\$p" ;;
+            *) mkdir -p "${dir_name}/\$(dirname "\$p")" && touch "${dir_name}/\$p" ;;
+        esac
+    done
     """
 }

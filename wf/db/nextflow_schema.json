@@ -1,0 +1,15 @@
+{
+	"$schema": "https://json-schema.org/draft/2020-12/schema",
+	"type": "object",
+	"properties": {
+		"db": {
+			"type": "string",
+			"description": "Databases folder, or tar archive of it (path or URL), to complete: only the databases missing from it are built"
+		},
+		"archive": {
+			"type": "string",
+			"default": "amr-tools-db",
+			"description": "Name of the tar archive of the databases (<archive>.tar.gz)"
+		}
+	}
+}
