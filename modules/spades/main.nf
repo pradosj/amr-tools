@@ -7,8 +7,8 @@ process SPADES {
     time 4.h
 
     input:
-    // short reads (reads, read2) and/or long reads
-    record(meta: Map, reads: Path?, read2: Path?, long_reads: Path?, args: String?)
+    // short reads (short_reads, short_reads2) and/or long reads
+    record(meta: Map, short_reads: Path?, short_reads2: Path?, long_reads: Path?, args: String?)
 
     output:
     record(
@@ -18,7 +18,7 @@ process SPADES {
     )
 
     script:
-    def short_opts = !reads ? '' : (read2 ? "-1 ${reads} -2 ${read2}" : "-s ${reads}")
+    def short_opts = !short_reads ? '' : (short_reads2 ? "-1 ${short_reads} -2 ${short_reads2}" : "-s ${short_reads}")
     def long_opts = long_reads ? "--nanopore '${long_reads}'" : ''
     """
     mkdir -p spades && spades.py \\

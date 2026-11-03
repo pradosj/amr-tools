@@ -7,8 +7,8 @@ process HYBRACTER {
     time 4.h
 
     input:
-    // long reads, plus optional short reads (reads, read2) for a hybrid assembly
-    record(meta: Map, reads: Path?, read2: Path?, long_reads: Path?, args: String?)
+    // long reads, plus optional short reads (short_reads, short_reads2) for a hybrid assembly
+    record(meta: Map, short_reads: Path?, short_reads2: Path?, long_reads: Path?, args: String?)
 
     output:
     record(
@@ -18,8 +18,8 @@ process HYBRACTER {
     )
 
     script:
-    def cmd = reads ? 'hybrid-single' : 'long-single'
-    def short_opts = !reads ? '' : (read2 ? "-1 ${reads} -2 ${read2}" : "-s ${reads}")
+    def cmd = short_reads ? 'hybrid-single' : 'long-single'
+    def short_opts = !short_reads ? '' : (short_reads2 ? "-1 ${short_reads} -2 ${short_reads2}" : "-s ${short_reads}")
     def long_opts = long_reads ? "-l ${long_reads}" : ''
     """
     hybracter ${cmd} \\
