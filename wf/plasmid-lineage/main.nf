@@ -11,7 +11,7 @@ include { validateParameters; paramsSummaryLog } from 'plugin/nf-schema'
 
 // FASTA files of the plasmids to compare (all the sequences form one set), their rotation, PLASMID_LINEAGE and AMR_ANNOT options
 params {
-	db: DbParams = record(basedir: 'results/db', checkm2: 'checkm2', org_db: 'org_db', amrfinderplus: 'amrfinderplus')    // databases folder (built when missing), or tar archive of it (path or URL)
+	db: DbParams = record(basedir: 'results/db', amrfinderplus: 'amrfinderplus')    // databases folder (built when missing), or tar archive of it (path or URL)
 	fasta: String
 	name: String = 'plasmids'
 	no_rotation: Boolean = false    // do not rotate the plasmids before the analysis
@@ -63,8 +63,8 @@ workflow {
 		lineage_input_ch = rotated_ch.map({ r -> record(meta: r.meta, fasta: [r.fasta]) })
 	}
 
-	def dbs = DATABASES(params.db, ((params.amr?.orgfinder?.skip ? [] : [Db.ORG_DB]) + (params.amr?.amrfinderplus?.skip ? [] : [Db.AMRFINDERPLUS])).toSet())
-	def lineage = PLASMID_LINEAGE(params.lineage, params.amr, dbs.org_db, dbs.amrfinderplus, lineage_input_ch)
+	def dbs = DATABASES(params.db, (params.amr?.amrfinderplus?.skip ? [] : [Db.AMRFINDERPLUS]).toSet())    // no orgfinder in PLASMID_LINEAGE
+	def lineage = PLASMID_LINEAGE(params.lineage, params.amr, dbs.amrfinderplus, lineage_input_ch)
 
 	publish:
 	rotated = rotated_ch

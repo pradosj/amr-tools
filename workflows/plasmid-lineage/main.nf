@@ -196,8 +196,7 @@ workflow PLASMID_LINEAGE {
 	take:
 	opts: PlasmidLineageParams
 	amr_opts: AmrParams
-	org_db: Value<Path?>              // databases of AMR_ANNOT (null when the tool is skipped)
-	amrfinderplus_db: Value<Path?>
+	amrfinderplus_db: Value<Path?>    // database of AMR_ANNOT (null when AMRFinderPlus is skipped)
 	plasmids: Channel<PlasmidSet>
 
 	main:
@@ -209,11 +208,11 @@ workflow PLASMID_LINEAGE {
 	def fasta_ch = CONCAT_FASTA(plasmids)
 	def self_ch = BLASTN_SELF(fasta_ch.map({ r -> record(meta: r.meta, query: r.fasta, subject: null, args: blastn_args) }))
 
-
-	// AMR and plasmid typing annotations of the plasmids (one multiqc for all the sets)
+	// AMR and plasmid typing annotations of the plasmids (one multiqc for all the sets), without orgfinder (and so
+	// without cgemlst, whose scheme depends on the organism found by orgfinder)
 	def amr = AMR_ANNOT(
-		amr_opts,
-		org_db,
+		amr_opts + record(orgfinder: record(skip: true, args: null), cgemlst: record(skip: true, args: null)),
+		null,
 		amrfinderplus_db,
 		fasta_ch.map({ r -> record(meta: r.meta + [assembler_name: 'none'], fasta: r.fasta, gff: null, info: null) }),
 		channel.empty(),

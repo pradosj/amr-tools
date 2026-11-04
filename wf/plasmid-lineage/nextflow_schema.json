@@ -13,16 +13,6 @@
 					"default": "results/db",
 					"description": "Databases folder, as built by wf/db or the db/ folder of a previous run, or tar archive of it (path or URL)"
 				},
-				"checkm2": {
-					"type": "string",
-					"default": "checkm2",
-					"description": "CheckM2 database, relative to basedir"
-				},
-				"org_db": {
-					"type": "string",
-					"default": "org_db",
-					"description": "orgfinder database, relative to basedir"
-				},
 				"amrfinderplus": {
 					"type": "string",
 					"default": "amrfinderplus",
@@ -85,19 +75,6 @@
 			"title": "Parameters for tool amr annotation",
 			"type": "object",
 			"properties": {
-					"orgfinder": {
-					  "type": "object",
-						"properties": {
-							"skip": {
-							  "type": "boolean",
-							  "default": true
-							},
-							"args": {
-							  "type": "string",
-							  "default": ""
-							}
-						}
-					},
 					"speciator": {
 					  "type": "object",
 						"properties": {
@@ -170,19 +147,6 @@
 							  "default": true
 							},
 							"skip_longread": {
-							  "type": "boolean",
-							  "default": true
-							},
-							"args": {
-							  "type": "string",
-							  "default": ""
-							}
-						}
-					},
-					"cgemlst": {
-					  "type": "object",
-						"properties": {
-							"skip": {
 							  "type": "boolean",
 							  "default": true
 							},

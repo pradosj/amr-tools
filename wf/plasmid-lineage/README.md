@@ -3,7 +3,7 @@
 `plasmid-lineage` a nextflow pipeline to study the lineage of a set of related plasmids:
 
 1. the plasmids are aligned against each other (BLASTN) and rotated to start at the longest region (≥1 kb) shared by at least 80% of them, on its strand (`ROTATE_GENOMES`, see [`rotate-genomes`](../../workflows/rotate-genomes)); the next steps run on the rotated plasmids (`--no_rotation`: on the given plasmids);
-2. the plasmids are annotated with `AMR_ANNOT` (ResFinder, PlasmidFinder, AMRFinderPlus, MOB-typer, ... see [`amr-annot`](../amr-annot)) and prokka;
+2. the plasmids are annotated with `AMR_ANNOT` (ResFinder, PlasmidFinder, AMRFinderPlus, MOB-typer, ... see [`amr-annot`](../amr-annot); without orgfinder, and so without cgemlst) and prokka;
 3. core genes: the prokka proteins are clustered by reciprocal best BLASTP hits, and the clusters found in most plasmids are typed with pyMLST (allele distances, minimum spanning tree);
 4. core genome: the regions of the plasmids shared by most plasmids are compared with FastANI;
 5. an HTML report gathers the alignments, the annotations, the pyMLST typing and the core genome ANI.
