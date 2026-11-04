@@ -15,6 +15,7 @@ params:
 knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
 source("assets/lib_io.R")
 source("assets/lib_plasmid_lineage.R")
+source("assets/lib_core_gene.R")    # core_count()
 library(tidygraph)
 library(ggraph)
 library(patchwork)

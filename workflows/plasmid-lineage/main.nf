@@ -3,7 +3,7 @@ nextflow.enable.types = true
 include { BLASTN as BLASTN_SELF } from './modules/blast/blastn'
 include { QUARTO_RENDER         } from './modules/quarto/render'
 include { AMR_ANNOT; AmrParams  } from './workflows/amr-annot/main.nf'
-include { CORE_GENES_PYMLST     } from './subworkflows/core_genes_pymlst/main.nf'
+include { CORE_GENES_PYMLST     } from './workflows/core-genes-pymlst/main.nf'
 
 
 // Options of PLASMID_LINEAGE (params.lineage). Fields are nullable: defaults are used when null.
@@ -105,6 +105,7 @@ process CORE_GENOME {
 	#!/usr/bin/env Rscript
 	source("assets/lib_io.R")
 	source("assets/lib_plasmid_lineage.R")
+	source("assets/lib_core_gene.R")    # core_count()
 	core_genome("plasmids.fasta", "plasmids.self.blastn", n_core = ${n_core == null ? 'NA' : "${n_core}"})
 	"""
 

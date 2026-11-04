@@ -11,25 +11,6 @@ suppressPackageStartupMessages({
 #  Input / output
 # ---------------------------------------
 
-#' File name of a sequence id
-#'
-#' @param seq_id Sequence ids.
-#' @param ext File extension.
-#' @return The file names, made from the ids with make.names().
-seq_file_name <- function(seq_id, ext = ".fasta") {
-	paste0(make.names(seq_id), ext)
-}
-
-#' Minimum number of plasmids to call a gene or a region core
-#'
-#' @param n_core The given minimum number of plasmids, or NA.
-#' @param n_plasmids Number of plasmids.
-#' @return n_core, or 80% of the plasmids when n_core is NA.
-core_count <- function(n_core, n_plasmids) {
-	if (is.null(n_core) || is.na(n_core)) ceiling(0.8 * n_plasmids) else as.integer(n_core)
-}
-
-
 # ---------------------------------------
 #  Alignments
 # ---------------------------------------

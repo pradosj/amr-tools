@@ -5,10 +5,13 @@ include { BLASTP        } from './modules/blast/blastp'
 include { PYMLST_WGMLST } from './modules/pymlst/wgmlst'
 
 
-// The plasmids of a set, in one FASTA file
-record PlasmidsFasta {
+// A genome: a set of sequences in one FASTA file (e.g. the plasmids of a set), whose core genes are the genes found
+// in most of its sequences
+record Genome {
 	meta: Map
 	fasta: Path
+	gff: Path?
+	info: Path?
 }
 
 
@@ -22,7 +25,7 @@ process CORE_GENES {
 
 	input:
 	record(meta: Map, prokka: Path, blast: Path, n_core: Integer?)
-	libs: List<Path>    // lib_io.R, lib_plasmid_lineage.R, lib_core_gene.R
+	libs: List<Path>    // lib_io.R, lib_core_gene.R
 
 	stage:
 	stageAs(prokka, 'prokka')
@@ -43,7 +46,6 @@ process CORE_GENES {
 	"""
 	#!/usr/bin/env Rscript
 	source("lib/lib_io.R")
-	source("lib/lib_plasmid_lineage.R")
 	source("lib/lib_core_gene.R")
 	core_genes("prokka", "prokka.self.blastp", n_core = ${n_core == null ? 'NA' : "${n_core}"})
 	"""
@@ -57,18 +59,18 @@ process CORE_GENES {
 
 
 
-// Core genes of a set of plasmids, typed with pyMLST: the prokka genes are clustered by reciprocal best BLASTP
-// hits, and the clusters with one gene in at least n_core plasmids are the core genes
+// Core genes of genomes, typed with pyMLST: in each genome (a set of sequences, e.g. plasmids), the prokka genes are
+// clustered by reciprocal best BLASTP hits, and the clusters with one gene in at least n_core sequences are the core genes
 workflow CORE_GENES_PYMLST {
 	take:
-	plasmids: Channel<PlasmidsFasta>
+	genomes: Channel<Genome>    // each genome is a set of sequences (e.g. plasmids): its core genes are shared by most of them
 	n_core: Integer?         // minimum number of plasmids sharing a core gene (null: 80% of the plasmids)
 	prokka_args: String?
 	blastp_args: String?     // alignment of the proteins
 	pymlst_args: String?     // `wgMLST add` options
 
 	main:
-	def prokka_ch = PROKKA(plasmids.map({ r -> record(meta: r.meta, fasta: r.fasta, args: prokka_args) }))
+	def prokka_ch = PROKKA(genomes.map({ r -> record(meta: r.meta, fasta: r.fasta, args: prokka_args) }))
 	def blastp_ch = BLASTP(prokka_ch.map({ r -> record(
 		meta: r.meta,
 		query: r.faa,
@@ -76,7 +78,7 @@ workflow CORE_GENES_PYMLST {
 	) }))
 	def core_genes_ch = CORE_GENES(
 		prokka_ch.join(blastp_ch, by: 'meta').map({ r -> record(meta: r.meta, prokka: r.dir, blast: r.tsv, n_core: n_core) }),
-		[file("${moduleDir}/assets/lib_io.R"), file("${moduleDir}/assets/lib_plasmid_lineage.R"), file("${moduleDir}/assets/lib_core_gene.R")]
+		[file("${moduleDir}/assets/lib_io.R"), file("${moduleDir}/assets/lib_core_gene.R")]
 	)
 	def pymlst_ch = PYMLST_WGMLST(core_genes_ch.map({ r -> record(
 		meta: r.meta,
