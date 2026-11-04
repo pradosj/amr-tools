@@ -12,7 +12,10 @@ process PROKKA {
     output:
     record(
         meta: meta,
-        dir: file('prokka')
+        dir: file('prokka'),              // all the prokka outputs
+        faa: file('prokka/prokka.faa'),   // proteins
+        gff: file('prokka/prokka.gff'),   // annotations, followed by the sequences
+        fna: file('prokka/prokka.fna')    // annotated sequences
     )
 
     script:

@@ -11,29 +11,6 @@ record PlasmidsFasta {
 	fasta: Path
 }
 
-// prokka annotation of the plasmids of a set
-record ProkkaAnnotation {
-	meta: Map
-	dir: Path
-}
-
-// Core genes of a set of plasmids (see the CORE_GENES process)
-record CoreGenes {
-	meta: Map
-	genes_tsv: Path
-	clusters_tsv: Path
-	template: Path
-	genomes: List<Path>
-	strains_tsv: Path
-}
-
-// pyMLST typing of the core genes of a set of plasmids
-record PymlstTyping {
-	meta: Map
-	db: Path
-	dir: Path    // distance.tsv, mlst.tsv, msa.fasta
-}
-
 
 // Core genes from the reciprocal BLASTP hits of the prokka proteins, and their sequences for pyMLST
 process CORE_GENES {
@@ -93,7 +70,7 @@ workflow CORE_GENES_PYMLST {
 	def prokka_ch = PROKKA(plasmids.map({ r -> record(meta: r.meta, fasta: r.fasta, args: prokka_args) }))
 	def blastp_ch = BLASTP(prokka_ch.map({ r -> record(
 		meta: r.meta,
-		query: r.dir.resolve('prokka.faa'),
+		query: r.faa,
 		subject: null,
 		args: blastp_args ?: '-subject_besthit'
 	) }))
@@ -109,7 +86,7 @@ workflow CORE_GENES_PYMLST {
 	) }))
 
 	emit:
-	prokka: Channel<ProkkaAnnotation> = prokka_ch
-	core_genes: Channel<CoreGenes>    = core_genes_ch
-	pymlst: Channel<PymlstTyping>     = pymlst_ch
+	prokka = prokka_ch            // records with fields meta, dir, faa, gff, fna
+	core_genes = core_genes_ch    // records with fields meta, genes_tsv, clusters_tsv, template, genomes, strains_tsv
+	pymlst = pymlst_ch            // records with fields meta, db, dir
 }
