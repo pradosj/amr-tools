@@ -7,8 +7,8 @@
 			"type": "string",
 			"format": "file-path",
 			"exists": true,
-			"pattern": "^\\S+\\.(fasta|fa|fna)$",
-			"description": "Path to FASTA file containing assembly contigs"
+			"pattern": "^((https?|ftp)://\\S+|\\S+\\.(fasta|fa|fna))$",
+			"description": "FASTA file of the reference assembly: path or URL"
 		},
 		
 		"ref_gff": {
@@ -21,10 +21,8 @@
 
 		"query": {
 			"type": "string",
-			"format": "file-path-pattern",
-			"exists": true,
-			"pattern": "^\\S+\\.(fasta|fa|fna)$",
-			"description": "Path to FASTA file containing reference assembly contigs"
+			"pattern": "^(((https?|ftp)://[^,\\s]+|\\S+(\\.(fasta|fa|fna)|\\}))(,\\s*|$))+$",
+			"description": "FASTA files of the query assemblies: comma-separated paths, glob patterns or URLs"
 		},
 
 		"no_query_rotation": {

@@ -28,4 +28,4 @@ Outputs: `amr/` (results of the tools, by assembly and by reads sample), `report
 nextflow run pradosj/amr-tools/wf/amr-annot/main.nf -profile standard,test
 ```
 
-The `test` profile annotates the test assemblies, and ONT reads of *Klebsiella pneumoniae* downloaded from ENA ([ERR14747186](https://www.ebi.ac.uk/ena/browser/view/ERR14747186), 332 MB).
+The `test` profile annotates 4 plasmids downloaded from ENA (CP047704.1, CP083077, KM406488.1, JQ837276.1), and ONT reads of *Klebsiella pneumoniae* downloaded from ENA ([ERR14747186](https://www.ebi.ac.uk/ena/browser/view/ERR14747186), 332 MB).

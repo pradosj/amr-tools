@@ -15,7 +15,7 @@ record ReadsParams {
 	illumina: String?
 }
 
-// Input assemblies given as a glob pattern (params.assemblies)
+// Input assemblies given as a comma-separated list of glob patterns and URLs (params.assemblies)
 record AssembliesParams {
 	fasta: String?
 }
@@ -46,6 +46,17 @@ record Genome {
 	fasta: Path
 	gff: Path?
 	info: Path?
+}
+
+// Files of a comma-separated list of glob patterns and URLs, each pattern sorted (commas inside the braces of a glob do not separate).
+// Remote files are not listed: a URL must name a single file, without glob characters.
+def pathList(patterns: String) -> List<Path> {
+	def ps = patterns.replaceAll(/,(?![^{}]*\})/, "\n").tokenize("\n").collect({ p -> p.trim() })
+	def bad = ps.findAll({ p -> p ==~ /^[a-z]+:\/\/.*[*{\[].*/ })    // ? is the start of a query string
+	if (bad) {
+		error("Glob patterns are not supported in URLs, list each file: ${bad.join(', ')}")
+	}
+	return ps.collectMany({ p -> files(p).toSorted() }).toList()
 }
 
 // Paired-end Illumina file names end with _1, _2, _R1 or _R2 (optionally followed by _001)
@@ -116,7 +127,7 @@ workflow INPUT_ASSEMBLIES {
 	main:
 	def asm_ch = channel.empty()
 	if (fasta) {
-		asm_ch = channel.fromPath(fasta).map({ f ->
+		asm_ch = channel.fromList(pathList(fasta)).map({ f ->
 			record(meta: [sample_id: f.name.replaceAll(/\.(fasta|fa|fna)$/, ''), assembler_name: 'none'], fasta: f)
 		})
 	}

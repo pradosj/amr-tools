@@ -21,7 +21,7 @@ Each step is also available as a standalone pipeline (see [Standalone pipelines]
 curl -s https://get.nextflow.io | bash
 ```
 
-Test `amr-tools` installation (runs the pipeline on test assemblies, and on ONT reads of *Klebsiella pneumoniae* downloaded from ENA, [ERR14747186](https://www.ebi.ac.uk/ena/browser/view/ERR14747186), 332 MB, that are assembled):
+Test `amr-tools` installation (runs the pipeline on 4 plasmids downloaded from ENA, and on ONT reads of *Klebsiella pneumoniae* downloaded from ENA, [ERR14747186](https://www.ebi.ac.uk/ena/browser/view/ERR14747186), 332 MB, that are assembled):
 
 ```bash
 nextflow run pradosj/amr-tools -profile standard,test
@@ -39,6 +39,11 @@ If the FASTA files to process are in subfolder 'assemblies/' of your working dir
 ```bash
 nextflow run pradosj/amr-tools --assemblies.fasta='assemblies/*.fasta'
 ```
+
+FASTA inputs (`--assemblies.fasta` here, `--query`/`--fasta` in the standalone pipelines) are comma-separated lists of
+paths, glob patterns and URLs (a URL names one file: no glob pattern in URLs), e.g.
+`--assemblies.fasta='assemblies/*.fasta,https://www.ebi.ac.uk/ena/browser/api/fasta/CP047704.1'`
+(the sample id is the file name without its `.fasta`, `.fa` or `.fna` extension).
 
 To assemble and annotate reads (the sample id is taken from the file names):
 

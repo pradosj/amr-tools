@@ -7,6 +7,7 @@ include { ASSEMBLE; AssemblerParams                   } from './workflows/assemb
 include { ASSEMBLIES_QC; AssembliesQcParams           } from './workflows/assemblies-qc/main.nf'
 include { AMR_ANNOT; AmrParams                        } from './workflows/amr-annot/main.nf'
 include { DATABASES; DbParams; Db                     } from './subworkflows/db/main.nf'
+include { pathList                                  } from './subworkflows/input/main.nf'
 include { IDENTITY as COPY_ASSEMBLY_FASTA             } from './modules/identity/main.nf'
 include { IDENTITY as COPY_SHORT_READS                } from './modules/identity/main.nf'
 include { IDENTITY as COPY_LONG_READS                 } from './modules/identity/main.nf'
@@ -126,7 +127,7 @@ workflow SAMPLES {
 				}))
 		}
 		if (assemblies.fasta) {
-			parts_ch = parts_ch.mix(channel.fromPath(assemblies.fasta)
+			parts_ch = parts_ch.mix(channel.fromList(pathList(assemblies.fasta))
 				.map({ f -> samplePart(f.name.replaceAll('\\.(fasta|fa|fna)$', ''), null, null, null, f) }))
 		}
 		samples_ch = parts_ch

@@ -72,10 +72,8 @@
 			"properties": {
 				"fasta": {
 					"type": "string",
-					"format": "file-path-pattern",
-					"exists": true,
-					"pattern": "^\\S+\\.(fasta|fa|fna)$",
-					"description": "Path to FASTA file containing assembly contigs"
+					"pattern": "^(((https?|ftp)://[^,\\s]+|\\S+(\\.(fasta|fa|fna)|\\}))(,\\s*|$))+$",
+					"description": "FASTA files of the assemblies: comma-separated paths, glob patterns or URLs"
 				}
 			}
 		},

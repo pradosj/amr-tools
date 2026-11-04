@@ -2,6 +2,7 @@ nextflow.enable.types = true
 
 include { ORGFINDER; OrgfinderDb               } from './workflows/orgfinder/main.nf'
 include { ORG_DB_BUILD                   } from './subworkflows/org_db/main.nf'
+include { pathList                       } from './subworkflows/input/main.nf'
 include { validateParameters; paramsSummaryLog } from 'plugin/nf-schema'
 
 // Reference genomes: either FASTA files (glob) or a directory with a database previously built by the pipeline
@@ -29,7 +30,7 @@ workflow {
 	if (params.ref?.db != null) {
 		db = channel.value(record(dir: file(params.ref.db), fasta: files("${params.ref.db}/fna/*.fna").toSorted(), tsv: file("${params.ref.db}/db.tsv")))
 	} else if (params.ref?.fasta != null) {
-		db = channel.value(record(fasta: files(params.ref.fasta).toSorted()))
+		db = channel.value(record(fasta: pathList(params.ref.fasta)))
 	} else {
 		db = ORG_DB_BUILD()
 		db_dir_ch = channel.empty().mix(db.map({ d -> d.dir }))
@@ -38,7 +39,7 @@ workflow {
 	// Genomes to identify
 	def query_ch = channel.empty()
 	if (params.query != null) {
-		query_ch = channel.fromPath(params.query).map({ f ->
+		query_ch = channel.fromList(pathList(params.query)).map({ f ->
 			record(meta: [sample_id: f.name.replaceAll(/\.(fasta|fna|fa)$/, '')], fasta: f)
 		})
 	}

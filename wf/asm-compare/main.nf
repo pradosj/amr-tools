@@ -4,6 +4,7 @@ include { MINIMAP2_ALIGN_ASM5                       } from './modules/minimap2/a
 include { MINIMAP2_ALIGN_ASM5 as ROTATION_ALIGNMENT } from './modules/minimap2/align_asm5'
 include { BCFTOOLS_ASM5_MPILEUP                     } from './modules/bcftools/asm5_mpileup'
 include { QUARTO_RENDER                             } from './modules/quarto/render'
+include { pathList                                  } from './subworkflows/input/main.nf'
 include { validateParameters; paramsSummaryLog      } from 'plugin/nf-schema'
 
 params {
@@ -85,7 +86,7 @@ workflow {
 	validateParameters()
 	log.info(paramsSummaryLog(workflow))
 
-	def query_ch = channel.fromPath(params.query).map({ f ->
+	def query_ch = channel.fromList(pathList(params.query)).map({ f ->
 		def id = f.name.replaceAll(/\.(fasta|fna|fa)$/, '')
 		record(meta: [sample_id: id], ref: params.ref, query: f)
 	})

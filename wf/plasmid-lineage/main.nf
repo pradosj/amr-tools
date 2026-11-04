@@ -3,6 +3,7 @@ nextflow.enable.types = true
 include { PLASMID_LINEAGE; PlasmidLineageParams } from './workflows/plasmid-lineage/main.nf'
 include { AmrParams } from './workflows/plasmid-lineage/workflows/amr-annot/main.nf'
 include { DATABASES; DbParams; Db } from './subworkflows/db/main.nf'
+include { pathList } from './subworkflows/input/main.nf'
 include { validateParameters; paramsSummaryLog } from 'plugin/nf-schema'
 
 
@@ -38,7 +39,7 @@ workflow {
 	validateParameters()
 	log.info(paramsSummaryLog(workflow))
 
-	def plasmids = channel.of(record(meta: [sample_id: params.name], fasta: files(params.fasta).toSorted()))
+	def plasmids = channel.of(record(meta: [sample_id: params.name], fasta: pathList(params.fasta)))
 	def dbs = DATABASES(params.db, ((params.amr?.orgfinder?.skip ? [] : [Db.ORG_DB]) + (params.amr?.amrfinderplus?.skip ? [] : [Db.AMRFINDERPLUS])).toSet())
 	def lineage = PLASMID_LINEAGE(params.lineage, params.amr, dbs.org_db, dbs.amrfinderplus, plasmids)
 
