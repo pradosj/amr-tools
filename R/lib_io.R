@@ -1,6 +1,12 @@
 # Readers of the files of the bioinformatics tools and of the common formats, shared by the R steps of the
-# pipelines (reached through file links). It attaches no package, so that the order of the packages set
-# by each caller is kept: the callers attach tidyverse, Biostrings (FASTA files) and tidygraph (read_tax()).
+# pipelines (reached through file links). Sourced first, it sets the order of the packages: tidyverse after
+# Biostrings, so that dplyr wins over S4Vectors and IRanges for the masked names (first, rename, desc, ...).
+
+suppressPackageStartupMessages({
+	library(Biostrings)
+	library(tidyverse)
+	library(tidygraph)
+})
 
 
 # ---------------------------------------
