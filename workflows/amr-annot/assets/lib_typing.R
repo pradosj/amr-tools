@@ -198,15 +198,10 @@ contig_meta <- function(fasta_filename) {
 
 
 
-db_load <- function(amr_dir) {
-
-	assemblies <- fs::path(amr_dir,"amr/assemblies") |>
-		fs::dir_ls(glob = "*.fasta",fail=FALSE) |>
-		enframe(name = NULL,value = "assembly_path") |>
-		mutate(assembly_id = fs::path_file(assembly_path) |> fs::path_ext_remove()) |>
-		mutate(sample_id = assembly_id |> str_extract("(.*)__(.*)",1)) |>
-		mutate(assembler_name = assembly_id |> str_extract("(.*)__(.*)",2)) |>
-		mutate(amr_path = assembly_path |> fs::path_ext_set(".amr")) |>
+# AMR results of assemblies, one row per assembly: amr_path is the results folder of the assembly (amr/assemblies/<assembly_id>.amr)
+read_assemblies_amr <- function(amr_path, assembly_path, sample_id, assembler_name) {
+	tibble(amr_path = fs::path(amr_path), assembly_path = fs::path(assembly_path), sample_id, assembler_name) |>
+		mutate(assembly_id = str_c(sample_id,"__",assembler_name)) |>
 		mutate(org_name = map_chr(fs::path(amr_path,"org_name.txt"),read_org_name)) |>
 		mutate(orgfinder_tax = map(fs::path(amr_path,"orgfinder","tax.tsv"),read_orgfinder_tax)) |>
 		mutate(orgfinder_ani = map(fs::path(amr_path,"orgfinder","ani.tsv"),read_orgfinder_tsv)) |>
@@ -214,20 +209,56 @@ db_load <- function(amr_dir) {
 		mutate(mlst = map(fs::path(amr_path,"mlst","data.json"),read_cgemlst_json)) |>
 		mutate(plasmidfinder = map(fs::path(amr_path,"plasmidfinder","data.json"),read_plasmidfinder_json)) |>
 		mutate(resfinder = map(fs::path(amr_path,"resfinder","data.json"),read_resfinder_json)) |>
-		mutate(amrfinderplus = map(fs::path(amr_path,"amrfinderplus","report.tsv"),read_amrfinderplus_tsv)) |>		
-		mutate(mobtyper = map(fs::path(amr_path,"mobtyper.tsv"),read_mobtyper_tsv))
-	
-	samples <- fs::path(amr_dir,"amr/reads") |>
-		fs::dir_ls(glob="*.reads_amr",type="directory",fail=FALSE) |>
-		enframe(name = NULL,value = "reads_amr_path") |>
-		mutate(sample_id = reads_amr_path |> fs::path_file() |> fs::path_ext_remove()) |>
-		full_join(select(assemblies,sample_id),by="sample_id") |>
+		mutate(amrfinderplus = map(fs::path(amr_path,"amrfinderplus","report.tsv"),read_amrfinderplus_tsv)) |>
+		mutate(mobtyper = map(fs::path(amr_path,"mobtyper.tsv"),read_mobtyper_tsv)) |>
+		select(!c(amr_path,assembly_path)) |>
+		relocate(assembly_id,sample_id,assembler_name)
+}
+
+# AMR results of reads samples, one row per sample: reads_amr_path is the results folder of the sample (amr/reads/<sample_id>.reads_amr)
+read_reads_amr <- function(reads_amr_path, sample_id) {
+	tibble(reads_amr_path = fs::path(reads_amr_path), sample_id) |>
 		mutate(resfinder_long_reads = map(fs::path(reads_amr_path,"resfinder_long","data.json"),read_resfinder_json)) |>
 		mutate(resfinder_short_reads = map(fs::path(reads_amr_path,"resfinder_short","data.json"),read_resfinder_json)) |>
 		mutate(plasmidfinder_long_reads = map(fs::path(reads_amr_path,"plasmidfinder_long","data.json"),read_plasmidfinder_json)) |>
-		mutate(plasmidfinder_short_reads = map(fs::path(reads_amr_path,"plasmidfinder_short","data.json"),read_plasmidfinder_json))
-	
-	list(samples=samples,assemblies=assemblies)
+		mutate(plasmidfinder_short_reads = map(fs::path(reads_amr_path,"plasmidfinder_short","data.json"),read_plasmidfinder_json)) |>
+		select(!reads_amr_path)
+}
+
+# AMR results of all the assemblies and reads samples, from the RDS files saved from read_assemblies_amr() and read_reads_amr()
+db_aggregate <- function(assemblies_rds, reads_rds) {
+	list(
+		samples = bind_rows(read_reads_amr(character(0),character(0)),map(reads_rds,readRDS)),
+		assemblies = bind_rows(read_assemblies_amr(character(0),character(0),character(0),character(0)),map(assemblies_rds,readRDS))
+	)
+}
+
+# AMR results of a published amr/ folder (amr_dir is the folder holding amr/)
+db_load <- function(amr_dir) {
+	assembly_path <- fs::dir_ls(fs::path(amr_dir,"amr/assemblies"),glob = "*.fasta",fail=FALSE)
+	assembly_id <- fs::path_file(assembly_path) |> fs::path_ext_remove()
+	reads_amr_path <- fs::dir_ls(fs::path(amr_dir,"amr/reads"),glob="*.reads_amr",type="directory",fail=FALSE)
+	list(
+		samples = read_reads_amr(reads_amr_path,fs::path_file(reads_amr_path) |> fs::path_ext_remove()),
+		assemblies = read_assemblies_amr(
+			fs::path_ext_set(assembly_path,".amr"),
+			assembly_path,
+			str_extract(assembly_id,"(.*)__(.*)",1),
+			str_extract(assembly_id,"(.*)__(.*)",2)
+		)
+	)
+}
+
+# Summary tables of the AMR results
+amr_tables <- function(db) {
+	tbl <- list(
+		assemblies = summarise_assembly(db),
+		contigs = summarise_contigs(db),
+		resistances = summarise_resistances(db),
+		plasmidfinder_hits = summarise_plasmidfinder_hits(db)
+	)
+	tbl$contigs <- left_join(tbl$contigs,select(tbl$assemblies,sample_id,assembler_name,species_name,mlst_type),by=c('sample_id','assembler_name'))
+	tbl
 }
 
 

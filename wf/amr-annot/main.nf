@@ -36,7 +36,9 @@ workflow {
 	def amr_annot = AMR_ANNOT(params.amr, dbs.org_db, dbs.amrfinderplus, assemblies, reads.short_reads, reads.long_reads)
 
 	publish:
-	amr_multireport = amr_annot
+	amr_assemblies = amr_annot.assemblies_amr
+	amr_reads = amr_annot.reads_amr
+	amr_multiqc = amr_annot.multiqc
 	db = dbs.built
 }
 
@@ -44,11 +46,22 @@ output {
 	db: Channel<Record> {
 		path { r -> r.dir >> "db/${r.name}" }    // databases built by this run: use --db=<output dir>/db in the next runs
 	}
-	amr_multireport: Channel<Record> {
+	amr_assemblies: Channel<Record> {
 		mode "copy"    // the folder holds symlinks to the task outputs
 		path { r ->
-			r.folder.resolve('amr') >> "amr"    // results of the AMR tools, as gathered for the multireport
+			r.fasta >> "amr/assemblies/${r.meta.sample_id}__${r.meta.assembler_name}.fasta"
+			r.fai >> "amr/assemblies/${r.meta.sample_id}__${r.meta.assembler_name}.fasta.fai"
+			r.dir >> "amr/assemblies/${r.meta.sample_id}__${r.meta.assembler_name}.amr"    // results of the AMR tools on the assembly
+		}
+	}
+	amr_reads: Channel<Record> {
+		mode "copy"    // the folder holds symlinks to the task outputs
+		path { r -> r.dir >> "amr/reads/${r.meta.sample_id}.reads_amr" }    // results of the AMR tools on the reads of the sample
+	}
+	amr_multiqc: Channel<Record> {
+		path { r ->
 			r.html >> "reports/report.html"
+			r.rds >> "reports/amr_multiqc.rds"    // AMR results of all the assemblies and samples, as read by lib_typing.R
 			r.xlsx >> "reports/multitable.xlsx"
 			r.assemblies_tsv >> "reports/multitable_assemblies.tsv"
 			r.contigs_tsv >> "reports/multitable_contigs.tsv"

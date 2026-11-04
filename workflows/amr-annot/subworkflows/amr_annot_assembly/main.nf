@@ -9,6 +9,7 @@ include { PROKKA                } from './modules/tseemann/prokka'
 include { MLST                  } from './modules/tseemann/mlst'
 include { MLST as CGEMLST       } from './modules/cgetools/mlst'
 include { MOBTYPER              } from './modules/mobsuite/mobtyper.nf'
+include { SAMTOOLS_FAIDX        } from './modules/samtools/faidx'
 
 
 // Options of a tool (params.amr.<tool>). Fields are nullable: modules fall back to their own defaults.
@@ -36,6 +37,44 @@ record Genome {
 	fasta: Path
 	gff: Path?
 	info: Path?
+}
+
+
+// Gather the AMR results of an assembly into a folder (published as amr/assemblies/<sample_id>__<assembler_name>.amr), read into an RDS file
+process AMR_COMBINE_ASSEMBLY {
+	container 'registry.gitlab.unige.ch/amr-genomics/rscript:main'
+	label 'rscript'
+	memory 8.GB
+	cpus 2
+	time 30.m
+	input:
+	record(meta: Map, fasta: Path, org_name: String?, orgfinder: Path?, amrfinderplus: Path?, resfinder: Path?, plasmidfinder: Path?, cgemlst: Path?, mobtyper: Path?, MLST: Path?, prokka: Path?)
+	lib: Path    // lib_typing.R
+	stage:
+	stageAs(fasta, 'assembly.fasta')
+	stageAs(orgfinder, 'amr/orgfinder')
+	stageAs(amrfinderplus, 'amr/amrfinderplus')
+	stageAs(resfinder, 'amr/resfinder')
+	stageAs(plasmidfinder, 'amr/plasmidfinder')
+	stageAs(cgemlst, 'amr/mlst')
+	stageAs(mobtyper, 'amr/mobtyper.tsv')
+	stageAs(MLST, 'amr/MLST.txt')
+	stageAs(prokka, 'amr/prokka')
+	output:
+	record(meta: meta, dir: file('amr'), rds: file('amr.rds'))
+	script:
+	"""
+	#!/usr/bin/env Rscript
+	source("${lib}")
+	fs::dir_create("amr")
+	${org_name != null ? "writeLines('${org_name}','amr/org_name.txt')" : ''}
+	read_assemblies_amr("amr","assembly.fasta",'${meta.sample_id}','${meta.assembler_name}') |> saveRDS("amr.rds")
+	"""
+	stub:
+	"""
+	mkdir -p amr
+	touch amr.rds
+	"""
 }
 
 
@@ -115,7 +154,27 @@ workflow AMR_ANNOT_ASSEMBLY {
 		)
 	}
 
+	// Gather the results of each assembly into a folder and an RDS file
+	def fai_ch = SAMTOOLS_FAIDX(assemblies)
+	def combine_ch = AMR_COMBINE_ASSEMBLY(
+		assemblies
+			.join(orgfinder_ch.map({ r -> record(meta: r.meta, org_name: r.org_name, orgfinder: r.dir) }), by: 'meta', remainder: true)
+			.join(amrfinderplus_ch.map({ r -> record(meta: r.meta, amrfinderplus: r.dir) }), by: 'meta', remainder: true)
+			.join(resfinder_ch.map({ r -> record(meta: r.meta, resfinder: r.dir) }), by: 'meta', remainder: true)
+			.join(plasmidfinder_ch.map({ r -> record(meta: r.meta, plasmidfinder: r.dir) }), by: 'meta', remainder: true)
+			.join(cgemlst_ch.map({ r -> record(meta: r.meta, cgemlst: r.dir) }), by: 'meta', remainder: true)
+			.join(mobtyper_ch.map({ r -> record(meta: r.meta, mobtyper: r.tsv) }), by: 'meta', remainder: true)
+			.join(MLST_ch.map({ r -> record(meta: r.meta, MLST: r.txt) }), by: 'meta', remainder: true)
+			.join(prokka_ch.map({ r -> record(meta: r.meta, prokka: r.dir) }), by: 'meta', remainder: true),
+		file("${moduleDir}/assets/lib_typing.R")
+	)
+	def combined_ch = assemblies
+		.map({ r -> record(meta: r.meta, fasta: r.fasta) })
+		.join(fai_ch.map({ r -> record(meta: r.meta, fai: r.fai) }), by: 'meta')
+		.join(combine_ch, by: 'meta')
+
 	emit:
+	combined: Channel<Record>      = combined_ch        // records with fields meta, fasta, fai, dir (results folder), rds (read_assemblies_amr() table)
 	orgfinder: Channel<Record>     = orgfinder_ch       // records with fields meta, dir, org_name, org_acc, ani
 	amrfinderplus: Channel<Record> = amrfinderplus_ch   // records with fields meta, dir
 	resfinder: Channel<Record>     = resfinder_ch       // records with fields meta, dir

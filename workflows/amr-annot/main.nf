@@ -2,8 +2,7 @@ nextflow.enable.types = true
 
 include { AMR_ANNOT_ASSEMBLY } from './subworkflows/amr_annot_assembly'
 include { AMR_ANNOT_READS    } from './subworkflows/amr_annot_reads'
-include { SAMTOOLS_FAIDX     } from './modules/samtools/faidx'
-include { MULTIREPORT        } from './subworkflows/multireport'
+include { RMD_RENDER         } from './modules/rmd/render'
 
 
 // Options of a tool (params.amr.<tool>). Fields are nullable: modules fall back to their own defaults.
@@ -55,6 +54,48 @@ record LongReads {
 }
 
 
+// Aggregate the AMR results of all the assemblies and reads samples: summary tables, and an RDS file of the results (for the report)
+process AMR_MULTIQC {
+	container 'registry.gitlab.unige.ch/amr-genomics/rscript:main'
+	label 'rscript'
+	memory 8.GB
+	cpus 2
+	time 30.m
+	input:
+	record(assemblies: List<Path>, reads: List<Path>)    // RDS files of AMR_COMBINE_ASSEMBLY and AMR_COMBINE_READS
+	lib: Path    // lib_typing.R
+	stage:
+	stageAs(assemblies, 'assemblies/amr*.rds')
+	stageAs(reads, 'reads/amr*.rds')
+	output:
+	record(
+		rds: file('amr_multiqc.rds'),
+		xlsx: file('multitable.xlsx'),
+		assemblies_tsv: file('multitable_assemblies.tsv'),
+		contigs_tsv: file('multitable_contigs.tsv'),
+		resistances_tsv: file('multitable_resistances.tsv'),
+		plasmidfinder_hits_tsv: file('multitable_plasmidfinder_hits.tsv')
+	)
+	script:
+	"""
+	#!/usr/bin/env Rscript
+	source("${lib}")
+	db <- db_aggregate(Sys.glob("assemblies/amr*.rds"),Sys.glob("reads/amr*.rds"))
+	saveRDS(db,"amr_multiqc.rds")
+	tbl <- amr_tables(db)
+	openxlsx::write.xlsx(tbl,file="multitable.xlsx")
+	readr::write_tsv(tbl\$assemblies,file="multitable_assemblies.tsv")
+	readr::write_tsv(tbl\$contigs,file="multitable_contigs.tsv")
+	readr::write_tsv(tbl\$resistances,file="multitable_resistances.tsv")
+	readr::write_tsv(tbl\$plasmidfinder_hits,file="multitable_plasmidfinder_hits.tsv")
+	"""
+	stub:
+	"""
+	touch amr_multiqc.rds multitable.xlsx multitable_assemblies.tsv multitable_contigs.tsv multitable_resistances.tsv multitable_plasmidfinder_hits.tsv
+	"""
+}
+
+
 workflow AMR_ANNOT {
 	take:
 	opts: AmrParams
@@ -65,29 +106,29 @@ workflow AMR_ANNOT {
 	long_reads: Channel<LongReads>      // meta: [sample_id]
 
 	main:
-	def fai_ch = SAMTOOLS_FAIDX(assemblies)
+	def lib = file("${moduleDir}/assets/lib_typing.R")
 	def asm = AMR_ANNOT_ASSEMBLY(opts, org_db, amrfinderplus_db, assemblies)
 	def rds = AMR_ANNOT_READS(opts, short_reads, long_reads)
 
-	// Gather all the results in a folder for the multireport
-	def report = MULTIREPORT(
-		assemblies.map({ r -> record(name: "amr/assemblies/${r.meta.sample_id}__${r.meta.assembler_name}.fasta", path: r.fasta) })
-			.mix(fai_ch.map({ r -> record(name: "amr/assemblies/${r.meta.sample_id}__${r.meta.assembler_name}.fasta.fai", path: r.fai) }))
-			.mix(asm.orgfinder.map({ r -> record(name: "amr/assemblies/${r.meta.sample_id}__${r.meta.assembler_name}.amr/org_name.txt", path: null, text: r.org_name) }))
-			.mix(asm.orgfinder.map({ r -> record(name: "amr/assemblies/${r.meta.sample_id}__${r.meta.assembler_name}.amr/${r.dir.name}", path: r.dir) }))
-			.mix(asm.amrfinderplus.map({ r -> record(name: "amr/assemblies/${r.meta.sample_id}__${r.meta.assembler_name}.amr/${r.dir.name}", path: r.dir) }))
-			.mix(asm.resfinder.map({ r -> record(name: "amr/assemblies/${r.meta.sample_id}__${r.meta.assembler_name}.amr/${r.dir.name}", path: r.dir) }))
-			.mix(asm.plasmidfinder.map({ r -> record(name: "amr/assemblies/${r.meta.sample_id}__${r.meta.assembler_name}.amr/${r.dir.name}", path: r.dir) }))
-			.mix(asm.cgemlst.map({ r -> record(name: "amr/assemblies/${r.meta.sample_id}__${r.meta.assembler_name}.amr/${r.dir.name}", path: r.dir) }))
-			.mix(asm.mobtyper.map({ r -> record(name: "amr/assemblies/${r.meta.sample_id}__${r.meta.assembler_name}.amr/${r.tsv.name}", path: r.tsv) }))
-			.mix(asm.MLST.map({ r -> record(name: "amr/assemblies/${r.meta.sample_id}__${r.meta.assembler_name}.amr/${r.txt.name}", path: r.txt) }))
-			.mix(asm.prokka.map({ r -> record(name: "amr/assemblies/${r.meta.sample_id}__${r.meta.assembler_name}.amr/${r.dir.name}", path: r.dir) }))
-			.mix(rds.resfinder_long.map({ r -> record(name: "amr/reads/${r.meta.sample_id}.reads_amr/resfinder_long", path: r.dir) }))
-			.mix(rds.plasmidfinder_long.map({ r -> record(name: "amr/reads/${r.meta.sample_id}.reads_amr/plasmidfinder_long", path: r.dir) }))
-			.mix(rds.resfinder_short.map({ r -> record(name: "amr/reads/${r.meta.sample_id}.reads_amr/resfinder_short", path: r.dir) }))
-			.mix(rds.plasmidfinder_short.map({ r -> record(name: "amr/reads/${r.meta.sample_id}.reads_amr/plasmidfinder_short", path: r.dir) }))
+	// Aggregate the results of all the assemblies and reads samples (no table without results)
+	def multiqc_ch = AMR_MULTIQC(
+		asm.combined.map({ r -> record(assembly: true, rds: r.rds) })
+			.mix(rds.combined.map({ r -> record(assembly: false, rds: r.rds) }))
+			.collect()
+			.flatMap({ rs -> rs.isEmpty() ? [] : [record(
+				assemblies: rs.findAll({ r -> r.assembly }).collect({ r -> r.rds as Path }).toSorted(),
+				reads: rs.findAll({ r -> !r.assembly }).collect({ r -> r.rds as Path }).toSorted()
+			)] }),
+		lib
 	)
+	def html_ch = RMD_RENDER(multiqc_ch.map({ r -> record(
+		template: file("${moduleDir}/assets/multireport.Rmd"),
+		inputs: [r.rds, lib],
+		render_params: "db_rds='${r.rds.name}'"
+	) }))
 
 	emit:
-	multireport: Channel<Record> = report                // records with fields folder, html, xlsx, assemblies_tsv, contigs_tsv, resistances_tsv, plasmidfinder_hits_tsv
+	assemblies_amr: Channel<Record> = asm.combined                                       // records with fields meta, fasta, fai, dir, rds
+	reads_amr: Channel<Record>      = rds.combined                                       // records with fields meta, dir, rds
+	multiqc: Channel<Record>        = multiqc_ch.combine(html_ch).map({ t, h -> t + record(html: h) })    // records with fields rds, html, xlsx, assemblies_tsv, contigs_tsv, resistances_tsv, plasmidfinder_hits_tsv
 }

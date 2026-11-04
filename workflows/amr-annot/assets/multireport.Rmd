@@ -6,7 +6,7 @@ output:
     flexdashboard::flex_dashboard:
         orientation: rows
 params:
-    indir: "/Users/prados/Documents/AMR-genomics/amr-tools/work/1a/efb6b0fd83cc3a7bb15b1ed0d77e91"
+    db_rds: "amr_multiqc.rds"
 ---
 
 ```{r setup}
@@ -78,7 +78,7 @@ reactable_percent_colDef <- function() {
 
 
 ```{r include=FALSE}
-db <- db_load(params$indir)
+db <- readRDS(params$db_rds)
 assemblies <- summarise_assembly(db)
 contigs <- summarise_contigs(db)
 ```

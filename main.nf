@@ -237,7 +237,9 @@ workflow {
 	assemblies_checkm2      = asm_qc_ch.checkm2
 	assemblies_multiqc      = asm_qc_ch.multiqc
 
-	amr_multireport = amr_annot_ch
+	amr_assemblies  = amr_annot_ch.assemblies_amr
+	amr_reads       = amr_annot_ch.reads_amr
+	amr_multiqc     = amr_annot_ch.multiqc
 }
 
 
@@ -279,11 +281,22 @@ output {
 		}
 	}
 
-	amr_multireport: Channel<Record> {
+	amr_assemblies: Channel<Record> {
 		mode "copy"    // the folder holds symlinks to the task outputs
 		path { r ->
-			r.folder.resolve('amr') >> "amr"    // results of the AMR tools, as gathered for the multireport
+			r.fasta >> "amr/assemblies/${r.meta.sample_id}__${r.meta.assembler_name}.fasta"
+			r.fai >> "amr/assemblies/${r.meta.sample_id}__${r.meta.assembler_name}.fasta.fai"
+			r.dir >> "amr/assemblies/${r.meta.sample_id}__${r.meta.assembler_name}.amr"    // results of the AMR tools on the assembly
+		}
+	}
+	amr_reads: Channel<Record> {
+		mode "copy"    // the folder holds symlinks to the task outputs
+		path { r -> r.dir >> "amr/reads/${r.meta.sample_id}.reads_amr" }    // results of the AMR tools on the reads of the sample
+	}
+	amr_multiqc: Channel<Record> {
+		path { r ->
 			r.html >> "reports/report.html"
+			r.rds >> "reports/amr_multiqc.rds"    // AMR results of all the assemblies and samples, as read by lib_typing.R
 			r.xlsx >> "reports/multitable.xlsx"
 			r.assemblies_tsv >> "reports/multitable_assemblies.tsv"
 			r.contigs_tsv >> "reports/multitable_contigs.tsv"

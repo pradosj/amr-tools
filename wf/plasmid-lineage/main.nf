@@ -50,7 +50,8 @@ workflow {
 	core_genome = lineage.core_genome
 	fastani = lineage.fastani
 	report = lineage.report
-	amr_multireport = lineage.amr_multireport
+	amr_assemblies = lineage.amr_assemblies
+	amr_multiqc = lineage.amr_multiqc
 	db = dbs.built
 }
 
@@ -85,11 +86,18 @@ output {
 	report: Channel<Record> {
 		path { r -> r.html >> "${r.meta.sample_id}/report.html" }
 	}
-	amr_multireport: Channel<Record> {
+	amr_assemblies: Channel<Record> {
 		mode "copy"    // the folder holds symlinks to the task outputs
 		path { r ->
-			r.folder.resolve('amr') >> "amr"    // results of the AMR tools, as gathered for the multireport
+			r.fasta >> "amr/assemblies/${r.meta.sample_id}__${r.meta.assembler_name}.fasta"
+			r.fai >> "amr/assemblies/${r.meta.sample_id}__${r.meta.assembler_name}.fasta.fai"
+			r.dir >> "amr/assemblies/${r.meta.sample_id}__${r.meta.assembler_name}.amr"    // results of the AMR tools on the assembly
+		}
+	}
+	amr_multiqc: Channel<Record> {
+		path { r ->
 			r.html >> "reports/report.html"
+			r.rds >> "reports/amr_multiqc.rds"    // AMR results of all the assemblies and samples, as read by lib_typing.R
 			r.xlsx >> "reports/multitable.xlsx"
 			r.assemblies_tsv >> "reports/multitable_assemblies.tsv"
 			r.contigs_tsv >> "reports/multitable_contigs.tsv"
