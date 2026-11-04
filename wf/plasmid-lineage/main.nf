@@ -21,15 +21,11 @@ params {
 		fastani_args: '--fragLen 500'
 	)
 	amr: AmrParams = record(
-		orgfinder:     record(skip: true, args: ''),
-		speciator:     record(skip: true, args: ''),
 		amrfinderplus: record(skip: false, args: ''),
 		mobtyper:      record(skip: false, args: ''),
-		plasmidfinder: record(skip: false, skip_longread: true, skip_shortread: true, args: ''),
-		resfinder:     record(skip: false, skip_longread: true, skip_shortread: true, args: ''),
-		cgemlst:       record(skip: true, args: ''),
-		MLST:          record(skip: true, args: ''),
-		prokka:        record(skip: true, args: '')    // prokka is run by PLASMID_LINEAGE
+		plasmidfinder: record(skip: false, args: ''),
+		resfinder:     record(skip: false, args: ''),
+		prokka:        record(skip: true, args: '')
 	)
 }
 
