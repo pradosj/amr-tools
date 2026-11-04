@@ -4,7 +4,8 @@ include { MINIMAP2_ALIGN_ASM5                       } from './modules/minimap2/a
 include { MINIMAP2_ALIGN_ASM5 as ROTATION_ALIGNMENT } from './modules/minimap2/align_asm5'
 include { BCFTOOLS_ASM5_MPILEUP                     } from './modules/bcftools/asm5_mpileup'
 include { QUARTO_RENDER                             } from './modules/quarto/render'
-include { pathList                                  } from './subworkflows/input/main.nf'
+include { INPUT_FASTA                               } from './subworkflows/input/main.nf'
+include { GZIP_DECOMPRESS                           } from './modules/gzip'
 include { validateParameters; paramsSummaryLog      } from 'plugin/nf-schema'
 
 params {
@@ -86,10 +87,14 @@ workflow {
 	validateParameters()
 	log.info(paramsSummaryLog(workflow))
 
-	def query_ch = channel.fromList(pathList(params.query)).map({ f ->
-		def id = f.name.replaceAll(/\.(fasta|fna|fa)$/, '')
-		record(meta: [sample_id: id], ref: params.ref, query: f)
-	})
+	// Reference and queries: gzipped files are decompressed
+	def ref: Value<Path> = channel.value(params.ref)
+	if (params.ref.name.endsWith('.gz')) {
+		ref = GZIP_DECOMPRESS(channel.value(record(meta: [:], gz: params.ref))).map({ r -> r.file })
+	}
+	def query_ch = INPUT_FASTA(params.query)
+		.combine(ref: ref)
+		.map({ r -> record(meta: r.meta, ref: r.ref, query: r.fasta) })
 
 	def rotated_query_ch = channel.empty()
 	if (!params.no_query_rotation) {
@@ -102,7 +107,7 @@ workflow {
 
 	// Call mutations
 	def mut_ch = BCFTOOLS_ASM5_MPILEUP(
-		aln_ch.map({ r -> record(meta: r.meta, ref: params.ref, bam: r.bam, gff: params.ref_gff, args: params.mpileup_args) })
+		aln_ch.combine(ref: ref).map({ r -> record(meta: r.meta, ref: r.ref, bam: r.bam, gff: params.ref_gff, args: params.mpileup_args) })
 	)
 
 	// HTML report

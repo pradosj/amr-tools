@@ -125,19 +125,17 @@ workflow INPUT_READS {
 	long_reads: Channel<LongReads>   = long_ch
 }
 
-// Assemblies FASTA files
-workflow INPUT_ASSEMBLIES {
+// FASTA files of a comma-separated list of paths, glob patterns and URLs: gzipped files are decompressed.
+// Genome records: meta is [sample_id] (see fastaSampleId()), gff and info are not set.
+workflow INPUT_FASTA {
 	take:
 	fasta: String?
 
 	main:
-	def asm_ch = channel.empty()
+	def fasta_ch = channel.empty()
 	if (fasta) {
-		def in_ch = channel.fromList(pathList(fasta)).map({ f ->
-			record(meta: [sample_id: fastaSampleId(f.name), assembler_name: 'none'], fasta: f)
-		})
-		// gzipped FASTA files are decompressed
-		asm_ch = in_ch
+		def in_ch = channel.fromList(pathList(fasta)).map({ f -> record(meta: [sample_id: fastaSampleId(f.name)], fasta: f) })
+		fasta_ch = in_ch
 			.filter({ r -> !r.fasta.name.endsWith('.gz') })
 			.mix(GZIP_DECOMPRESS(
 				in_ch
@@ -145,6 +143,18 @@ workflow INPUT_ASSEMBLIES {
 					.map({ r -> record(meta: r.meta, gz: r.fasta) })
 			).map({ r -> record(meta: r.meta, fasta: r.file) }))
 	}
+
+	emit:
+	fasta_files: Channel<Genome> = fasta_ch
+}
+
+// Assemblies FASTA files
+workflow INPUT_ASSEMBLIES {
+	take:
+	fasta: String?
+
+	main:
+	def asm_ch = INPUT_FASTA(fasta).map({ r -> record(meta: (r.meta as Map) + [assembler_name: 'none'], fasta: r.fasta) })
 
 	emit:
 	assemblies: Channel<Genome> = asm_ch

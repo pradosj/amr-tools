@@ -7,8 +7,8 @@
 			"type": "string",
 			"format": "file-path",
 			"exists": true,
-			"pattern": "^((https?|ftp)://\\S+|\\S+\\.(fasta|fa|fna))$",
-			"description": "FASTA file of the reference assembly: path or URL"
+			"pattern": "^((https?|ftp)://\\S+|\\S+\\.(fasta|fa|fna)(\\.gz)?)$",
+			"description": "FASTA file of the reference assembly (optionally gzipped): path or URL"
 		},
 		
 		"ref_gff": {
@@ -21,8 +21,8 @@
 
 		"query": {
 			"type": "string",
-			"pattern": "^(((https?|ftp)://[^,\\s]+|\\S+(\\.(fasta|fa|fna)|\\}))(,\\s*|$))+$",
-			"description": "FASTA files of the query assemblies: comma-separated paths, glob patterns or URLs"
+			"pattern": "^(((https?|ftp)://[^,\\s]+|\\S+(\\.(fasta|fa|fna)(\\.gz)?|\\}))(,\\s*|$))+$",
+			"description": "FASTA files of the query assemblies (optionally gzipped): comma-separated paths, glob patterns or URLs"
 		},
 
 		"no_query_rotation": {
