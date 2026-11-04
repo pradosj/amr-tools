@@ -198,7 +198,12 @@ contig_meta <- function(fasta_filename) {
 
 
 
-# AMR results of assemblies, one row per assembly: amr_path is the results folder of the assembly (amr/assemblies/<assembly_id>.amr)
+#' AMR results of assemblies
+#'
+#' @param amr_path Results folders of the assemblies (amr/assemblies/<assembly_id>.amr).
+#' @param assembly_path FASTA files of the assemblies.
+#' @param sample_id,assembler_name Sample id and assembler name of the assemblies.
+#' @return A tibble with one row per assembly, the results of each tool in a list column.
 read_assemblies_amr <- function(amr_path, assembly_path, sample_id, assembler_name) {
 	tibble(amr_path = fs::path(amr_path), assembly_path = fs::path(assembly_path), sample_id, assembler_name) |>
 		mutate(assembly_id = str_c(sample_id,"__",assembler_name)) |>
@@ -215,7 +220,11 @@ read_assemblies_amr <- function(amr_path, assembly_path, sample_id, assembler_na
 		relocate(assembly_id,sample_id,assembler_name)
 }
 
-# AMR results of reads samples, one row per sample: reads_amr_path is the results folder of the sample (amr/reads/<sample_id>.reads_amr)
+#' AMR results of reads samples
+#'
+#' @param reads_amr_path Results folders of the samples (amr/reads/<sample_id>.reads_amr).
+#' @param sample_id Sample ids.
+#' @return A tibble with one row per sample, the results of each tool in a list column.
 read_reads_amr <- function(reads_amr_path, sample_id) {
 	tibble(reads_amr_path = fs::path(reads_amr_path), sample_id) |>
 		mutate(resfinder_long_reads = map(fs::path(reads_amr_path,"resfinder_long","data.json"),read_resfinder_json)) |>
@@ -225,7 +234,11 @@ read_reads_amr <- function(reads_amr_path, sample_id) {
 		select(!reads_amr_path)
 }
 
-# AMR results of all the assemblies and reads samples, from the RDS files saved from read_assemblies_amr() and read_reads_amr()
+#' AMR results of all the assemblies and reads samples
+#'
+#' @param assemblies_rds RDS files saved from read_assemblies_amr().
+#' @param reads_rds RDS files saved from read_reads_amr().
+#' @return A list with the tibbles `samples` and `assemblies`.
 db_aggregate <- function(assemblies_rds, reads_rds) {
 	list(
 		samples = bind_rows(read_reads_amr(character(0),character(0)),map(reads_rds,readRDS)),
@@ -233,7 +246,10 @@ db_aggregate <- function(assemblies_rds, reads_rds) {
 	)
 }
 
-# AMR results of a published amr/ folder (amr_dir is the folder holding amr/)
+#' AMR results of a published amr/ folder
+#'
+#' @param amr_dir The folder holding amr/.
+#' @return A list with the tibbles `samples` and `assemblies`, as db_aggregate().
 db_load <- function(amr_dir) {
 	assembly_path <- fs::dir_ls(fs::path(amr_dir,"amr/assemblies"),glob = "*.fasta",fail=FALSE)
 	assembly_id <- fs::path_file(assembly_path) |> fs::path_ext_remove()
@@ -249,7 +265,10 @@ db_load <- function(amr_dir) {
 	)
 }
 
-# Summary tables of the AMR results
+#' Summary tables of the AMR results
+#'
+#' @param db AMR results, as returned by db_aggregate() or db_load().
+#' @return A list of tibbles: assemblies, contigs, resistances, plasmidfinder_hits.
 amr_tables <- function(db) {
 	tbl <- list(
 		assemblies = summarise_assembly(db),

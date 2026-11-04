@@ -1,8 +1,13 @@
 # Functions of ROTATE_GENOMES (sourced after lib_plasmid_lineage.R, whose functions it uses)
 
-# Rotate the sequences to start at their best hit (highest bit score) of the reference, on the strand of
-# the hit (sequences without hit are not rotated). `blast`: hits of the reference sequences (query) on the
-# sequences to rotate (subject).
+#' Rotate the sequences to start at their best hit of the reference
+#'
+#' Each sequence starts at its best hit (highest bit score) of the reference, on the strand of the hit;
+#' the sequences without hit are not rotated.
+#'
+#' @param fasta FASTA file of the sequences to rotate.
+#' @param blast Hits of the reference sequences (query) on the sequences to rotate (subject), as read by read_blast6().
+#' @param out FASTA file written with the rotated sequences.
 rotate_fasta <- function(fasta, blast, out) {
 	fa <- read_fasta(fasta)
 	hits <- read_blast6(blast) |>

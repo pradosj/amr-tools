@@ -1,12 +1,19 @@
 # Functions of the CORE_GENES_PYMLST subworkflow (sourced after lib_plasmid_lineage.R, whose functions it uses)
 
-# Core genes: clusters of reciprocal best BLASTP hits of the prokka proteins, with one gene in at least
-# n_core plasmids. Writes:
-#   - core_genes.tsv: the genes of the clusters, with their cluster and whether the cluster is core
-#   - core_clusters.tsv: the size and number of plasmids of each cluster
-#   - pymlst_genomes/<plasmid>.fasta: the core genes of each plasmid, for pyMLST
-#   - pymlst_template.fasta: the core genes of the plasmid with the most core genes, template of the pyMLST database
-#   - pymlst_strains.tsv: the plasmid of each pyMLST strain
+#' Core genes: clusters of reciprocal best BLASTP hits of the prokka proteins, with one gene in at least
+#' n_core plasmids
+#'
+#' Writes:
+#' - `core_genes.tsv`: the genes of the clusters, with their cluster and whether the cluster is core;
+#' - `core_clusters.tsv`: the size and number of plasmids of each cluster;
+#' - `pymlst_genomes/<plasmid>.fasta`: the core genes of each plasmid, for pyMLST;
+#' - `pymlst_template.fasta`: the core genes of the plasmid with the most core genes, template of the pyMLST database;
+#' - `pymlst_strains.tsv`: the plasmid of each pyMLST strain.
+#'
+#' @param prokka_dir prokka output folder (prokka.gff, prokka.ffn).
+#' @param blastp Self alignment of the prokka proteins, as read by read_blast6().
+#' @param n_core Minimum number of plasmids sharing a core gene (NA: see core_count()).
+#' @param min_cover Minimum coverage of the query protein by its alignment.
 core_genes <- function(prokka_dir, blastp, n_core = NA, min_cover = 0.75) {
 	library(tidygraph)
 	gff <- rtracklayer::import.gff3(file.path(prokka_dir, "prokka.gff"))

@@ -11,7 +11,10 @@ suppressPackageStartupMessages({
 #  Input / output
 # ---------------------------------------
 
-# BLAST tabular output, as produced with -outfmt "6 std qlen slen"
+#' Read a BLAST tabular output
+#'
+#' @param f BLAST output, as produced with `-outfmt "6 std qlen slen"`.
+#' @return A tibble with one row per alignment.
 read_blast6 <- function(f) {
 	readr::read_tsv(
 		f,
@@ -24,19 +27,30 @@ read_blast6 <- function(f) {
 	)
 }
 
-# Read a FASTA file, naming the sequences by their id (first word of the header) as BLAST does
+#' Read a FASTA file
+#'
+#' @param f FASTA file.
+#' @return A DNAStringSet, its sequences named by their id (first word of the header), as BLAST does.
 read_fasta <- function(f) {
 	fa <- readDNAStringSet(f)
 	names(fa) <- sub("\\s.*", "", names(fa))
 	fa
 }
 
-# File name of a sequence id
+#' File name of a sequence id
+#'
+#' @param seq_id Sequence ids.
+#' @param ext File extension.
+#' @return The file names, made from the ids with make.names().
 seq_file_name <- function(seq_id, ext = ".fasta") {
 	paste0(make.names(seq_id), ext)
 }
 
-# Minimum number of plasmids to call a gene or a region core: the given count, or 80% of the plasmids
+#' Minimum number of plasmids to call a gene or a region core
+#'
+#' @param n_core The given minimum number of plasmids, or NA.
+#' @param n_plasmids Number of plasmids.
+#' @return n_core, or 80% of the plasmids when n_core is NA.
 core_count <- function(n_core, n_plasmids) {
 	if (is.null(n_core) || is.na(n_core)) ceiling(0.8 * n_plasmids) else as.integer(n_core)
 }
@@ -64,7 +78,11 @@ query_granges <- function(x, ...) {
 	)
 }
 
-# Regions of the queries, with the subjects aligning on each of them
+#' Regions of the queries, with the subjects aligning on each of them
+#'
+#' @param aln Alignments, as read by read_blast6().
+#' @return A GRanges of the disjoint regions of the queries, with the ids of the subjects aligning on each of
+#'   them in `subjects`.
 find_shared_regions <- function(aln) {
 	d <- query_granges(aln) |>
 		unstrand() |>
@@ -74,7 +92,10 @@ find_shared_regions <- function(aln) {
 	d
 }
 
-# Remove the alignments of a query included in another alignment of the same query on the same subject region
+#' Remove the alignments included in another alignment of the same query on the same subject region
+#'
+#' @param aln Alignments, as read by read_blast6().
+#' @return The alignments that are not included in another one.
 filter_inner_alignments <- function(aln) {
 	S <- subject_granges(aln) |> unstrand()
 	w <- findOverlaps(S, S, type = "within")
@@ -83,7 +104,10 @@ filter_inner_alignments <- function(aln) {
 	filter(aln, !seq(nrow(aln)) %in% queryHits(w))
 }
 
-# Polygons joining the aligned regions of the query and of the subject
+#' Polygons joining the aligned regions of the query and of the subject
+#'
+#' @param aln Alignments, as read by read_blast6().
+#' @return A tibble of the polygon corners: poly_id, seq, name (corner), value (position).
 aln_polygons <- function(aln) {
 	poly <- aln |>
 		mutate(poly_id = seq(n()))
@@ -99,7 +123,11 @@ aln_polygons <- function(aln) {
 		arrange(poly_id, name)
 }
 
-# Mean identity of the alignments of each pair of sequences
+#' Mean identity of the alignments of each pair of sequences
+#'
+#' @param aln Alignments, as read by read_blast6().
+#' @param min_len Minimum length of the alignments.
+#' @return A tibble with query_id, subject_id and ani.
 blast_ani <- function(aln, min_len = 500) {
 	aln |>
 		filter(align_len >= min_len) |>
@@ -107,7 +135,10 @@ blast_ani <- function(aln, min_len = 500) {
 		summarize(ani = mean(pct_ident), .groups = "drop")
 }
 
-# Clustering of the sequences on their ANI
+#' Single linkage clustering of the sequences on their ANI
+#'
+#' @param ani ANI of the pairs of sequences, as computed by blast_ani().
+#' @return An hclust object, on the distance 100 - ANI.
 ani_hclust <- function(ani) {
 	M <- ani |>
 		pivot_wider(id_cols = query_id, names_from = subject_id, values_from = ani, values_fill = 0) |>
@@ -123,7 +154,10 @@ ani_hclust <- function(ani) {
 #  Plots
 # ---------------------------------------
 
-# Dot plot of the alignments of each pair of sequences
+#' Dot plot of the alignments of each pair of sequences
+#'
+#' @param aln Alignments, as read by read_blast6().
+#' @return A ggplot.
 gg_pw_alignment <- function(aln) {
 	aln |>
 		ggplot(aes(x = query_start, xend = query_end, y = subject_start, yend = subject_end, color = pct_ident)) +
@@ -134,7 +168,12 @@ gg_pw_alignment <- function(aln) {
 			theme(strip.text.y.right = element_text(angle = 0))
 }
 
-# Polygons of the alignments between consecutive sequences, in the order of `seq_levels`
+#' Polygons of the alignments between consecutive sequences
+#'
+#' @param aln Alignments, as read by read_blast6().
+#' @param seq_levels The sequences, in their plotting order.
+#' @param min_len Minimum length of the alignments.
+#' @return The polygons, as computed by aln_polygons(), of the alignments between consecutive sequences of seq_levels.
 alignment_polygons <- function(aln, seq_levels, min_len = 1000) {
 	aln |>
 		mutate(across(c(query_id, subject_id), ~ factor(., seq_levels))) |>
@@ -148,7 +187,11 @@ alignment_polygons <- function(aln, seq_levels, min_len = 1000) {
 		ungroup()
 }
 
-# Plot of the polygons of alignment_polygons(), with the sequences as horizontal lines
+#' Plot of the alignment polygons, with the sequences as horizontal lines
+#'
+#' @param polygons Polygons, as computed by alignment_polygons().
+#' @param seqlen A tibble with the sequences (seq) and their length (seqlen).
+#' @return A ggplot.
 gg_alignment_polygons <- function(polygons, seqlen) {
 	centers <- polygons |>
 		group_by(poly_id) |>
@@ -168,8 +211,15 @@ gg_alignment_polygons <- function(polygons, seqlen) {
 #  Steps of the pipeline
 # ---------------------------------------
 
-# Longest region of a sequence shared by at least min_frac of the sequences, written to `out`
-# (empty when there is none): the rotated sequences start at this region
+#' Longest region of a sequence shared by most of the sequences
+#'
+#' The pipeline rotates the sequences to start at this region.
+#'
+#' @param fasta FASTA file of the sequences.
+#' @param blast Self alignment of the sequences, as read by read_blast6().
+#' @param out FASTA file written with the region (empty when there is none).
+#' @param min_len Minimum length of the alignments.
+#' @param min_frac Minimum fraction of the sequences sharing the region.
 find_align_seq <- function(fasta, blast, out, min_len = 1000, min_frac = 0.8) {
 	fa <- read_fasta(fasta)
 	aln <- read_blast6(blast) |>
@@ -183,10 +233,17 @@ find_align_seq <- function(fasta, blast, out, min_len = 1000, min_frac = 0.8) {
 	writeXStringSet(align_seq, out)
 }
 
-# Core genome: regions of each plasmid shared by at least n_core plasmids (itself included). Writes:
-#   - core_genome.tsv: the regions of each plasmid, with the number of plasmids sharing it and whether it is core
-#   - fastani_genomes/<plasmid>.fasta: the regions of each plasmid, for FastANI
-#   - fastani_genomes.tsv: the plasmid of each FastANI genome
+#' Core genome: regions of each plasmid shared by at least n_core plasmids (itself included)
+#'
+#' Writes:
+#' - `core_genome.tsv`: the regions of each plasmid, with the number of plasmids sharing it and whether it is core;
+#' - `fastani_genomes/<plasmid>.fasta`: the regions of each plasmid, for FastANI;
+#' - `fastani_genomes.tsv`: the plasmid of each FastANI genome.
+#'
+#' @param fasta FASTA file of the plasmids.
+#' @param blast Self alignment of the plasmids, as read by read_blast6().
+#' @param n_core Minimum number of plasmids sharing a core region (NA: see core_count()).
+#' @param min_len Minimum length of the alignments and of the core regions.
 core_genome <- function(fasta, blast, n_core = NA, min_len = 500) {
 	FA <- read_fasta(fasta)
 	n_core <- core_count(n_core, length(FA))
