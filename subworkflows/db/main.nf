@@ -85,7 +85,7 @@ workflow DATABASES {
 		} else if (dir.resolve(checkm2_path).exists()) {
 			checkm2_ch = channel.value(dir.resolve(checkm2_path))
 		} else {
-			def checkm2_built = CHECKM2_DB()
+			def checkm2_built = CHECKM2_DB(checkm2_path)
 			checkm2_ch = checkm2_built
 			built_ch = built_ch.mix(checkm2_built.map({ d -> record(name: checkm2_path, dir: d) }))
 		}
@@ -113,7 +113,7 @@ workflow DATABASES {
 		} else if (dir.resolve(amrfinderplus_path).exists()) {
 			amrfinderplus_ch = channel.value(dir.resolve(amrfinderplus_path))
 		} else {
-			def amrfinderplus_built = AMRFINDERPLUS_UPDATE()
+			def amrfinderplus_built = AMRFINDERPLUS_UPDATE(amrfinderplus_path)
 			amrfinderplus_ch = amrfinderplus_built
 			built_ch = built_ch.mix(amrfinderplus_built.map({ d -> record(name: amrfinderplus_path, dir: d) }))
 		}
