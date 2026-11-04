@@ -183,26 +183,6 @@ find_align_seq <- function(fasta, blast, out, min_len = 1000, min_frac = 0.8) {
 	writeXStringSet(align_seq, out)
 }
 
-# Rotate the sequences to start at their best hit of the alignment sequence, on the strand of the hit
-# (sequences without hit are not rotated)
-rotate_fasta <- function(fasta, blast, out) {
-	fa <- read_fasta(fasta)
-	rotation_pos <- read_blast6(blast) |>
-		group_by(subject_id) |>
-		slice_head(n = 1) |>
-		ungroup() |>
-		subject_granges()
-	rotation_pos <- c(rotation_pos, GRanges(names(fa), IRanges(1, width = 1), strand = "+"))
-	rotation_pos <- rotation_pos[match(names(fa), as.character(seqnames(rotation_pos)))]
-	rotation_pos <- resize(rotation_pos, width = 0)
-
-	FA <- xscat(subseq(fa, start = start(rotation_pos)), subseq(fa, end = end(rotation_pos)))
-	minus <- as.logical(strand(rotation_pos) == "-")
-	FA[minus] <- reverseComplement(FA[minus])
-	names(FA) <- names(fa)
-	writeXStringSet(FA, out)
-}
-
 # Core genes: clusters of reciprocal best BLASTP hits of the prokka proteins, with one gene in at least
 # n_core plasmids. Writes:
 #   - core_genes.tsv: the genes of the clusters, with their cluster and whether the cluster is core

@@ -1,12 +1,13 @@
 nextflow.enable.types = true
 
-include { BLASTN as BLASTN_SELF; BLASTN as BLASTN_ALIGN_SEQ; BLASTN as BLASTN_ROTATED } from './modules/blast/blastn'
+include { BLASTN as BLASTN_SELF; BLASTN as BLASTN_ROTATED } from './modules/blast/blastn'
 include { BLASTP                } from './modules/blast/blastp'
 include { PROKKA                } from './modules/tseemann/prokka'
 include { PYMLST_WGMLST         } from './modules/pymlst/wgmlst'
 include { FASTANI               } from './modules/fastani'
 include { QUARTO_RENDER         } from './modules/quarto/render'
 include { AMR_ANNOT; AmrParams  } from './workflows/amr-annot/main.nf'
+include { ROTATE_GENOMES        } from './workflows/rotate-genomes/main.nf'
 
 
 // Options of PLASMID_LINEAGE (params.lineage). Fields are nullable: defaults are used when null.
@@ -76,40 +77,6 @@ process FIND_ALIGN_SEQ {
 	stub:
 	"""
 	touch align_seq.fasta
-	"""
-}
-
-
-// Rotate the plasmids to start at their hit of the alignment sequence, on its strand
-process ROTATE_FASTA {
-	container 'registry.gitlab.unige.ch/amr-genomics/rscript:v3'
-	label 'rscript'
-	memory 8.GB
-	cpus 1
-	time 30.m
-
-	input:
-	record(meta: Map, fasta: Path, blast: Path)
-	assets: Path
-
-	stage:
-	stageAs(fasta, 'plasmids.fasta')
-	stageAs(blast, 'align_seq.blastn')
-	stageAs(assets, 'assets')
-
-	output:
-	record(meta: meta, fasta: file('rotated.fasta'))
-
-	script:
-	"""
-	#!/usr/bin/env Rscript
-	source("assets/lib_plasmid_lineage.R")
-	rotate_fasta("plasmids.fasta", "align_seq.blastn", "rotated.fasta")
-	"""
-
-	stub:
-	"""
-	touch rotated.fasta
 	"""
 }
 
@@ -216,7 +183,7 @@ process REPORT_FOLDER {
 	record(meta: meta, dir: file('report_data'))
 
 	script:
-	def cmds = entries.collect({ e -> "mv '${e.path}' 'report_data/${e.name}'" }).join('\n')
+	def cmds = entries.collect({ e -> "cp -P '${e.path}' 'report_data/${e.name}'" }).join('\n')    // cp: a staged file can be given under several names
 	"""
 	mkdir report_data
 	${cmds}
@@ -248,15 +215,11 @@ workflow PLASMID_LINEAGE {
 		fasta_ch.join(self_ch, by: 'meta').map({ r -> record(meta: r.meta, fasta: r.fasta, blast: r.tsv) }),
 		assets
 	)
-	def align_hits_ch = BLASTN_ALIGN_SEQ(
-		align_seq_ch.map({ r -> record(meta: r.meta, query: r.fasta) })
-			.join(fasta_ch.map({ r -> record(meta: r.meta, subject: r.fasta) }), by: 'meta')
-			.map({ r -> r + record(args: blastn_args) })
-	)
-	def rotated_ch = ROTATE_FASTA(
-		fasta_ch.join(align_hits_ch, by: 'meta').map({ r -> record(meta: r.meta, fasta: r.fasta, blast: r.tsv) }),
-		assets
-	)
+	def rotated_ch = ROTATE_GENOMES(
+		fasta_ch,
+		align_seq_ch.map({ r -> record(meta: r.meta, fasta: r.fasta, blast: null) }),
+		blastn_args
+	).rotated
 	def rotated_self_ch = BLASTN_ROTATED(rotated_ch.map({ r -> record(meta: r.meta, query: r.fasta, subject: null, args: blastn_args) }))
 
 	// AMR and plasmid typing annotations of the rotated plasmids (one multiqc for all the sets)
