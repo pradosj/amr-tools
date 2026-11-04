@@ -21,3 +21,11 @@ ONT reads can also be given as BAM or CRAM files. The sample id is taken from th
 Assembly strategies (`--assembler.name`): `long_flye`, `long_flye_medaka` (default), `long_unicycler`, `long_hybracter`, `short_unicycler`, `short_spades`, `hybrid_unicycler`, `hybrid_hybracter`, `hybrid_flye_medaka_pilon`. Tool arguments: `--assembler.args.<tool>`.
 
 Outputs: `assemblies/<sample_id>__<assembler>.fasta`, and with `--verbose` the assembler output folder `assemblies/<sample_id>__<assembler>.output`.
+
+# Test the pipeline
+
+```bash
+nextflow run pradosj/amr-tools/wf/assemble/main.nf -profile standard,test
+```
+
+The `test` profile uses ONT reads of *Klebsiella pneumoniae* downloaded from ENA ([ERR14747186](https://www.ebi.ac.uk/ena/browser/view/ERR14747186), 332 MB).

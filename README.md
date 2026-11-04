@@ -21,7 +21,7 @@ Each step is also available as a standalone pipeline (see [Standalone pipelines]
 curl -s https://get.nextflow.io | bash
 ```
 
-Test `amr-tools` installation (runs the pipeline on test assemblies):
+Test `amr-tools` installation (runs the pipeline on test assemblies, and on ONT reads of *Klebsiella pneumoniae* downloaded from ENA, [ERR14747186](https://www.ebi.ac.uk/ena/browser/view/ERR14747186), 332 MB, that are assembled):
 
 ```bash
 nextflow run pradosj/amr-tools -profile standard,test
