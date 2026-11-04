@@ -45,6 +45,7 @@ comma-separated lists of paths, glob patterns and URLs (a URL names one file: no
 `--assemblies.fasta='assemblies/*.fasta,https://www.ebi.ac.uk/ena/browser/api/fasta/CP047704.1'` or
 `--reads.illumina='https://ftp.sra.ebi.ac.uk/vol1/fastq/<run path>/<run>_1.fastq.gz,https://ftp.sra.ebi.ac.uk/vol1/fastq/<run path>/<run>_2.fastq.gz'`.
 The sample id is the file name without its extension (and without the `_R1`/`_R2` suffix of paired-end Illumina reads).
+Assemblies can be gzipped (`.fasta.gz`, `.fa.gz`, `.fna.gz`): they are decompressed.
 
 To assemble and annotate reads (the sample id is taken from the file names):
 

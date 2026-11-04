@@ -40,7 +40,7 @@
         "type": "string",
         "format": "file-path",
         "exists": true,
-        "pattern": "^\\S+\\.(fasta|fa)$",
+        "pattern": "^\\S+\\.(fasta|fa|fna)(\\.gz)?$",
         "description": "Path the FASTA file containing the assembly",
         "meta": "assembly_fasta"
       },

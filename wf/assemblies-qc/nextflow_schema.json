@@ -37,8 +37,8 @@
 			"properties": {
 				"fasta": {
 					"type": "string",
-					"pattern": "^(((https?|ftp)://[^,\\s]+|\\S+(\\.(fasta|fa|fna)|\\}))(,\\s*|$))+$",
-					"description": "FASTA files of the assemblies: comma-separated paths, glob patterns or URLs"
+					"pattern": "^(((https?|ftp)://[^,\\s]+|\\S+(\\.(fasta|fa|fna)(\\.gz)?|\\}))(,\\s*|$))+$",
+					"description": "FASTA files of the assemblies (.fasta, .fa or .fna, optionally gzipped): comma-separated paths, glob patterns or URLs"
 				}
 			}
 		},

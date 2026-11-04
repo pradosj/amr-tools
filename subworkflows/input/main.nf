@@ -6,6 +6,7 @@ nextflow.enable.types = true
 // ---------------------------------------
 
 include { SAMTOOLS_FASTQ as ONT_BAM_TO_FASTQ } from './modules/samtools/fastq'
+include { GZIP_DECOMPRESS                    } from './modules/gzip'
 
 // ---------------------------------------
 
@@ -57,6 +58,11 @@ def pathList(patterns: String) -> List<Path> {
 		error("Glob patterns are not supported in URLs, list each file: ${bad.join(', ')}")
 	}
 	return ps.collectMany({ p -> files(p).toSorted() }).toList()
+}
+
+// Sample id of a FASTA file: its name without the .fasta, .fa or .fna extension, optionally followed by .gz
+def fastaSampleId(name: String) -> String {
+	return name.replaceAll(/\.(fasta|fa|fna)(\.gz)?$/, '')
 }
 
 // Paired-end Illumina file names end with _1, _2, _R1 or _R2 (optionally followed by _001)
@@ -127,9 +133,17 @@ workflow INPUT_ASSEMBLIES {
 	main:
 	def asm_ch = channel.empty()
 	if (fasta) {
-		asm_ch = channel.fromList(pathList(fasta)).map({ f ->
-			record(meta: [sample_id: f.name.replaceAll(/\.(fasta|fa|fna)$/, ''), assembler_name: 'none'], fasta: f)
+		def in_ch = channel.fromList(pathList(fasta)).map({ f ->
+			record(meta: [sample_id: fastaSampleId(f.name), assembler_name: 'none'], fasta: f)
 		})
+		// gzipped FASTA files are decompressed
+		asm_ch = in_ch
+			.filter({ r -> !r.fasta.name.endsWith('.gz') })
+			.mix(GZIP_DECOMPRESS(
+				in_ch
+					.filter({ r -> r.fasta.name.endsWith('.gz') })
+					.map({ r -> record(meta: r.meta, gz: r.fasta) })
+			).map({ r -> record(meta: r.meta, fasta: r.file) }))
 	}
 
 	emit:

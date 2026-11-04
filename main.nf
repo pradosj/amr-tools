@@ -7,7 +7,8 @@ include { ASSEMBLE; AssemblerParams                   } from './workflows/assemb
 include { ASSEMBLIES_QC; AssembliesQcParams           } from './workflows/assemblies-qc/main.nf'
 include { AMR_ANNOT; AmrParams                        } from './workflows/amr-annot/main.nf'
 include { DATABASES; DbParams; Db                     } from './subworkflows/db/main.nf'
-include { pathList                                  } from './subworkflows/input/main.nf'
+include { pathList; fastaSampleId                   } from './subworkflows/input/main.nf'
+include { GZIP_DECOMPRESS as DECOMPRESS_ASSEMBLY_FASTA } from './modules/gzip/main.nf'
 include { IDENTITY as COPY_ASSEMBLY_FASTA             } from './modules/identity/main.nf'
 include { IDENTITY as COPY_SHORT_READS                } from './modules/identity/main.nf'
 include { IDENTITY as COPY_LONG_READS                 } from './modules/identity/main.nf'
@@ -128,7 +129,7 @@ workflow SAMPLES {
 		}
 		if (assemblies.fasta) {
 			parts_ch = parts_ch.mix(channel.fromList(pathList(assemblies.fasta))
-				.map({ f -> samplePart(f.name.replaceAll('\\.(fasta|fa|fna)$', ''), null, null, null, f) }))
+				.map({ f -> samplePart(fastaSampleId(f.name), null, null, null, f) }))
 		}
 		samples_ch = parts_ch
 			.map({ s -> tuple(s.sample_id, s) })
@@ -195,15 +196,24 @@ workflow {
 		sr_rec.join(todo_ch, by: 'meta'),
 		lr_rec.join(todo_ch, by: 'meta')
 	)
+	// Given assemblies: copied in the work directory (to be published), or decompressed when gzipped
+	def given_ch = samples
+		.filter({ s -> s.assembly_fasta })
+		.map({ s -> record(meta: [sample_id: s.sample_id], fasta: s.assembly_fasta) })
 	def given_asm_ch = COPY_ASSEMBLY_FASTA(
-		samples
-			.filter({ s -> s.assembly_fasta })
-			.map({ s -> record(meta: [sample_id: s.sample_id], file1: s.assembly_fasta, file2: null) })
-	)
+		given_ch
+			.filter({ r -> !r.fasta.name.endsWith('.gz') })
+			.map({ r -> record(meta: r.meta, file1: r.fasta, file2: null) })
+	).map({ r -> record(meta: r.meta, fasta: r.file1) })
+		.mix(DECOMPRESS_ASSEMBLY_FASTA(
+			given_ch
+				.filter({ r -> r.fasta.name.endsWith('.gz') })
+				.map({ r -> record(meta: r.meta, gz: r.fasta) })
+		).map({ r -> record(meta: r.meta, fasta: r.file) }))
 
 	// Assemblies are identified by a meta map holding both sample_id and assembler_name
 	def asm_rec = given_asm_ch
-		.map({ r -> record(meta: r.meta + [assembler_name: 'none'], fasta: r.file1) })
+		.map({ r -> record(meta: r.meta + [assembler_name: 'none'], fasta: r.fasta) })
 		.mix(assemblies.map({ r -> record(meta: r.meta, fasta: r.fasta) }))
 	def asm_dir_ch = assemblies.map({ r -> record(meta: r.meta, dir: r.dir) })
 
