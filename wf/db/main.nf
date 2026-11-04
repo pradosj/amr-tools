@@ -13,7 +13,6 @@ params {
 
 workflow {
 	main:
-	// Validate parameters and print summary of supplied ones
 	validateParameters()
 	log.info(paramsSummaryLog(workflow))
 
