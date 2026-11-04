@@ -83,11 +83,13 @@ process STEP3_DB_BUILD {
 	ncbi_db: Path
 	taxdump: Path
 	db_build_script: Path
+	lib_io: Path    // lib_io.R, sourced by db_build.R
 
 	stage:
 	stageAs(ncbi_db, 'ncbi_db')
 	stageAs(taxdump, 'taxdump')
 	stageAs(db_build_script, 'db_build.R')
+	stageAs(lib_io, 'lib_io.R')
 
 	output:
 	record(
@@ -136,7 +138,7 @@ workflow ORG_DB_BUILD {
 		dir_name: 'taxdump'
 	)))
 
-	def db_built = STEP3_DB_BUILD(ncbi_db, taxdump, file("${moduleDir}/assets/db_build.R"))
+	def db_built = STEP3_DB_BUILD(ncbi_db, taxdump, file("${moduleDir}/assets/db_build.R"), file("${moduleDir}/assets/lib_io.R"))
 
 	emit:
 	db: Value<OrgfinderDb> = db_built

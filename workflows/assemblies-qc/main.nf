@@ -50,8 +50,9 @@ process COMBINE_QC_STATS {
 	time 30.m
 	input:
 	record(meta: Map, fasta: Path, long_stats: Path?, short_stats: Path?, checkm2: Path?)
-	lib: Path    // lib_assembly_stats.R
+	libs: List<Path>    // lib_io.R, lib_assembly_stats.R
 	stage:
+	stageAs(libs, 'lib/*')
 	stageAs(fasta, 'stats/assembly.fasta')
 	stageAs(long_stats, 'stats/long_reads.bam.stats')
 	stageAs(short_stats, 'stats/short_reads.bam.stats')
@@ -63,7 +64,8 @@ process COMBINE_QC_STATS {
 	def meta_json = new groovy.json.JsonBuilder([meta.subMap(['sample_id']), meta.subMap(['assembler_name'])]).toString()
 	"""
 	#!/usr/bin/env Rscript
-	source("${lib}")
+	source("lib/lib_io.R")
+	source("lib/lib_assembly_stats.R")
 	stats <- read_assembly_stats("./stats")
 	stats[["meta"]] <- '${meta_json}'
 	stats[["sample_id"]] <- '${meta.sample_id}'
@@ -85,8 +87,9 @@ process ASSEMBLIES_MULTIQC {
 	time 30.m
 	input:
 	rds: List<Path>
-	lib: Path    // lib_assembly_stats.R
+	libs: List<Path>    // lib_io.R, lib_assembly_stats.R
 	stage:
+	stageAs(libs, 'lib/*')
 	stageAs(rds, 'stats/qc*.rds')
 	output:
 	record(
@@ -96,7 +99,8 @@ process ASSEMBLIES_MULTIQC {
 	script:
 	"""
 	#!/usr/bin/env Rscript
-	source("${lib}")
+	source("lib/lib_io.R")
+	source("lib/lib_assembly_stats.R")
 	A <- rlang::inject(aggregate_assembly_stats(!!!(c(${rds.collect({ f -> "'${f}'" }).join(",")}) |> map(readRDS) |> unname())))
 	A |> write.table(file="assemblies_multiqc.txt",sep="\\t",quote=FALSE,row.names=FALSE)
 	A |> openxlsx::write.xlsx("assemblies_multiqc.xlsx")
@@ -117,7 +121,7 @@ workflow ASSEMBLIES_QC {
 	long_reads: Channel<LongReads>
 
 	main:
-	def lib = file("${moduleDir}/assets/lib_assembly_stats.R")
+	def libs = [file("${moduleDir}/assets/lib_io.R"), file("${moduleDir}/assets/lib_assembly_stats.R")]
 
 	// Short reads alignment and statistics
 	def short_bam_ch = BWA_MEM(BWA_INDEX(assemblies).join(short_reads, by: 'meta'))
@@ -142,13 +146,13 @@ workflow ASSEMBLIES_QC {
 			.join(long_stats_ch.map({ r -> record(meta: r.meta, long_stats: r.stats) }), by: 'meta', remainder: true)
 			.join(short_stats_ch.map({ r -> record(meta: r.meta, short_stats: r.stats) }), by: 'meta', remainder: true)
 			.join(checkm2_ch.map({ r -> record(meta: r.meta, checkm2: r.report) }), by: 'meta', remainder: true),
-		lib
+		libs
 	)
 
 	// no table when there is no assembly
 	def multiqc_ch = ASSEMBLIES_MULTIQC(
 		qc_ch.map({ r -> r.rds }).collect().flatMap({ fs -> fs.isEmpty() ? [] : [fs.toList()] }),
-		lib
+		libs
 	)
 
 	emit:

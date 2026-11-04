@@ -11,32 +11,6 @@ suppressPackageStartupMessages({
 #  Input / output
 # ---------------------------------------
 
-#' Read a BLAST tabular output
-#'
-#' @param f BLAST output, as produced with `-outfmt "6 std qlen slen"`.
-#' @return A tibble with one row per alignment.
-read_blast6 <- function(f) {
-	readr::read_tsv(
-		f,
-		col_names = c(
-			"query_id","subject_id","pct_ident","align_len","num_mismatch",
-			"num_gapopen","query_start","query_end","subject_start","subject_end",
-			"evalue","bit_score","query_len","subject_len"
-		),
-		col_types = "ccdiiiiiiiddii"
-	)
-}
-
-#' Read a FASTA file
-#'
-#' @param f FASTA file.
-#' @return A DNAStringSet, its sequences named by their id (first word of the header), as BLAST does.
-read_fasta <- function(f) {
-	fa <- readDNAStringSet(f)
-	names(fa) <- sub("\\s.*", "", names(fa))
-	fa
-}
-
 #' File name of a sequence id
 #'
 #' @param seq_id Sequence ids.
@@ -269,14 +243,4 @@ core_genome <- function(fasta, blast, n_core = NA, min_len = 500) {
 		as_tibble() |>
 		select(seqnames, start, end, n_plasmids, is_core) |>
 		write_tsv("core_genome.tsv")
-
-	genomes <- tibble(plasmid_id = seqlevels(hits), file = seq_file_name(plasmid_id))
-	dir.create("fastani_genomes")
-	for (i in seq_len(nrow(genomes))) {
-		h <- hits[seqnames(hits) == genomes$plasmid_id[i]]
-		dna <- FA[h]
-		names(dna) <- as.character(h)
-		writeXStringSet(dna, file.path("fastani_genomes", genomes$file[i]))
-	}
-	write_tsv(genomes, "fastani_genomes.tsv")
 }

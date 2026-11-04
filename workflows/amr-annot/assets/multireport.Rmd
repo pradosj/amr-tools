@@ -21,6 +21,7 @@ library(flexdashboard)
 library(patchwork)
 library(reactable)
 library(htmltools)
+source("lib_io.R")
 source("lib_typing.R")
 
 fct_reorder2_hclust <- function(.f, .y, .value) {

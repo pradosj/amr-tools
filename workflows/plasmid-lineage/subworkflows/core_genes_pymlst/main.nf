@@ -22,7 +22,7 @@ process CORE_GENES {
 
 	input:
 	record(meta: Map, prokka: Path, blast: Path, n_core: Integer?)
-	libs: List<Path>    // lib_plasmid_lineage.R, lib_core_gene.R
+	libs: List<Path>    // lib_io.R, lib_plasmid_lineage.R, lib_core_gene.R
 
 	stage:
 	stageAs(prokka, 'prokka')
@@ -42,6 +42,7 @@ process CORE_GENES {
 	script:
 	"""
 	#!/usr/bin/env Rscript
+	source("lib/lib_io.R")
 	source("lib/lib_plasmid_lineage.R")
 	source("lib/lib_core_gene.R")
 	core_genes("prokka", "prokka.self.blastp", n_core = ${n_core == null ? 'NA' : "${n_core}"})
@@ -71,12 +72,11 @@ workflow CORE_GENES_PYMLST {
 	def blastp_ch = BLASTP(prokka_ch.map({ r -> record(
 		meta: r.meta,
 		query: r.faa,
-		subject: null,
 		args: blastp_args ?: '-subject_besthit'
 	) }))
 	def core_genes_ch = CORE_GENES(
 		prokka_ch.join(blastp_ch, by: 'meta').map({ r -> record(meta: r.meta, prokka: r.dir, blast: r.tsv, n_core: n_core) }),
-		[file("${moduleDir}/assets/lib_plasmid_lineage.R"), file("${moduleDir}/assets/lib_core_gene.R")]
+		[file("${moduleDir}/assets/lib_io.R"), file("${moduleDir}/assets/lib_plasmid_lineage.R"), file("${moduleDir}/assets/lib_core_gene.R")]
 	)
 	def pymlst_ch = PYMLST_WGMLST(core_genes_ch.map({ r -> record(
 		meta: r.meta,

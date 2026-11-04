@@ -1,5 +1,7 @@
 #!/usr/bin/env Rscript
 
+source("lib_io.R")    # read_tax()
+
 base_dir <- './'
 ncbi_dir <- fs::path(base_dir,"ncbi_db")
 db_dir <- fs::path(base_dir,"org_db")
@@ -57,17 +59,6 @@ write_tsv(db,file = file.path(db_dir,"db.tsv"),na="")
 # Prepare Taxonomy
 #-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#
 library(tidygraph)
-
-# Load NCBI taxonomy
-read_tax <- function(taxdump_dir) {
-	SN <- read_tsv(fs::path(taxdump_dir,"names.dmp"),col_names = c("tax_id","tax_name","name_class"),col_types="c_c___c_") |> 
-		filter(name_class=="scientific name") |>
-		mutate(name_class=NULL)
-	N <- read_tsv(fs::path(taxdump_dir,"nodes.dmp"),col_names = c("tax_id","parent","rank"),col_types="c_c_c_____________________") |>
-		left_join(SN,by="tax_id",relationship="one-to-one")
-	tax <- tbl_graph(N,select(N,parent,tax_id),node_key = "tax_id")
-	tax
-}
 
 message("load taxonomy")
 tax <- read_tax(fs::path(base_dir,"taxdump")) |>

@@ -1,4 +1,4 @@
-# Functions of the CORE_GENES_PYMLST subworkflow (sourced after lib_plasmid_lineage.R, whose functions it uses)
+# Functions of the CORE_GENES_PYMLST subworkflow (sourced after lib_io.R and lib_plasmid_lineage.R, whose functions it uses)
 
 #' Core genes: clusters of reciprocal best BLASTP hits of the prokka proteins, with one gene in at least
 #' n_core plasmids

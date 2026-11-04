@@ -67,6 +67,7 @@ process FIND_ALIGN_SEQ {
 	script:
 	"""
 	#!/usr/bin/env Rscript
+	source("assets/lib_io.R")
 	source("assets/lib_plasmid_lineage.R")
 	find_align_seq("plasmids.fasta", "plasmids.self.blastn", "align_seq.fasta")
 	"""
@@ -106,6 +107,7 @@ process CORE_GENOME {
 	script:
 	"""
 	#!/usr/bin/env Rscript
+	source("assets/lib_io.R")
 	source("assets/lib_plasmid_lineage.R")
 	core_genome("plasmids.fasta", "plasmids.self.blastn", n_core = ${n_core == null ? 'NA' : "${n_core}"})
 	"""

@@ -1,4 +1,10 @@
-# Functions of ROTATE_GENOMES (sourced after lib_plasmid_lineage.R, whose functions it uses)
+# Functions of ROTATE_GENOMES (sourced after lib_io.R, whose read_blast6() and read_fasta() it uses)
+
+suppressPackageStartupMessages({
+	library(GenomicRanges)
+	library(Biostrings)
+	library(tidyverse)
+})
 
 #' Rotate the sequences to start at their best hit of the reference
 #'

@@ -3,42 +3,6 @@
 library(tidyverse)
 library(Biostrings)
 
-read_samtools_stats <- function(f) {
-	if (fs::file_exists(f)) {
-		stats <- readLines(f)	
-	} else {
-		stats <- character(0)
-	}
-	list(
-		SN = read.table(
-				text = str_subset(stats,"^SN\t"),
-				sep = "\t",comment="",fill = TRUE,
-				col.names = c("tag","var","value","comment")
-			) |>
-			mutate(var=str_replace(var,": *$","") |> make.names()) |>
-			pull(value,name = var) |>
-			as.list(),
-		COV_HIST = read.table(
-					text = str_subset(stats,"^COV\t"),
-					sep = "\t",comment="",fill = TRUE,
-					col.names = c("tag","range","range_max","count"),colClasses = c(tag="NULL")
-				) 
-	)
-}
-
-read_checkm2_quality_tsv <- function(tsv_file) {
-	#tsv_file <- "results/assemblies/RH2_custom_assembly1__none.qc/checkm2_quality.tsv"
-	expected_structure <- tibble(
-		Completeness = numeric(0),
-		Contamination = numeric(0),
-		Average_Gene_Length = numeric(0)
-	)	
-	if (!file.exists(tsv_file)) return(expected_structure)
-	read_tsv(tsv_file,show_col_types = FALSE,col_types = cols(Completeness="n",Contamination="n",Average_Gene_Length="n",.default="-")) |>
-		bind_rows(expected_structure) |>
-		relocate(Completeness,Contamination,Contamination)
-}
-
 fa_extract_contigs_stats <- function(fa_file) {
 	fa <- readDNAStringSet(fa_file)
 	contigs <- tibble(
