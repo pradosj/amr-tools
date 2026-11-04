@@ -40,10 +40,11 @@ If the FASTA files to process are in subfolder 'assemblies/' of your working dir
 nextflow run pradosj/amr-tools --assemblies.fasta='assemblies/*.fasta'
 ```
 
-FASTA inputs (`--assemblies.fasta` here, `--query`/`--fasta` in the standalone pipelines) are comma-separated lists of
-paths, glob patterns and URLs (a URL names one file: no glob pattern in URLs), e.g.
-`--assemblies.fasta='assemblies/*.fasta,https://www.ebi.ac.uk/ena/browser/api/fasta/CP047704.1'`
-(the sample id is the file name without its `.fasta`, `.fa` or `.fna` extension).
+File inputs (`--reads.ont`, `--reads.illumina`, `--assemblies.fasta`, and `--query`/`--fasta` in the standalone pipelines) are
+comma-separated lists of paths, glob patterns and URLs (a URL names one file: no glob pattern in URLs), e.g.
+`--assemblies.fasta='assemblies/*.fasta,https://www.ebi.ac.uk/ena/browser/api/fasta/CP047704.1'` or
+`--reads.illumina='https://ftp.sra.ebi.ac.uk/vol1/fastq/<run path>/<run>_1.fastq.gz,https://ftp.sra.ebi.ac.uk/vol1/fastq/<run path>/<run>_2.fastq.gz'`.
+The sample id is the file name without its extension (and without the `_R1`/`_R2` suffix of paired-end Illumina reads).
 
 To assemble and annotate reads (the sample id is taken from the file names):
 

@@ -100,7 +100,7 @@ def sampleFromRow(row: Map) -> Sample {
 }
 
 
-// Samples given with --csv, or found from the --reads.ont, --reads.illumina and --assemblies.fasta glob patterns
+// Samples given with --csv, or found from the --reads.ont, --reads.illumina and --assemblies.fasta lists of glob patterns and URLs
 workflow SAMPLES {
 	take:
 	csv: Path?
@@ -116,11 +116,11 @@ workflow SAMPLES {
 		def illumina_re = '_(R?)([12])(_[0-9][0-9][0-9])?\\.(fq|fastq)\\.gz$'
 		def parts_ch = channel.empty()
 		if (reads.ont) {
-			parts_ch = parts_ch.mix(channel.fromPath(reads.ont)
+			parts_ch = parts_ch.mix(channel.fromList(pathList(reads.ont))
 				.map({ f -> samplePart(f.name.replaceAll('\\.(fastq\\.gz|fq\\.gz|bam|cram)$', ''), f, null, null, null) }))
 		}
 		if (reads.illumina) {
-			parts_ch = parts_ch.mix(channel.fromPath(reads.illumina)
+			parts_ch = parts_ch.mix(channel.fromList(pathList(reads.illumina))
 				.map({ f ->
 					def id = f.name.replaceAll(illumina_re, '')
 					(f.name =~ illumina_re)[0][2] == '1' ? samplePart(id, null, f, null, null) : samplePart(id, null, null, f, null)

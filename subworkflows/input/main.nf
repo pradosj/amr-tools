@@ -1,15 +1,15 @@
 nextflow.enable.types = true
 
 // ---------------------------------------
-//  Input reads and assemblies of the standalone pipelines, given as glob
-//  patterns: the sample_id is taken from the file names
+//  Input reads and assemblies of the standalone pipelines, given as comma-separated lists of glob
+//  patterns and URLs: the sample_id is taken from the file names
 // ---------------------------------------
 
 include { SAMTOOLS_FASTQ as ONT_BAM_TO_FASTQ } from './modules/samtools/fastq'
 
 // ---------------------------------------
 
-// Input reads given as glob patterns (params.reads)
+// Input reads given as comma-separated lists of glob patterns and URLs (params.reads)
 record ReadsParams {
 	ont: String?
 	illumina: String?
@@ -85,7 +85,7 @@ workflow INPUT_READS {
 	main:
 	def long_ch = channel.empty()
 	if (ont) {
-		def ont_ch = channel.fromPath(ont).map({ f ->
+		def ont_ch = channel.fromList(pathList(ont)).map({ f ->
 			record(meta: [sample_id: f.name.replaceAll(/\.(fastq\.gz|fq\.gz|bam|cram)$/, '')], reads: f)
 		})
 		def bam_re = '.*\\.(bam|cram)$'
@@ -99,7 +99,7 @@ workflow INPUT_READS {
 	}
 	def short_ch = channel.empty()
 	if (illumina) {
-		short_ch = channel.fromPath(illumina)
+		short_ch = channel.fromList(pathList(illumina))
 			.map({ f ->
 				def id = (f.name ==~ ".*${illuminaRe()}") ? f.name.replaceAll(illuminaRe(), '') : f.name.replaceAll(/\.(fastq|fq)\.gz$/, '')
 				tuple(id, f)
