@@ -1,30 +1,4 @@
-# Rotation of genome sequences on their hits of a reference dataset (ROTATE_GENOMES)
-
-suppressPackageStartupMessages({
-	library(GenomicRanges)
-	library(Biostrings)
-	library(tidyverse)
-})
-
-# BLAST tabular output, as produced with -outfmt "6 std qlen slen"
-read_blast6 <- function(f) {
-	readr::read_tsv(
-		f,
-		col_names = c(
-			"query_id","subject_id","pct_ident","align_len","num_mismatch",
-			"num_gapopen","query_start","query_end","subject_start","subject_end",
-			"evalue","bit_score","query_len","subject_len"
-		),
-		col_types = "ccdiiiiiiiddii"
-	)
-}
-
-# Read a FASTA file, naming the sequences by their id (first word of the header) as BLAST does
-read_fasta <- function(f) {
-	fa <- readDNAStringSet(f)
-	names(fa) <- sub("\\s.*", "", names(fa))
-	fa
-}
+# Functions of ROTATE_GENOMES (sourced after lib_plasmid_lineage.R, whose functions it uses)
 
 # Rotate the sequences to start at their best hit (highest bit score) of the reference, on the strand of
 # the hit (sequences without hit are not rotated). `blast`: hits of the reference sequences (query) on the

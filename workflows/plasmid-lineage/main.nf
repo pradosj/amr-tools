@@ -176,7 +176,7 @@ workflow PLASMID_LINEAGE {
 	)
 
 	// Core genes: prokka genes with reciprocal BLASTP hits in most plasmids, typed with pyMLST
-	def core = CORE_GENES_PYMLST(fasta_ch, n_core, opts.prokka_args, opts.blastp_args, opts.pymlst_args, assets)
+	def core = CORE_GENES_PYMLST(fasta_ch, n_core, opts.prokka_args, opts.blastp_args, opts.pymlst_args)
 	def prokka_ch = core.prokka
 	def core_genes_ch = core.core_genes
 	def pymlst_ch = core.pymlst

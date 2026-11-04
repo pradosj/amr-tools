@@ -49,12 +49,12 @@ process ROTATE_FASTA {
 
 	input:
 	record(meta: Map, fasta: Path, blast: Path)
-	script_file: Path    // rotate_genomes.R
+	libs: List<Path>    // lib_plasmid_lineage.R, lib_rotate_genomes.R
 
 	stage:
 	stageAs(fasta, 'genome.fasta')
 	stageAs(blast, 'reference_vs_genome.blastn')
-	stageAs(script_file, 'rotate_genomes.R')
+	stageAs(libs, 'lib/*')
 
 	output:
 	record(meta: meta, fasta: file('rotated.fasta'))
@@ -62,7 +62,8 @@ process ROTATE_FASTA {
 	script:
 	"""
 	#!/usr/bin/env Rscript
-	source("rotate_genomes.R")
+	source("lib/lib_plasmid_lineage.R")
+	source("lib/lib_rotate_genomes.R")
 	rotate_fasta("genome.fasta", "reference_vs_genome.blastn", "rotated.fasta")
 	"""
 
@@ -118,7 +119,7 @@ workflow ROTATE_GENOMES {
 		genome_hits_ch
 			.filter({ r -> r.hits != null && !(r.hits as Path).isEmpty() })
 			.map({ r -> record(meta: r.meta, fasta: r.genome.fasta, blast: r.hits) }),
-		file("${moduleDir}/assets/rotate_genomes.R")
+		[file("${moduleDir}/assets/lib_plasmid_lineage.R"), file("${moduleDir}/assets/lib_rotate_genomes.R")]
 	)
 		.map({ r -> record(meta: r.meta, fasta: r.fasta, gff: null, info: null) })    // the rotation invalidates the coordinates
 		.mix(genome_hits_ch
