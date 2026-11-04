@@ -1,12 +1,10 @@
 nextflow.enable.types = true
 
 include { BLASTN as BLASTN_SELF } from './modules/blast/blastn'
-include { BLASTP                } from './modules/blast/blastp'
-include { PROKKA                } from './modules/tseemann/prokka'
-include { PYMLST_WGMLST         } from './modules/pymlst/wgmlst'
 include { FASTANI               } from './modules/fastani'
 include { QUARTO_RENDER         } from './modules/quarto/render'
 include { AMR_ANNOT; AmrParams  } from './workflows/amr-annot/main.nf'
+include { CORE_GENES_PYMLST     } from './subworkflows/core_genes_pymlst/main.nf'
 
 
 // Options of PLASMID_LINEAGE (params.lineage). Fields are nullable: defaults are used when null.
@@ -76,48 +74,6 @@ process FIND_ALIGN_SEQ {
 	stub:
 	"""
 	touch align_seq.fasta
-	"""
-}
-
-
-// Core genes from the reciprocal BLASTP hits of the prokka proteins, and their sequences for pyMLST
-process CORE_GENES {
-	container 'registry.gitlab.unige.ch/amr-genomics/rscript:v3'
-	label 'rscript'
-	memory 8.GB
-	cpus 1
-	time 30.m
-
-	input:
-	record(meta: Map, prokka: Path, blast: Path, n_core: Integer?)
-	assets: Path
-
-	stage:
-	stageAs(prokka, 'prokka')
-	stageAs(blast, 'prokka.self.blastp')
-	stageAs(assets, 'assets')
-
-	output:
-	record(
-		meta: meta,
-		genes_tsv: file('core_genes.tsv'),          // genes with their cluster, and whether the cluster is core
-		clusters_tsv: file('core_clusters.tsv'),    // size and number of plasmids of each cluster
-		template: file('pymlst_template.fasta'),    // core genes of the plasmid with the most core genes
-		genomes: files('pymlst_genomes/*.fasta').toSorted(),    // core genes of each plasmid
-		strains_tsv: file('pymlst_strains.tsv')     // plasmid of each pyMLST strain
-	)
-
-	script:
-	"""
-	#!/usr/bin/env Rscript
-	source("assets/lib_plasmid_lineage.R")
-	core_genes("prokka", "prokka.self.blastp", n_core = ${n_core == null ? 'NA' : "${n_core}"})
-	"""
-
-	stub:
-	"""
-	mkdir pymlst_genomes
-	touch core_genes.tsv core_clusters.tsv pymlst_template.fasta pymlst_genomes/plasmid.fasta pymlst_strains.tsv
 	"""
 }
 
@@ -220,23 +176,10 @@ workflow PLASMID_LINEAGE {
 	)
 
 	// Core genes: prokka genes with reciprocal BLASTP hits in most plasmids, typed with pyMLST
-	def prokka_ch = PROKKA(fasta_ch.map({ r -> r + record(args: opts.prokka_args) }))
-	def blastp_ch = BLASTP(prokka_ch.map({ r -> record(
-		meta: r.meta,
-		query: (r.dir as Path).resolve('prokka.faa'),
-		subject: null,
-		args: opts.blastp_args ?: '-subject_besthit'
-	) }))
-	def core_genes_ch = CORE_GENES(
-		prokka_ch.join(blastp_ch, by: 'meta').map({ r -> record(meta: r.meta, prokka: r.dir, blast: r.tsv, n_core: n_core) }),
-		assets
-	)
-	def pymlst_ch = PYMLST_WGMLST(core_genes_ch.map({ r -> record(
-		meta: r.meta,
-		template: r.template,
-		genomes: r.genomes,
-		args: opts.pymlst_args ?: '--coverage 0.85 --identity 0.85'
-	) }))
+	def core = CORE_GENES_PYMLST(fasta_ch, n_core, opts.prokka_args, opts.blastp_args, opts.pymlst_args, assets)
+	def prokka_ch = core.prokka
+	def core_genes_ch = core.core_genes
+	def pymlst_ch = core.pymlst
 
 	// Core genome: regions shared by most plasmids, compared with FastANI
 	def core_genome_ch = CORE_GENOME(
