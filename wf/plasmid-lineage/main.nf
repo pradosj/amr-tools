@@ -20,8 +20,7 @@ params {
 		blastn_args: '-perc_identity 70 -evalue 1e-3 -subject_besthit',
 		blastp_args: '-subject_besthit',
 		prokka_args: '--kingdom Bacteria',
-		pymlst_args: '--coverage 0.85 --identity 0.85',
-		fastani_args: '--fragLen 500'
+		pymlst_args: '--coverage 0.85 --identity 0.85'
 	)
 	amr: AmrParams = record(
 		amrfinderplus: record(skip: false, args: ''),
@@ -72,7 +71,6 @@ workflow {
 	core_genes = lineage.core_genes
 	pymlst = lineage.pymlst
 	core_genome = lineage.core_genome
-	fastani = lineage.fastani
 	report = lineage.report
 	amr_assemblies = lineage.amr_assemblies
 	amr_multiqc = lineage.amr_multiqc
@@ -103,9 +101,6 @@ output {
 	}
 	core_genome: Channel<Record> {
 		path { r -> r.tsv >> "${r.meta.sample_id}/core_genome.tsv" }
-	}
-	fastani: Channel<Record> {
-		path { r -> r.tsv >> "${r.meta.sample_id}/core_genome_fastani.tsv" }
 	}
 	report: Channel<Record> {
 		path { r -> r.html >> "${r.meta.sample_id}/report.html" }

@@ -63,11 +63,6 @@
 					"type": "string",
 					"default": "--coverage 0.85 --identity 0.85",
 					"description": "Options of `wgMLST add`"
-				},
-				"fastani_args": {
-					"type": "string",
-					"default": "--fragLen 500",
-					"description": "Options of FastANI for the ANI of the core genomes"
 				}
 			}
 		},

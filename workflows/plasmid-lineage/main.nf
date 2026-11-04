@@ -1,7 +1,6 @@
 nextflow.enable.types = true
 
 include { BLASTN as BLASTN_SELF } from './modules/blast/blastn'
-include { FASTANI               } from './modules/fastani'
 include { QUARTO_RENDER         } from './modules/quarto/render'
 include { AMR_ANNOT; AmrParams  } from './workflows/amr-annot/main.nf'
 include { CORE_GENES_PYMLST     } from './subworkflows/core_genes_pymlst/main.nf'
@@ -14,7 +13,6 @@ record PlasmidLineageParams {
 	blastp_args: String?           // alignment of the proteins, for the core genes
 	prokka_args: String?
 	pymlst_args: String?           // `wgMLST add` options
-	fastani_args: String?          // ANI of the core genomes
 }
 
 // A set of plasmids to compare: FASTA files with one or several plasmid sequences
@@ -79,7 +77,7 @@ process FIND_ALIGN_SEQ {
 }
 
 
-// Core genome: regions of the plasmids shared by most plasmids, and the regions of each plasmid for FastANI
+// Core genome: regions of the plasmids shared by most plasmids
 process CORE_GENOME {
 	container 'registry.gitlab.unige.ch/amr-genomics/rscript:v3'
 	label 'rscript'
@@ -99,9 +97,7 @@ process CORE_GENOME {
 	output:
 	record(
 		meta: meta,
-		tsv: file('core_genome.tsv'),                            // regions with the number of plasmids sharing them
-		genomes: files('fastani_genomes/*.fasta').toSorted(),    // regions of each plasmid
-		genomes_tsv: file('fastani_genomes.tsv')                 // plasmid of each FastANI genome
+		tsv: file('core_genome.tsv')    // regions with the number of plasmids sharing them
 	)
 
 	script:
@@ -114,8 +110,7 @@ process CORE_GENOME {
 
 	stub:
 	"""
-	mkdir fastani_genomes
-	touch core_genome.tsv fastani_genomes/plasmid.fasta fastani_genomes.tsv
+	touch core_genome.tsv
 	"""
 }
 
@@ -149,7 +144,7 @@ process REPORT_FOLDER {
 
 
 // Lineage of a set of plasmids: align the plasmids, annotate them, find their core
-// genes (typed with pyMLST) and their core genome (compared with FastANI), and render an HTML report
+// genes (typed with pyMLST) and their core genome, and render an HTML report
 workflow PLASMID_LINEAGE {
 	take:
 	opts: PlasmidLineageParams
@@ -179,31 +174,21 @@ workflow PLASMID_LINEAGE {
 
 	// Core genes: prokka genes with reciprocal BLASTP hits in most plasmids, typed with pyMLST
 	def core = CORE_GENES_PYMLST(fasta_ch, n_core, opts.prokka_args, opts.blastp_args, opts.pymlst_args)
-	def prokka_ch = core.prokka
-	def core_genes_ch = core.core_genes
-	def pymlst_ch = core.pymlst
 
-	// Core genome: regions shared by most plasmids, compared with FastANI
+	// Core genome: regions shared by most plasmids
 	def core_genome_ch = CORE_GENOME(
 		fasta_ch.join(self_ch, by: 'meta').map({ r -> record(meta: r.meta, fasta: r.fasta, blast: r.tsv, n_core: n_core) }),
 		assets
 	)
-	def fastani_ch = FASTANI(core_genome_ch.map({ r -> record(
-		meta: r.meta,
-		query: r.genomes,
-		refs: [],
-		args: opts.fastani_args ?: '--fragLen 500'
-	) }))
 
 	// HTML report of each set of plasmids, from its files gathered in a folder under explicit names
 	def report_data_ch = REPORT_FOLDER(
 		fasta_ch.map({ r -> record(meta: r.meta, plasmids: r.fasta) })
 			.join(self_ch.map({ r -> record(meta: r.meta, self_blast: r.tsv) }), by: 'meta')
-			.join(prokka_ch, by: 'meta')
-			.join(core_genes_ch.map({ r -> record(meta: r.meta, genes_tsv: r.genes_tsv, clusters_tsv: r.clusters_tsv, strains_tsv: r.strains_tsv) }), by: 'meta')
-			.join(pymlst_ch.map({ r -> record(meta: r.meta, pymlst: r.dir) }), by: 'meta')
-			.join(core_genome_ch.map({ r -> record(meta: r.meta, core_genome_tsv: r.tsv, genomes_tsv: r.genomes_tsv) }), by: 'meta')
-			.join(fastani_ch.map({ r -> record(meta: r.meta, fastani: r.tsv) }), by: 'meta')
+			.join(core.prokka, by: 'meta')
+			.join(core.core_genes.map({ r -> record(meta: r.meta, genes_tsv: r.genes_tsv, clusters_tsv: r.clusters_tsv, strains_tsv: r.strains_tsv) }), by: 'meta')
+			.join(core.pymlst.map({ r -> record(meta: r.meta, pymlst: r.dir) }), by: 'meta')
+			.join(core_genome_ch.map({ r -> record(meta: r.meta, core_genome_tsv: r.tsv) }), by: 'meta')
 			.combine(amr.multiqc)
 			.map({ r, m -> record(meta: r.meta, entries: [
 				record(name: 'plasmids.fasta', path: r.plasmids),
@@ -214,8 +199,6 @@ workflow PLASMID_LINEAGE {
 				record(name: 'pymlst_strains.tsv', path: r.strains_tsv),
 				record(name: 'pymlst', path: r.pymlst),
 				record(name: 'core_genome.tsv', path: r.core_genome_tsv),
-				record(name: 'fastani_genomes.tsv', path: r.genomes_tsv),
-				record(name: 'fastani.tsv', path: r.fastani),
 				record(name: 'multitable_resistances.tsv', path: m.resistances_tsv as Path),
 				record(name: 'multitable_plasmidfinder_hits.tsv', path: m.plasmidfinder_hits_tsv as Path)
 			]) })
@@ -229,11 +212,10 @@ workflow PLASMID_LINEAGE {
 	) }))
 
 	emit:
-	prokka: Channel<Record>          = prokka_ch          // records with fields meta, dir
-	core_genes: Channel<Record>      = core_genes_ch      // records with fields meta, genes_tsv, clusters_tsv, template, genomes, strains_tsv
-	pymlst: Channel<Record>          = pymlst_ch          // records with fields meta, db, dir
-	core_genome: Channel<Record>     = core_genome_ch     // records with fields meta, tsv, genomes, genomes_tsv
-	fastani: Channel<Record>         = fastani_ch         // records with fields meta, tsv
+	prokka: Channel<Record>          = core.prokka        // records with fields meta, dir
+	core_genes: Channel<Record>      = core.core_genes    // records with fields meta, genes_tsv, clusters_tsv, template, genomes, strains_tsv
+	pymlst: Channel<Record>          = core.pymlst        // records with fields meta, db, dir
+	core_genome: Channel<Record>     = core_genome_ch     // records with fields meta, tsv
 	report: Channel<Record>          = report_ch          // records with fields meta, html
 	amr_assemblies: Channel<Record>  = amr.assemblies_amr    // records with fields meta, fasta, fai, dir, rds
 	amr_multiqc: Channel<Record>     = amr.multiqc           // records with fields rds, html, xlsx, assemblies_tsv, contigs_tsv, resistances_tsv, plasmidfinder_hits_tsv

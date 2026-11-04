@@ -209,10 +209,7 @@ find_align_seq <- function(fasta, blast, out, min_len = 1000, min_frac = 0.8) {
 
 #' Core genome: regions of each plasmid shared by at least n_core plasmids (itself included)
 #'
-#' Writes:
-#' - `core_genome.tsv`: the regions of each plasmid, with the number of plasmids sharing it and whether it is core;
-#' - `fastani_genomes/<plasmid>.fasta`: the regions of each plasmid, for FastANI;
-#' - `fastani_genomes.tsv`: the plasmid of each FastANI genome.
+#' Writes `core_genome.tsv`: the regions of each plasmid, with the number of plasmids sharing it and whether it is core.
 #'
 #' @param fasta FASTA file of the plasmids.
 #' @param blast Self alignment of the plasmids, as read by read_blast6().
