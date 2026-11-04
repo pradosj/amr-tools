@@ -40,6 +40,11 @@
 			"default": "plasmids",
 			"description": "Name of the set of plasmids, used as output folder"
 		},
+		"no_rotation": {
+			"type": "boolean",
+			"default": false,
+			"description": "Do not rotate the plasmids: the analysis runs on the given sequences"
+		},
 		"lineage": {
 			"title": "Options of the plasmid lineage analysis",
 			"type": "object",

@@ -19,16 +19,15 @@ library(ggraph)
 library(patchwork)
 
 fa <- read_fasta("report_data/plasmids.fasta")
-FA <- read_fasta("report_data/rotated.fasta")
-n_plasmids <- length(FA)
+n_plasmids <- length(fa)
 n_core <- core_count(params$core_genome_count, n_plasmids)
 fig_h <- function(min = 4, per_seq = 0.5) max(min, per_seq * n_plasmids)
 
-seqlen <- tibble(seq = names(FA), seqlen = width(FA))
+seqlen <- tibble(seq = names(fa), seqlen = width(fa))
 ```
 
 ```{r annotations}
-# Positions of the AMR and plasmid typing annotations of the rotated plasmids
+# Positions of the AMR and plasmid typing annotations of the plasmids
 pos_pat <- "([0-9]+)(-|\\.\\.)([0-9]+)(:([-+]))?"
 read_annotations <- function(f) {
 	read_tsv(f, col_types = cols(.default = "c")) |>
@@ -43,7 +42,7 @@ read_annotations <- function(f) {
 res_gff <- read_annotations("report_data/multitable_resistances.tsv")
 inc_gff <- read_annotations("report_data/multitable_plasmidfinder_hits.tsv")
 
-plasmid_types <- tibble(contig_id = names(FA)) |>
+plasmid_types <- tibble(contig_id = names(fa)) |>
 	left_join(
 		inc_gff |>
 			group_by(contig_id) |>
@@ -101,27 +100,12 @@ plot(ani_h, xlab = "", sub = "", main = "Single linkage clustering on 100 - ANI"
 
 # Alignments
 
-## Input plasmids
-
 ```{r}
 #| fig-height: !expr fig_h(8, 1.2)
 #| fig-width: !expr fig_h(8, 1.2)
-aln |>
-	mutate(across(c(query_id, subject_id), ~ factor(., ani_levels))) |>
-	gg_pw_alignment()
-```
-
-## Rotated plasmids
-
-The plasmids are rotated to start at the longest region (≥1 kb) shared by at least 80% of them, on the
-strand of this region.
-
-```{r}
-#| fig-height: !expr fig_h(8, 1.2)
-#| fig-width: !expr fig_h(8, 1.2)
-ALN <- read_blast6("report_data/rotated.self.blastn") |>
+aln <- aln |>
 	mutate(across(c(query_id, subject_id), ~ factor(., ani_levels)))
-gg_pw_alignment(ALN)
+gg_pw_alignment(aln)
 ```
 
 Alignments (≥1 kb) of consecutive plasmids. The labels give the number of mismatches and of gap openings
@@ -130,7 +114,7 @@ of each alignment. Resistance genes are drawn in red, plasmid replicons in yello
 ```{r}
 #| fig-height: !expr fig_h(6, 0.6)
 #| fig-width: 15
-polygons <- alignment_polygons(ALN, ani_levels)
+polygons <- alignment_polygons(aln, ani_levels)
 seqlen_f <- mutate(seqlen, seq = factor(seq, ani_levels))
 gg_alignment_polygons(polygons, seqlen_f) +
 	geom_segment(aes(x = start, xend = end, y = seq, yend = seq), data = mutate(inc_gff, seq = factor(seq, ani_levels)), linewidth = 2, color = "yellow") +
@@ -261,7 +245,7 @@ as_tbl_graph(h) |>
 
 ## Core genome
 
-Number of plasmids sharing each region of the rotated plasmids (BLASTN alignments ≥500 bp). Core regions
+Number of plasmids sharing each region of the plasmids (BLASTN alignments ≥500 bp). Core regions
 (≥500 bp, shared by at least `r n_core` plasmids) are in black.
 
 ```{r}
