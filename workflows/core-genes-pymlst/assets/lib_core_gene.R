@@ -2,15 +2,6 @@
 
 suppressPackageStartupMessages(library(GenomicRanges))
 
-#' File name of a sequence id
-#'
-#' @param seq_id Sequence ids.
-#' @param ext File extension.
-#' @return The file names, made from the ids with make.names().
-seq_file_name <- function(seq_id, ext = ".fasta") {
-	paste0(make.names(seq_id), ext)
-}
-
 #' Minimum number of plasmids to call a gene or a region core
 #'
 #' @param n_core The given minimum number of plasmids, or NA.
@@ -20,25 +11,31 @@ core_count <- function(n_core, n_plasmids) {
 	if (is.null(n_core) || is.na(n_core)) ceiling(0.8 * n_plasmids) else as.integer(n_core)
 }
 
-#' Core genes: clusters of reciprocal best BLASTP hits of the prokka proteins, with one gene in at least
-#' n_core plasmids
+#' Core genes of a set of genomes: clusters of reciprocal best BLASTP hits of the prokka proteins, with one gene in at
+#' least n_core genomes
+#'
+#' The genome of a gene is the prefix of its locus tag (`<genome>_<n>`, prokka `--locustag <genome>`).
 #'
 #' Writes:
-#' - `core_genes.tsv`: the genes of the clusters, with their cluster and whether the cluster is core;
-#' - `core_clusters.tsv`: the size and number of plasmids of each cluster;
-#' - `pymlst_genomes/<plasmid>.fasta`: the core genes of each plasmid, for pyMLST;
-#' - `pymlst_template.fasta`: the core genes of the plasmid with the most core genes, template of the pyMLST database;
-#' - `pymlst_strains.tsv`: the plasmid of each pyMLST strain.
+#' - `core_genes.tsv`: the genes of the clusters, with their genome and cluster, and whether the cluster is core;
+#' - `core_clusters.tsv`: the size and number of genomes of each cluster;
+#' - `pymlst_genomes/<genome>.fasta`: the core genes of each genome, for pyMLST;
+#' - `pymlst_template.fasta`: the core genes of the genome with the most core genes, template of the pyMLST database.
 #'
-#' @param prokka_dir prokka output folder (prokka.gff, prokka.ffn).
-#' @param blastp Self alignment of the prokka proteins, as read by read_blast6().
-#' @param n_core Minimum number of plasmids sharing a core gene (NA: see core_count()).
+#' @param prokka_dirs prokka output folders of the genomes (prokka.gff, prokka.ffn).
+#' @param blastp Reciprocal alignment of the prokka proteins of all the genomes, as read by read_blast6().
+#' @param n_core Minimum number of genomes sharing a core gene (NA: see core_count()).
 #' @param min_cover Minimum coverage of the query protein by its alignment.
-core_genes <- function(prokka_dir, blastp, n_core = NA, min_cover = 0.75) {
+core_genes <- function(prokka_dirs, blastp, n_core = NA, min_cover = 0.75) {
 	library(tidygraph)
-	gff <- rtracklayer::import.gff3(file.path(prokka_dir, "prokka.gff"))
-	gff <- gff[gff$type == "CDS"]
-	n_core <- core_count(n_core, length(seqlevelsInUse(gff)))
+	gff <- lapply(file.path(prokka_dirs, "prokka.gff"), function(f) {
+		x <- rtracklayer::import.gff3(f)
+		x <- x[x$type == "CDS"]
+		tibble(ID = x$ID, width = width(x))
+	}) |>
+		bind_rows() |>
+		mutate(genome = str_remove(ID, "_[0-9]+$"))
+	n_core <- core_count(n_core, length(prokka_dirs))
 
 	# Reciprocal hits, keeping the worst direction of each pair of genes
 	z <- read_blast6(blastp) |>
@@ -53,16 +50,16 @@ core_genes <- function(prokka_dir, blastp, n_core = NA, min_cover = 0.75) {
 		slice_min(bit_score, n = 1, with_ties = FALSE) |>
 		ungroup()
 
-	# Clusters of genes, keeping one paralog per plasmid in each cluster
+	# Clusters of genes, keeping one paralog per genome in each cluster
 	g <- tbl_graph(
-		nodes = tibble(ID = gff$ID, contig_id = as.character(seqnames(gff)), width = width(gff)),
+		nodes = select(gff, ID, genome, width),
 		edges = select(z, from = query_id, to = subject_id, bit_score, pct_ident),
 		directed = FALSE,
 		node_key = "ID"
 	) |>
 		mutate(cluster_id = group_components()) |>
 		mutate(score = centrality_closeness(weights = 100.1 - pct_ident)) |>
-		group_by(cluster_id, contig_id) |>
+		group_by(cluster_id, genome) |>
 		mutate(rk = row_number(score)) |>
 		ungroup() |>
 		filter(rk <= 1)
@@ -70,25 +67,22 @@ core_genes <- function(prokka_dir, blastp, n_core = NA, min_cover = 0.75) {
 	genes <- as_tibble(g)
 	clusters <- genes |>
 		group_by(cluster_id) |>
-		summarize(cluster_size = n_distinct(ID), distinct_plasmid = n_distinct(contig_id), mean_width = mean(width)) |>
-		filter(cluster_size == distinct_plasmid) |>
-		mutate(is_core = distinct_plasmid >= n_core)
+		summarize(cluster_size = n_distinct(ID), distinct_genome = n_distinct(genome), mean_width = mean(width)) |>
+		filter(cluster_size == distinct_genome) |>
+		mutate(is_core = distinct_genome >= n_core)
 	genes <- genes |>
-		select(ID, contig_id, width, cluster_id) |>
+		select(ID, genome, width, cluster_id) |>
 		left_join(select(clusters, cluster_id, is_core), by = "cluster_id") |>
 		mutate(is_core = replace_na(is_core, FALSE))
 	write_tsv(genes, "core_genes.tsv")
 	write_tsv(clusters, "core_clusters.tsv")
 
-	# Sequences of the core genes of each plasmid
-	ffn <- read_fasta(file.path(prokka_dir, "prokka.ffn"))
+	# Sequences of the core genes of each genome
+	ffn <- do.call(c, lapply(file.path(prokka_dirs, "prokka.ffn"), read_fasta))
 	core <- filter(genes, is_core)
-	dna <- split(ffn[core$ID], core$contig_id)
-	strains <- tibble(contig_id = names(dna), file = seq_file_name(contig_id)) |>
-		mutate(strain = fs::path_ext_remove(file))
+	dna <- split(ffn[core$ID], core$genome)
 	dir.create("pymlst_genomes")
-	for (i in seq_len(nrow(strains))) writeXStringSet(dna[[strains$contig_id[i]]], file.path("pymlst_genomes", strains$file[i]))
+	for (genome in names(dna)) writeXStringSet(dna[[genome]], file.path("pymlst_genomes", paste0(genome, ".fasta")))
 	template <- names(dna)[which.max(lengths(dna))]
 	writeXStringSet(if (length(template)) dna[[template]] else DNAStringSet(), "pymlst_template.fasta")
-	write_tsv(select(strains, strain, contig_id), "pymlst_strains.tsv")
 }
