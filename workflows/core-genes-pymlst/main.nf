@@ -114,7 +114,7 @@ workflow CORE_GENES_PYMLST {
 	) }))
 
 	// Core genes: clusters of the reciprocal hits of each pair of genomes, and their sequences
-	def hits = BLAST_RECIPROCAL_HITS(blastn_ch, 0.75)
+	def hits = BLAST_RECIPROCAL_HITS(blastn_ch, 0.75 as Float)
 	def all_hits_ch = hits
 		.collect()
 		.map({ rs -> record(hits: rs.toList()) })
