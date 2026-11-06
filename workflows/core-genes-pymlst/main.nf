@@ -42,7 +42,7 @@ process CORE_GENES {
 
 	input:
 	record(meta: Record, prokka: List<GenomeProkka>, blast: List<GenomePairBlast>, n_core: Integer?)
-	libs: List<Path>    // lib_io.R, lib_core_gene.R
+	libs: List<Path>    // lib_io.R, lib_blast.R, lib_core_gene.R
 
 	stage:
 	stageAs(prokka.collect({ p -> p.dir }), 'prokka/?/*')
@@ -62,6 +62,7 @@ process CORE_GENES {
 	"""
 	#!/usr/bin/env Rscript
 	source("lib/lib_io.R")
+	source("lib/lib_blast.R")
 	source("lib/lib_core_gene.R")
 	prokka <- tibble(genome = ${rVector(prokka.collect({ p -> p.genome }))}, dir = ${rVector(prokka.collect({ p -> p.dir }))})
 	blastp <- tibble(
@@ -118,7 +119,7 @@ workflow CORE_GENES_PYMLST {
 
 	def core_genes_ch = CORE_GENES(
 		all_prokka_ch.combine(all_blastp_ch).map({ ps, bs -> record(meta: record(name: 'core_genes'), prokka: ps, blast: bs, n_core: n_core) }),
-		[file("${moduleDir}/assets/lib_io.R"), file("${moduleDir}/assets/lib_core_gene.R")]
+		[file("${moduleDir}/assets/lib_io.R"), file("${moduleDir}/assets/lib_blast.R"), file("${moduleDir}/assets/lib_core_gene.R")]
 	)
 	def pymlst_ch = PYMLST_WGMLST(core_genes_ch.map({ r -> record(
 		meta: r.meta,

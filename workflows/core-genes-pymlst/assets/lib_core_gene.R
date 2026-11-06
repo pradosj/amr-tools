@@ -1,4 +1,4 @@
-# Functions of the CORE_GENES_PYMLST workflow (sourced after lib_io.R, whose functions it uses)
+# Functions of the CORE_GENES_PYMLST workflow (sourced after lib_io.R and lib_blast.R, whose functions it uses)
 
 suppressPackageStartupMessages(library(GenomicRanges))
 
@@ -11,10 +11,20 @@ core_count <- function(n_core, n_plasmids) {
 	if (is.null(n_core) || is.na(n_core)) ceiling(0.8 * n_plasmids) else as.integer(n_core)
 }
 
+#' Identifier of genes in a set of genomes
+#'
+#' @param genome Genomes of the genes.
+#' @param id prokka ids of the genes (possibly the same in two genomes).
+#' @return `<genome>:<id>`.
+gene_uid <- function(genome, id) {
+	str_c(genome, ":", id)
+}
+
 #' Core genes of genomes: clusters of reciprocal BLASTP hits of the prokka proteins, with one gene in at least n_core
 #' genomes
 #'
-#' Each gene is identified by `<genome>:<prokka id>`, prokka ids being possibly the same in two genomes.
+#' Each gene is identified by `<genome>:<prokka id>` (see gene_uid()), and linked to the genes of its reciprocal BLASTP
+#' hits (see blast_reciprocal_hits() of lib_blast.R).
 #'
 #' Writes:
 #' - `core_genes.tsv`: the genes of the clusters (gene_id, genome, prokka ID, prokka gene name), with their cluster
@@ -31,37 +41,30 @@ core_count <- function(n_core, n_plasmids) {
 core_genes <- function(prokka, blastp, n_core = NA, min_cover = 0.75) {
 	library(tidygraph)
 	stopifnot(!anyDuplicated(prokka$genome))
-	gene_id <- function(genome, id) str_c(genome, ":", id)
 	gff <- map2(prokka$genome, prokka$dir, function(genome, dir) {
 		x <- rtracklayer::import.gff3(file.path(dir, "prokka.gff"))
 		x <- x[x$type == "CDS"]
 		gene <- if (is.null(x$gene)) rep(NA_character_, length(x)) else as.character(x$gene)
-		tibble(gene_id = gene_id(genome, x$ID), genome = genome, ID = x$ID, gene = gene, width = width(x))
+		tibble(gene_id = gene_uid(genome, x$ID), genome = genome, ID = x$ID, gene = gene, width = width(x))
 	}) |>
 		bind_rows()
 	n_core <- core_count(n_core, nrow(prokka))
 
-	# Reciprocal hits, keeping the worst direction of each pair of genes
-	z <- pmap(blastp, function(query_genome, subject_genome, file) {
-		read_blast6(file) |>
-			mutate(query_id = gene_id(query_genome, query_id), subject_id = gene_id(subject_genome, subject_id))
+	# Reciprocal hits of each pair of genomes (once, with its two BLASTP; for a genome with itself, each pair of distinct
+	# genes once)
+	pairs <- inner_join(blastp, blastp, by = c(query_genome = "subject_genome", subject_genome = "query_genome"), suffix = c("1", "2")) |>
+		filter(query_genome <= subject_genome)
+	hits <- pmap(pairs, function(query_genome, subject_genome, file1, file2) {
+		blast_reciprocal_hits(file1, file2, min_cover) |>
+			filter(query_genome != subject_genome | query_id < subject_id) |>
+			mutate(query_id = gene_uid(query_genome, query_id), subject_id = gene_uid(subject_genome, subject_id))
 	}) |>
-		bind_rows() |>
-		filter(align_len / query_len > min_cover) |>
-		group_by(query_id, subject_id) |>
-		slice_max(bit_score, n = 1, with_ties = FALSE) |>
-		ungroup() |>
-		filter(str_c(query_id, subject_id, sep = "|") %in% str_c(subject_id, query_id, sep = "|")) |>
-		filter(query_id != subject_id) |>
-		mutate(undirected_edge_id = str_c(pmin(query_id, subject_id), pmax(query_id, subject_id), sep = "|")) |>
-		group_by(undirected_edge_id) |>
-		slice_min(bit_score, n = 1, with_ties = FALSE) |>
-		ungroup()
+		bind_rows()
 
-	# Clusters of genes, keeping one paralog per genome in each cluster
+	# Clusters of genes linked by their reciprocal hits, keeping one paralog per genome in each cluster
 	g <- tbl_graph(
-		nodes = select(gff, gene_id, genome, ID, gene, width),
-		edges = select(z, from = query_id, to = subject_id, bit_score, pct_ident),
+		nodes = gff,
+		edges = select(hits, from = query_id, to = subject_id, bit_score, pct_ident),
 		directed = FALSE,
 		node_key = "gene_id"
 	) |>
@@ -88,7 +91,7 @@ core_genes <- function(prokka, blastp, n_core = NA, min_cover = 0.75) {
 	# Sequences of the core genes of each genome
 	ffn <- map2(prokka$genome, prokka$dir, function(genome, dir) {
 		x <- read_fasta(file.path(dir, "prokka.ffn"))
-		names(x) <- gene_id(genome, names(x))
+		names(x) <- gene_uid(genome, names(x))
 		x
 	}) |>
 		do.call(what = c)
