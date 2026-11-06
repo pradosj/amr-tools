@@ -51,22 +51,22 @@ workflow {
 
 output {
 	prokka: Channel<Record> {
-		path { r -> r.dir >> "prokka/${r.meta.sample_id}" }    // prokka of each genome
+		path { r -> r.dir >> "core-genes-pymlst/prokka/${r.meta.sample_id}" }    // prokka of each genome
 	}
 	core_genes: Value<Record> {
 		path { r ->
-			r.genes_tsv >> 'core_genes.tsv'
-			r.clusters_tsv >> 'core_clusters.tsv'
-			r.template >> 'pymlst/template.fasta'
+			r.genes_tsv >> 'core-genes-pymlst/core_genes.tsv'
+			r.clusters_tsv >> 'core-genes-pymlst/core_clusters.tsv'
+			r.template >> 'core-genes-pymlst/core_template.fasta'
 		}
 	}
 	index: Value<Path> {
-		path { f -> f >> 'core_genes_index.tsv' }    // the genome of each index (pyMLST strain, genome column of the tables)
+		path { f -> f >> 'core-genes-pymlst/core_genes_index.tsv' }    // the genome of each index (pyMLST strain, genome column of the tables)
 	}
 	pymlst: Value<Record> {
 		path { r ->
-			r.db >> 'pymlst/pymlst.db'
-			r.dir >> 'pymlst/results'
+			r.db >> 'core-genes-pymlst/pymlst/pymlst.db'
+			r.dir >> 'core-genes-pymlst/pymlst/results'
 		}
 	}
 }
