@@ -32,8 +32,7 @@ seqlen <- tibble(seq = names(fa), seqlen = width(fa))
 # Positions of the AMR and plasmid typing annotations of the plasmids
 pos_pat <- "([0-9]+)(-|\\.\\.)([0-9]+)(:([-+]))?"
 read_annotations <- function(f) {
-	read_tsv(f, col_types = cols(.default = "c")) |>
-		filter(sample_id == params$name) |>
+	read_tsv(f, col_types = cols(.default = "c")) |>    # the plasmids of the set only
 		mutate(
 			seq = contig_id,
 			start = str_extract(position, pos_pat, 1) |> as.integer(),
@@ -148,18 +147,22 @@ p1 + p2
 # pyMLST typing of the core genes
 
 ```{r}
-# pyMLST strains: the index of the plasmids
-strains <- read_tsv("report_data/core_genes_index.tsv", col_types = "cc")
+# pyMLST strains: the index of the plasmids (genomes), with their sequences (contig_id), and their plasmid types
+strains <- read_tsv("report_data/core_genes_index.tsv", col_types = "ccc")
+genome_types <- strains |>
+	left_join(plasmid_types, by = "contig_id") |>
+	group_by(genome) |>
+	summarise(plasmid_types = str_c(sort(unique(plasmid_types)), collapse = ","))
 pyDistMat <- read.table("report_data/pymlst/distance.tsv", sep = "\t", skip = 1, row.names = 1, check.names = FALSE) |>
 	data.matrix()
-rownames(pyDistMat) <- strains$plasmid[match(rownames(pyDistMat), strains$index)]
+rownames(pyDistMat) <- strains$genome[match(rownames(pyDistMat), strains$index)]
 colnames(pyDistMat) <- rownames(pyDistMat)
 h <- hclust(as.dist(pyDistMat), method = "single")
 
 mlst <- read.table("report_data/pymlst/mlst.tsv", sep = "\t", comment.char = "", header = TRUE, check.names = FALSE, colClasses = "character") |>
 	dplyr::rename(gene_id = `#GeneId`) |>
 	pivot_longer(!gene_id, names_to = "strain", values_to = "allele") |>
-	mutate(plasmid = factor(strains$plasmid[match(strain, strains$index)], h$labels[h$order])) |>
+	mutate(plasmid = factor(strains$genome[match(strain, strains$index)], h$labels[h$order])) |>
 	filter(!is.na(allele), allele != "") |>
 	group_by(gene_id) |>
 	mutate(allele_idx = as.integer(factor(allele))) |>
@@ -174,7 +177,7 @@ Number of distinct alleles between the plasmids.
 #| fig-height: 6
 #| fig-width: 8
 as_tbl_graph(pyDistMat + 1) |>
-	left_join(plasmid_types, by = c(name = "contig_id")) |>
+	left_join(genome_types, by = c(name = "genome")) |>
 	convert(to_minimum_spanning_tree, weights = weight) |>
 	ggraph("stress") +
 		geom_edge_link(aes(label = weight - 1), color = "grey", label_size = 4, angle_calc = "along", label_dodge = unit(3, "mm")) +
@@ -227,7 +230,7 @@ Single linkage clustering on the number of distinct alleles.
 #| fig-height: !expr fig_h(5, 0.3)
 #| fig-width: 6
 as_tbl_graph(h) |>
-	left_join(plasmid_types, by = c(label = "contig_id")) |>
+	left_join(genome_types, by = c(label = "genome")) |>
 	ggraph() +
 		coord_flip() +
 		scale_y_reverse() +

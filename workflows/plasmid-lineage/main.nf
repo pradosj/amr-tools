@@ -15,10 +15,10 @@ record PlasmidLineageParams {
 	pymlst_args: String?           // `wgMLST add` options
 }
 
-// A set of plasmids to compare: FASTA files with one or several plasmid sequences
-record PlasmidSet {
-	meta: Record           // record(sample_id: name of the set)
-	fasta: List<Path>
+// A plasmid: its FASTA file (a genome of CORE_GENES_PYMLST and of AMR_ANNOT)
+record Genome {
+	meta: Record
+	fasta: Path
 }
 
 
@@ -37,36 +37,14 @@ process CONCAT_FASTA {
 
 	script:
 	"""
-	awk 1 in/*/* > plasmids.fasta
+	awk 1 ${fasta.collect({ f -> "'${f}'" }).join(' ')} > plasmids.fasta
 	"""
 }
 
 
-// One FASTA file per sequence (split/<rank of the sequence, on 4 digits>.fasta)
-process SPLIT_FASTA {
-	label 'local'
 
-	input:
-	record(meta: Record, fasta: Path)
-
-	output:
-	record(meta: meta, fasta: files('split/*.fasta').toSorted())
-
-	script:
-	"""
-	mkdir split
-	awk '/^>/ { f = sprintf("split/%04d.fasta", ++n) } { print > f }' '${fasta}'
-	"""
-
-	stub:
-	"""
-	mkdir split
-	printf '>stub\nACGT\n' > split/0001.fasta
-	"""
-}
-
-
-// The plasmid named by each index of CORE_GENES_PYMLST (e.g. the pyMLST strains): a TSV with columns index, plasmid
+// The plasmid named by each index of CORE_GENES_PYMLST (e.g. the pyMLST strains): a TSV with columns index, genome
+// (sample_id of the plasmid) and contig_id (the id of each of its sequences)
 process INDEX_TSV {
 	input:
 	text: String
@@ -178,14 +156,15 @@ process REPORT_FOLDER {
 }
 
 
-// Lineage of a set of plasmids: align the plasmids, annotate them, find their core
+// Lineage of a set of plasmids (each a genome: a FASTA file): align the plasmids, annotate them, find their core
 // genes (typed with pyMLST) and their core genome, and render an HTML report
 workflow PLASMID_LINEAGE {
 	take:
 	opts: PlasmidLineageParams
 	amr_opts: AmrParams
 	amrfinderplus_db: Value<Path?>    // database of AMR_ANNOT (null when AMRFinderPlus is skipped)
-	plasmids: Channel<PlasmidSet>
+	name: String                      // name of the set of plasmids (meta of its results: record(sample_id: name))
+	plasmids: Channel<Genome>         // the plasmids, named by the sample_id of their meta
 
 	main:
 	def assets = file("${moduleDir}/assets")
@@ -194,45 +173,47 @@ workflow PLASMID_LINEAGE {
 	}
 	def n_core = opts.core_genome_count as Integer
 	def blastn_args = opts.blastn_args ?: '-perc_identity 70 -evalue 1e-3 -subject_besthit'
+	def set_meta = record(sample_id: name)
 
-	// Align the plasmids against each other
-	def fasta_ch = CONCAT_FASTA(plasmids)
+	// Align the plasmids against each other (all their sequences in one FASTA)
+	def fasta_ch = CONCAT_FASTA(plasmids
+		.map({ r -> r.fasta })
+		.collect()
+		.flatMap({ fs -> fs.isEmpty() ? [] : [record(meta: set_meta, fasta: fs.toList().toSorted())] })
+	)
 	def self_ch = BLASTN_SELF(fasta_ch.map({ r -> record(query: record(meta: r.meta, path: r.fasta), subject: null, args: blastn_args) }))
 		.map({ r -> record(meta: r.meta_query, tsv: r.tsv) })
 
-	// AMR and plasmid typing annotations of the plasmids (one multiqc for all the sets), without orgfinder (and so
-	// without cgemlst, whose scheme depends on the organism found by orgfinder)
+	// AMR and plasmid typing annotations of each plasmid, without orgfinder (and so without cgemlst, whose scheme
+	// depends on the organism found by orgfinder)
 	def amr = AMR_ANNOT(
 		amr_opts + record(orgfinder: record(skip: true, args: null), cgemlst: record(skip: true, args: null)),
 		null,
 		amrfinderplus_db,
-		fasta_ch.map({ r -> record(meta: r.meta + record(assembler_name: 'none'), fasta: r.fasta, gff: null, info: null) }),
+		plasmids.map({ r -> record(meta: r.meta + record(assembler_name: 'none'), fasta: r.fasta, gff: null, info: null) }),
 		channel.empty(),
 		channel.empty()
 	)
 
-	// Core genes: prokka genes with reciprocal BLASTN hits in most plasmids, typed with pyMLST. Each plasmid is a genome
-	// named by its id (first word of its header), its meta also holding the name of the set.
-	def genomes_ch = SPLIT_FASTA(fasta_ch).flatMap({ r -> r.fasta.collect({ f -> record(
-		meta: record(sample_id: fastaFirstId(f), set: r.meta.sample_id),
-		fasta: f
-	) }) })
-	def core = CORE_GENES_PYMLST(genomes_ch, n_core, opts.prokka_args, opts.genes_blastn_args, opts.pymlst_args)
-	// the core genes and their pyMLST typing of the set (a single set: CORE_GENES_PYMLST takes all the genomes), the
-	// plasmids being named by their index in the results (core_genes_index.tsv: the plasmid of each index)
-	def index_tsv = INDEX_TSV(core.index.collect().map({ rs ->
-		"index\tplasmid\n" + rs.toList().toSorted({ r -> r.index }).collect({ r -> "${r.index}\t${r.meta.sample_id}\n" }).join('')
-	}))
-	def set_meta = fasta_ch.map({ r -> r.meta }).collect().map({ ms -> ms.toList()[0] })
-	def core_genes_ch = core.core_genes.combine(set_meta: set_meta).combine(index_tsv: index_tsv).map({ r -> record(
-		meta: r.set_meta,
+	// Core genes: prokka genes with reciprocal BLASTN hits in most plasmids, typed with pyMLST. The plasmids are named
+	// by their index in the results (core_genes_index.tsv: the plasmid and the sequences of each index)
+	def core = CORE_GENES_PYMLST(plasmids, n_core, opts.prokka_args, opts.genes_blastn_args, opts.pymlst_args)
+	def index_tsv = INDEX_TSV(core.index
+		.join(plasmids, by: 'meta')
+		.collect()
+		.map({ rs -> "index\tgenome\tcontig_id\n" + rs.toList().toSorted({ r -> r.index }).collect({ r ->
+			fastaIds(r.fasta).collect({ id -> "${r.index}\t${r.meta.sample_id}\t${id}\n" }).join('')
+		}).join('') })
+	)
+	def core_genes_ch = core.core_genes.combine(index_tsv: index_tsv).map({ r -> record(
+		meta: set_meta,
 		genes_tsv: r.genes_tsv,
 		clusters_tsv: r.clusters_tsv,
 		index_tsv: r.index_tsv,
 		template: r.template,
 		genomes: r.genomes
 	) })
-	def pymlst_ch = core.pymlst.combine(set_meta: set_meta).map({ r -> record(meta: r.set_meta, db: r.db, dir: r.dir) })
+	def pymlst_ch = core.pymlst.map({ r -> record(meta: set_meta, db: r.db, dir: r.dir) })
 
 	// Core genome: regions shared by most plasmids
 	def core_genome_ch = CORE_GENOME(
@@ -240,7 +221,7 @@ workflow PLASMID_LINEAGE {
 		assets
 	)
 
-	// HTML report of each set of plasmids, from its files gathered in a folder under explicit names
+	// HTML report of the set of plasmids, from its files gathered in a folder under explicit names
 	def report_data_ch = REPORT_FOLDER(
 		fasta_ch.map({ r -> record(meta: r.meta, plasmids: r.fasta) })
 			.join(self_ch.map({ r -> record(meta: r.meta, self_blast: r.tsv) }), by: 'meta')
@@ -269,17 +250,17 @@ workflow PLASMID_LINEAGE {
 	) }))
 
 	emit:
-	prokka: Channel<Record>          = core.prokka        // records with fields meta (record(sample_id: plasmid id, set: name of the set)), dir, faa, gff, fna
+	prokka: Channel<Record>          = core.prokka        // records with fields meta (of the plasmid), dir, faa, ffn, gff, fna
 	core_genes: Value<Record>        = core_genes_ch      // records with fields meta (of the set), genes_tsv, clusters_tsv, index_tsv, template, genomes
 	pymlst: Value<Record>            = pymlst_ch          // records with fields meta (of the set), db, dir
-	core_genome: Channel<Record>     = core_genome_ch     // records with fields meta, tsv
-	report: Channel<Record>          = report_ch          // records with fields meta, html
-	amr_assemblies: Channel<Record>  = amr.assemblies_amr    // records with fields meta, fasta, fai, dir, rds
+	core_genome: Channel<Record>     = core_genome_ch     // records with fields meta (of the set), tsv
+	report: Channel<Record>          = report_ch          // records with fields meta (of the set), html
+	amr_assemblies: Channel<Record>  = amr.assemblies_amr    // records with fields meta (of the plasmid), fasta, fai, dir, rds
 	amr_multiqc: Channel<Record>     = amr.multiqc           // records with fields rds, html, xlsx, assemblies_tsv, contigs_tsv, resistances_tsv, plasmidfinder_hits_tsv
 }
 
 
-// Id of the first sequence of a FASTA file: first word of its header
-def fastaFirstId(fasta: Path) -> String {
-	return fasta.text.readLines()[0].substring(1).tokenize(' \t')[0]
+// Ids of the sequences of a FASTA file: first word of their header
+def fastaIds(fasta: Path) -> List<String> {
+	return fasta.text.readLines().findAll({ l -> l.startsWith('>') }).collect({ l -> l.substring(1).tokenize(' \t')[0] }).toList()
 }
