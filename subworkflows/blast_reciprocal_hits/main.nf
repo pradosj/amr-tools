@@ -38,9 +38,7 @@ process RECIPROCAL_HITS {
 	source("lib/lib_blast.R")
 	hits <- blast_reciprocal_hits("blast1.tsv", "${blast2 ? 'blast2.tsv' : 'blast1.tsv'}"${min_cover != null ? ", min_cover = ${min_cover}" : ''})
 	${blast2 ? '' : 'hits <- filter(hits, query_id < subject_id)'}
-	hits |>
-		mutate(query_genome = '${meta_query.sample_id}', subject_genome = '${meta_subject.sample_id}', .before = 1) |>
-		write_tsv("reciprocal_hits.tsv")
+	write_tsv(hits, "reciprocal_hits.tsv", col_names = FALSE)
 	"""
 
 	stub:
@@ -52,8 +50,8 @@ process RECIPROCAL_HITS {
 
 // Reciprocal BLAST hits of genomes: pairs the BLAST (BLASTP or BLASTN) of each pair of genomes (A against B with B
 // against A, and a genome against itself), runs blast_reciprocal_hits() (R/lib_blast.R) on each pair, and gives the
-// hits of each pair in a TSV: query_genome, subject_genome (sample_id of the metas), query_id, subject_id (ids of the
-// sequences in their genome), pct_ident, align_len, evalue and bit_score of the worst direction. Each pair of genomes
+// hits of each pair (scores of the worst direction) in the BLAST tabular format (-outfmt "6 std qlen slen", read by
+// read_blast6()), the query in the genome of meta_query and the subject in that of meta_subject. Each pair of genomes
 // is given once; for a genome with itself, each pair of distinct sequences once.
 workflow BLAST_RECIPROCAL_HITS {
 	take:

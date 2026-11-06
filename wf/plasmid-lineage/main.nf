@@ -16,7 +16,7 @@ params {
 	name: String = 'plasmids'
 	no_rotation: Boolean = false    // do not rotate the plasmids before the analysis
 	lineage: PlasmidLineageParams = record(
-		core_genome_count: null,    // null: 80% of the plasmids
+		core_genome_count: null,    // required: --lineage.core_genome_count=<n>
 		blastn_args: '-perc_identity 70 -evalue 1e-3 -subject_besthit',
 		blastp_args: '-subject_besthit',
 		prokka_args: '--kingdom Bacteria',

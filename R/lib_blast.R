@@ -10,8 +10,9 @@
 #' @param blast2 BLAST of B (query) against A (subject), in the format read by read_blast6(). With A = B (blast1 =
 #'   blast2), each pair of distinct sequences is given in both orders, and each sequence is paired with itself.
 #' @param min_cover Minimum coverage of the query sequence by its alignment.
-#' @return A tibble with one row per pair: query_id (in A), subject_id (in B), and the pct_ident, align_len, evalue and
-#'   bit_score of the worst direction.
+#' @return The hits of blast1 aligned in both directions, one per pair (query in A, subject in B), in the format of
+#'   read_blast6(): pct_ident, align_len, num_mismatch, num_gapopen, evalue and bit_score of the worst direction; the
+#'   positions and lengths of blast1.
 blast_reciprocal_hits <- function(blast1, blast2, min_cover = 0.75) {
 	# Best hit of each pair of query and subject
 	best_hits <- function(blast) {
@@ -19,8 +20,7 @@ blast_reciprocal_hits <- function(blast1, blast2, min_cover = 0.75) {
 			filter(align_len / query_len > min_cover) |>
 			group_by(query_id, subject_id) |>
 			slice_max(bit_score, n = 1, with_ties = FALSE) |>
-			ungroup() |>
-			select(query_id, subject_id, pct_ident, align_len, evalue, bit_score)
+			ungroup()
 	}
 	hits1 <- best_hits(blast1)
 	hits2 <- best_hits(blast2)
@@ -28,11 +28,12 @@ blast_reciprocal_hits <- function(blast1, blast2, min_cover = 0.75) {
 	# Pairs aligned in both directions, with the worst direction
 	inner_join(hits1, hits2, by = c(query_id = "subject_id", subject_id = "query_id"), suffix = c("", "_2")) |>
 		mutate(
-			worst_2   = bit_score_2 < bit_score,
-			pct_ident = if_else(worst_2, pct_ident_2, pct_ident),
-			align_len = if_else(worst_2, align_len_2, align_len),
-			evalue    = if_else(worst_2, evalue_2, evalue),
-			bit_score = if_else(worst_2, bit_score_2, bit_score)
+			worst_2 = bit_score_2 < bit_score,    # the second direction (blast2) is the worst
+			# the scores of the worst direction
+			across(
+				c(pct_ident, align_len, num_mismatch, num_gapopen, evalue, bit_score),
+				\(x) if_else(worst_2, get(str_c(cur_column(), "_2")), x)
+			)
 		) |>
 		select(!ends_with("_2"))
 }

@@ -8,21 +8,21 @@ format:
     code-fold: true
 params:
   name: "plasmids"           # name of the set of plasmids (sample_id of the annotation tables)
-  core_genome_count: null    # minimum number of plasmids sharing a core gene or region (null: 80% of the plasmids)
+  core_genome_count: null    # minimum number of plasmids sharing a core gene or region (required)
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
 source("assets/lib_io.R")
 source("assets/lib_plasmid_lineage.R")
-source("assets/lib_core_gene.R")    # core_count()
 library(tidygraph)
 library(ggraph)
 library(patchwork)
 
 fa <- read_fasta("report_data/plasmids.fasta")
 n_plasmids <- length(fa)
-n_core <- core_count(params$core_genome_count, n_plasmids)
+stopifnot(!is.null(params$core_genome_count))
+n_core <- as.integer(params$core_genome_count)
 fig_h <- function(min = 4, per_seq = 0.5) max(min, per_seq * n_plasmids)
 
 seqlen <- tibble(seq = names(fa), seqlen = width(fa))
@@ -136,10 +136,10 @@ p1 <- clusters |>
 		geom_vline(xintercept = n_core - 0.5, linetype = "dashed") +
 		xlab("Number of plasmids") + ylab("Number of gene clusters")
 p2 <- clusters |>
-	ggplot(aes(x = distinct_genome, y = mean_width)) +
+	ggplot(aes(x = distinct_genome, y = mean_length)) +
 		geom_jitter(width = 0.2, height = 0) +
 		geom_vline(xintercept = n_core - 0.5, linetype = "dashed") +
-		xlab("Number of plasmids") + ylab("Mean gene length (bp)")
+		xlab("Number of plasmids") + ylab("Mean protein length (aa)")
 p1 + p2
 ```
 
@@ -200,13 +200,13 @@ Core genes with distinct alleles:
 #| fig-width: 15
 prokka_genes <- read_tsv("report_data/core_genes.tsv", show_col_types = FALSE) |>
 	mutate(gene_id = str_replace_all(gene_id, "_", "-")) |>    # pyMLST gene ids
-	select(gene_id, gene)
+	select(gene_id, product)
 mlst |>
 	group_by(gene_id) |>
 	filter(n_distinct(allele) > 1) |>
 	ungroup() |>
 	left_join(prokka_genes, by = "gene_id") |>
-	mutate(label = if_else(is.na(gene), gene_id, str_replace(gene, "_[0-9]*$", ""))) |>
+	mutate(label = if_else(is.na(product) | product == "hypothetical protein", gene_id, product)) |>
 	ggplot(aes(x = label, y = plasmid, fill = factor(allele_idx))) +
 		geom_tile() +
 		scale_fill_brewer() +

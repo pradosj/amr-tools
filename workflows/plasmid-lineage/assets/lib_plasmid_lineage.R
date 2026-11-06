@@ -194,11 +194,10 @@ find_align_seq <- function(fasta, blast, out, min_len = 1000, min_frac = 0.8) {
 #'
 #' @param fasta FASTA file of the plasmids.
 #' @param blast Self alignment of the plasmids, as read by read_blast6().
-#' @param n_core Minimum number of plasmids sharing a core region (NA: see core_count()).
+#' @param n_core Minimum number of plasmids sharing a core region.
 #' @param min_len Minimum length of the alignments and of the core regions.
-core_genome <- function(fasta, blast, n_core = NA, min_len = 500) {
+core_genome <- function(fasta, blast, n_core, min_len = 500) {
 	FA <- read_fasta(fasta)
-	n_core <- core_count(n_core, length(FA))
 	hits <- read_blast6(blast) |>
 		filter(align_len >= min_len) |>
 		filter(query_id != subject_id)

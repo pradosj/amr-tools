@@ -19,10 +19,10 @@ curl -s https://get.nextflow.io | bash
 # Usage
 
 ```bash
-nextflow run pradosj/amr-tools/wf/plasmid-lineage --fasta='plasmids/*.fasta' --name=my_plasmids
+nextflow run pradosj/amr-tools/wf/plasmid-lineage --fasta='plasmids/*.fasta' --name=my_plasmids --lineage.core_genome_count=3
 ```
 
-All the sequences of the FASTA files form one set of plasmids (sequence ids must be unique). A gene or a region is core when it is shared by at least `--lineage.core_genome_count` plasmids (default: 80% of the plasmids). The options of the tools are given with `--lineage.blastn_args`, `--lineage.blastp_args`, `--lineage.prokka_args` and `--lineage.pymlst_args`, and the AMR annotation with `--amr.<tool>.skip` / `--amr.<tool>.args`. The AMRFinderPlus database is read from the databases folder `--db.basedir` (default `results/db`), and downloaded when missing, see [Databases](../../README.md#databases).
+All the sequences of the FASTA files form one set of plasmids (sequence ids must be unique). A gene or a region is core when it is shared by at least `--lineage.core_genome_count` plasmids (required, e.g. `--lineage.core_genome_count=3`). The options of the tools are given with `--lineage.blastn_args`, `--lineage.blastp_args`, `--lineage.prokka_args` and `--lineage.pymlst_args`, and the AMR annotation with `--amr.<tool>.skip` / `--amr.<tool>.args`. The AMRFinderPlus database is read from the databases folder `--db.basedir` (default `results/db`), and downloaded when missing, see [Databases](../../README.md#databases).
 
 Outputs: `<name>/` (`report.html`, rotated plasmids `rotated.fasta` (not with `--no_rotation`), prokka annotation, core genes and core genome tables, pyMLST database and results), `amr/` and `reports/` (results and multi-sample report of `AMR_ANNOT`), `db/` (the databases built by the run).
 

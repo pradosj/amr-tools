@@ -42,7 +42,7 @@
 				"core_genome_count": {
 					"type": "integer",
 					"minimum": 1,
-					"description": "Minimum number of plasmids sharing a core gene or a core genome region (default: 80% of the plasmids)"
+					"description": "Minimum number of plasmids sharing a core gene or a core genome region (required)"
 				},
 				"blastn_args": {
 					"type": "string",

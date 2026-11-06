@@ -8,7 +8,7 @@ include { CORE_GENES_PYMLST     } from './workflows/core-genes-pymlst/main.nf'
 
 // Options of PLASMID_LINEAGE (params.lineage). Fields are nullable: defaults are used when null.
 record PlasmidLineageParams {
-	core_genome_count: Integer?    // minimum number of plasmids sharing a core gene or core region (default: 80% of the plasmids)
+	core_genome_count: Integer?    // minimum number of plasmids sharing a core gene or core region (required)
 	blastn_args: String?           // alignment of the plasmids
 	blastp_args: String?           // alignment of the proteins, for the core genes
 	prokka_args: String?
@@ -110,7 +110,7 @@ process CORE_GENOME {
 	time 30.m
 
 	input:
-	record(meta: Record, fasta: Path, blast: Path, n_core: Integer?)
+	record(meta: Record, fasta: Path, blast: Path, n_core: Integer)
 	assets: Path
 
 	stage:
@@ -129,8 +129,7 @@ process CORE_GENOME {
 	#!/usr/bin/env Rscript
 	source("assets/lib_io.R")
 	source("assets/lib_plasmid_lineage.R")
-	source("assets/lib_core_gene.R")    # core_count()
-	core_genome("plasmids.fasta", "plasmids.self.blastn", n_core = ${n_core == null ? 'NA' : "${n_core}"})
+	core_genome("plasmids.fasta", "plasmids.self.blastn", n_core = ${n_core})
 	"""
 
 	stub:
@@ -179,7 +178,10 @@ workflow PLASMID_LINEAGE {
 
 	main:
 	def assets = file("${moduleDir}/assets")
-	def n_core = opts.core_genome_count
+	if (opts.core_genome_count == null) {
+		error("PLASMID_LINEAGE: the minimum number of plasmids sharing a core gene or region (--lineage.core_genome_count) is required")
+	}
+	def n_core = opts.core_genome_count as Integer
 	def blastn_args = opts.blastn_args ?: '-perc_identity 70 -evalue 1e-3 -subject_besthit'
 
 	// Align the plasmids against each other
@@ -240,7 +242,7 @@ workflow PLASMID_LINEAGE {
 		template: file("${moduleDir}/assets/plasmid_lineage.qmd"),
 		extra: assets,
 		files: [r.dir],
-		args: "-P 'name:${r.meta.sample_id}'" + (n_core != null ? " -P 'core_genome_count:${n_core}'" : '')
+		args: "-P 'name:${r.meta.sample_id}' -P 'core_genome_count:${n_core}'"
 	) }))
 
 	emit:

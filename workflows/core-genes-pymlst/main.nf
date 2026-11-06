@@ -24,6 +24,14 @@ record GenomeProkka {
 	dir: Path
 }
 
+// The reciprocal hits of a pair of genomes (blast6 format, see BLAST_RECIPROCAL_HITS), named by the sample_id of the
+// genomes of their query and subject
+record GenomePairHits {
+	query: String
+	subject: String
+	tsv: Path
+}
+
 
 // Core genes from the reciprocal BLASTP hits of the prokka proteins of genomes, and their sequences for pyMLST.
 // Each gene is identified by the sample_id of its genome and its prokka id (prokka ids may be the same in two genomes).
@@ -35,12 +43,12 @@ process CORE_GENES {
 	time 30.m
 
 	input:
-	record(meta: Record, prokka: List<GenomeProkka>, hits: List<Path>, n_core: Integer?)    // hits: the TSV of each pair of genomes, see BLAST_RECIPROCAL_HITS
+	record(meta: Record, prokka: List<GenomeProkka>, hits: List<GenomePairHits>, n_core: Integer)
 	libs: List<Path>    // lib_io.R, lib_core_gene.R
 
 	stage:
 	stageAs(prokka.collect({ p -> p.dir }), 'prokka/?/*')
-	stageAs(hits, 'reciprocal_hits/?/*')
+	stageAs(hits.collect({ h -> h.tsv }), 'reciprocal_hits/?/*')
 	stageAs(libs, 'lib/*')
 
 	output:
@@ -58,7 +66,13 @@ process CORE_GENES {
 	source("lib/lib_io.R")
 	source("lib/lib_core_gene.R")
 	prokka <- tibble(genome = ${rVector(prokka.collect({ p -> p.genome }))}, dir = ${rVector(prokka.collect({ p -> p.dir }))})
-	core_genes(prokka, Sys.glob("reciprocal_hits/*/*"), n_core = ${n_core == null ? 'NA' : "${n_core}"})
+	hits <- tibble(
+		query_genome = ${rVector(hits.collect({ h -> h.query }))},
+		subject_genome = ${rVector(hits.collect({ h -> h.subject }))},
+		file = ${rVector(hits.collect({ h -> h.tsv }))}
+	)
+	core_genes(hits, n_core = ${n_core}) |>
+		write_core_genes(prokka)
 	"""
 
 	stub:
@@ -76,7 +90,7 @@ process CORE_GENES {
 workflow CORE_GENES_PYMLST {
 	take:
 	genomes: Channel<Genome>
-	n_core: Integer?         // minimum number of genomes sharing a core gene (null: 80% of the genomes)
+	n_core: Integer          // minimum number of genomes sharing a core gene
 	prokka_args: String?
 	blastp_args: String?     // alignment of the proteins
 	pymlst_args: String?     // `wgMLST add` options
@@ -103,7 +117,10 @@ workflow CORE_GENES_PYMLST {
 		.map({ rs -> rs.toList().toSorted({ r -> r.genome }) })
 
 	// The reciprocal hits of all the pairs of genomes
-	def all_hits_ch = hits.map({ r -> r.tsv }).collect().map({ fs -> fs.toList().toSorted() })
+	def all_hits_ch = hits
+		.map({ r -> record(query: r.meta_query.sample_id as String, subject: r.meta_subject.sample_id as String, tsv: r.tsv) })
+		.collect()
+		.map({ rs -> rs.toList().toSorted({ r -> "${r.query}\t${r.subject}" }) })
 
 	def core_genes_ch = CORE_GENES(
 		all_prokka_ch

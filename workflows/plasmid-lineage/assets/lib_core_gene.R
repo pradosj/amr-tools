@@ -1,1 +1,0 @@
-../../core-genes-pymlst/assets/lib_core_gene.R
