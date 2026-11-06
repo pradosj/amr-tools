@@ -4,6 +4,7 @@ include { PROKKA        } from './modules/tseemann/prokka'
 include { MAKEBLASTDB   } from './modules/blast/makeblastdb'
 include { BLASTP        } from './modules/blast/blastp'
 include { PYMLST_WGMLST } from './modules/pymlst/wgmlst'
+include { BLAST_RECIPROCAL_HITS } from './subworkflows/blast_reciprocal_hits/main.nf'
 
 
 // The meta of a genome: its sample_id names it in the results (other fields allowed)
@@ -23,13 +24,6 @@ record GenomeProkka {
 	dir: Path
 }
 
-// The BLASTP of the proteins of a genome (query) against those of a genome (subject), named by their sample_id
-record GenomePairBlast {
-	query: String
-	subject: String
-	tsv: Path
-}
-
 
 // Core genes from the reciprocal BLASTP hits of the prokka proteins of genomes, and their sequences for pyMLST.
 // Each gene is identified by the sample_id of its genome and its prokka id (prokka ids may be the same in two genomes).
@@ -41,12 +35,12 @@ process CORE_GENES {
 	time 30.m
 
 	input:
-	record(meta: Record, prokka: List<GenomeProkka>, blast: List<GenomePairBlast>, n_core: Integer?)
-	libs: List<Path>    // lib_io.R, lib_blast.R, lib_core_gene.R
+	record(meta: Record, prokka: List<GenomeProkka>, hits: List<Path>, n_core: Integer?)    // hits: the TSV of each pair of genomes, see BLAST_RECIPROCAL_HITS
+	libs: List<Path>    // lib_io.R, lib_core_gene.R
 
 	stage:
 	stageAs(prokka.collect({ p -> p.dir }), 'prokka/?/*')
-	stageAs(blast.collect({ b -> b.tsv }), 'blastp/?/*')
+	stageAs(hits, 'reciprocal_hits/?/*')
 	stageAs(libs, 'lib/*')
 
 	output:
@@ -62,15 +56,9 @@ process CORE_GENES {
 	"""
 	#!/usr/bin/env Rscript
 	source("lib/lib_io.R")
-	source("lib/lib_blast.R")
 	source("lib/lib_core_gene.R")
 	prokka <- tibble(genome = ${rVector(prokka.collect({ p -> p.genome }))}, dir = ${rVector(prokka.collect({ p -> p.dir }))})
-	blastp <- tibble(
-		query_genome = ${rVector(blast.collect({ b -> b.query }))},
-		subject_genome = ${rVector(blast.collect({ b -> b.subject }))},
-		file = ${rVector(blast.collect({ b -> b.tsv }))}
-	)
-	core_genes(prokka, blastp, n_core = ${n_core == null ? 'NA' : "${n_core}"})
+	core_genes(prokka, Sys.glob("reciprocal_hits/*/*"), n_core = ${n_core == null ? 'NA' : "${n_core}"})
 	"""
 
 	stub:
@@ -107,19 +95,27 @@ workflow CORE_GENES_PYMLST {
 		args: blastp_args ?: '-subject_besthit'
 	) }))
 
-	// All the prokka folders and BLASTP results, named by the sample_id of their genomes
+	// Reciprocal hits of each pair of genomes
+	def hits = BLAST_RECIPROCAL_HITS(
+		blastp_ch.map({ r -> record(meta1: r.meta.meta1, meta2: r.meta.meta2, blastp: r.tsv) }),
+		null
+	)
+
+	// All the prokka folders, named by the sample_id of their genomes
 	def all_prokka_ch = prokka_ch
 		.map({ r -> record(genome: r.meta.sample_id, dir: r.dir) })
 		.collect()
 		.map({ rs -> rs.toList().toSorted({ r -> r.genome }) })
-	def all_blastp_ch = blastp_ch
-		.map({ r -> record(query: r.meta.meta1.sample_id, subject: r.meta.meta2.sample_id, tsv: r.tsv) })
-		.collect()
-		.map({ rs -> rs.toList().toSorted({ r -> "${r.query}\t${r.subject}" }) })
+
+	// The reciprocal hits of all the pairs of genomes
+	def all_hits_ch = hits.map({ r -> r.tsv }).collect().map({ fs -> fs.toList().toSorted() })
 
 	def core_genes_ch = CORE_GENES(
-		all_prokka_ch.combine(all_blastp_ch).map({ ps, bs -> record(meta: record(name: 'core_genes'), prokka: ps, blast: bs, n_core: n_core) }),
-		[file("${moduleDir}/assets/lib_io.R"), file("${moduleDir}/assets/lib_blast.R"), file("${moduleDir}/assets/lib_core_gene.R")]
+		all_prokka_ch
+			.map({ ps -> record(prokka: ps) })
+			.combine(hits: all_hits_ch)
+			.map({ r -> record(meta: record(name: 'core_genes'), prokka: r.prokka, hits: r.hits, n_core: n_core) }),
+		[file("${moduleDir}/assets/lib_io.R"), file("${moduleDir}/assets/lib_core_gene.R")]
 	)
 	def pymlst_ch = PYMLST_WGMLST(core_genes_ch.map({ r -> record(
 		meta: r.meta,

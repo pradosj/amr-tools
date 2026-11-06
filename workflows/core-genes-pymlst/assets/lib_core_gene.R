@@ -1,4 +1,4 @@
-# Functions of the CORE_GENES_PYMLST workflow (sourced after lib_io.R and lib_blast.R, whose functions it uses)
+# Functions of the CORE_GENES_PYMLST workflow (sourced after lib_io.R, whose functions it uses)
 
 suppressPackageStartupMessages(library(GenomicRanges))
 
@@ -24,7 +24,7 @@ gene_uid <- function(genome, id) {
 #' genomes
 #'
 #' Each gene is identified by `<genome>:<prokka id>` (see gene_uid()), and linked to the genes of its reciprocal BLASTP
-#' hits (see blast_reciprocal_hits() of lib_blast.R).
+#' hits (computed by the BLAST_RECIPROCAL_HITS subworkflow).
 #'
 #' Writes:
 #' - `core_genes.tsv`: the genes of the clusters (gene_id, genome, prokka ID, prokka gene name), with their cluster
@@ -34,11 +34,11 @@ gene_uid <- function(genome, id) {
 #' - `pymlst_template.fasta`: the core genes of the genome with the most core genes, template of the pyMLST database.
 #'
 #' @param prokka A tibble of the genomes (genome) and of their prokka output folder (dir: prokka.gff, prokka.ffn).
-#' @param blastp A tibble of the BLASTP of the prokka proteins of each genome (query_genome) against those of each genome
-#'   (subject_genome, itself included): file, as read by read_blast6().
+#' @param hits TSV files of the reciprocal BLASTP hits of the prokka proteins of each pair of genomes (itself included),
+#'   as written by the BLAST_RECIPROCAL_HITS subworkflow: query_genome, subject_genome, query_id, subject_id (prokka ids),
+#'   pct_ident, bit_score, ...
 #' @param n_core Minimum number of genomes sharing a core gene (NA: see core_count()).
-#' @param min_cover Minimum coverage of the query protein by its alignment.
-core_genes <- function(prokka, blastp, n_core = NA, min_cover = 0.75) {
+core_genes <- function(prokka, hits, n_core = NA) {
 	library(tidygraph)
 	stopifnot(!anyDuplicated(prokka$genome))
 	gff <- map2(prokka$genome, prokka$dir, function(genome, dir) {
@@ -50,16 +50,9 @@ core_genes <- function(prokka, blastp, n_core = NA, min_cover = 0.75) {
 		bind_rows()
 	n_core <- core_count(n_core, nrow(prokka))
 
-	# Reciprocal hits of each pair of genomes (once, with its two BLASTP; for a genome with itself, each pair of distinct
-	# genes once)
-	pairs <- inner_join(blastp, blastp, by = c(query_genome = "subject_genome", subject_genome = "query_genome"), suffix = c("1", "2")) |>
-		filter(query_genome <= subject_genome)
-	hits <- pmap(pairs, function(query_genome, subject_genome, file1, file2) {
-		blast_reciprocal_hits(file1, file2, min_cover) |>
-			filter(query_genome != subject_genome | query_id < subject_id) |>
-			mutate(query_id = gene_uid(query_genome, query_id), subject_id = gene_uid(subject_genome, subject_id))
-	}) |>
-		bind_rows()
+	# Reciprocal hits, the prokka ids prefixed by their genome
+	hits <- read_tsv(hits, col_types = cols(query_genome = "c", subject_genome = "c", query_id = "c", subject_id = "c")) |>
+		mutate(query_id = gene_uid(query_genome, query_id), subject_id = gene_uid(subject_genome, subject_id))
 
 	# Clusters of genes linked by their reciprocal hits, keeping one paralog per genome in each cluster
 	g <- tbl_graph(
