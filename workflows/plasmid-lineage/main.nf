@@ -66,6 +66,17 @@ process SPLIT_FASTA {
 }
 
 
+// The plasmid named by each index of CORE_GENES_PYMLST (e.g. the pyMLST strains): a TSV with columns index, plasmid
+process INDEX_TSV {
+	input:
+	text: String
+	output:
+	file('core_genes_index.tsv')
+	exec:    // native task: the file is written by Nextflow, without a shell script
+	task.workDir.resolve('core_genes_index.tsv').text = text
+}
+
+
 // Longest region shared by most plasmids (empty when there is none): the reference used by the pipeline to rotate the plasmids
 process FIND_ALIGN_SEQ {
 	container 'registry.gitlab.unige.ch/amr-genomics/rscript:v3'
@@ -207,9 +218,20 @@ workflow PLASMID_LINEAGE {
 		fasta: f
 	) }) })
 	def core = CORE_GENES_PYMLST(genomes_ch, n_core, opts.prokka_args, opts.genes_blastn_args, opts.pymlst_args)
-	// the core genes and their pyMLST typing of the set (a single set: CORE_GENES_PYMLST takes all the genomes)
+	// the core genes and their pyMLST typing of the set (a single set: CORE_GENES_PYMLST takes all the genomes), the
+	// plasmids being named by their index in the results (core_genes_index.tsv: the plasmid of each index)
+	def index_tsv = INDEX_TSV(core.index.collect().map({ rs ->
+		"index\tplasmid\n" + rs.toList().toSorted({ r -> r.index }).collect({ r -> "${r.index}\t${r.meta.sample_id}\n" }).join('')
+	}))
 	def set_meta = fasta_ch.map({ r -> r.meta }).collect().map({ ms -> ms.toList()[0] })
-	def core_genes_ch = core.core_genes.combine(set_meta: set_meta).map({ r -> record(meta: r.set_meta, genes_tsv: r.genes_tsv, clusters_tsv: r.clusters_tsv, template: r.template, genomes: r.genomes) })
+	def core_genes_ch = core.core_genes.combine(set_meta: set_meta).combine(index_tsv: index_tsv).map({ r -> record(
+		meta: r.set_meta,
+		genes_tsv: r.genes_tsv,
+		clusters_tsv: r.clusters_tsv,
+		index_tsv: r.index_tsv,
+		template: r.template,
+		genomes: r.genomes
+	) })
 	def pymlst_ch = core.pymlst.combine(set_meta: set_meta).map({ r -> record(meta: r.set_meta, db: r.db, dir: r.dir) })
 
 	// Core genome: regions shared by most plasmids
@@ -231,6 +253,7 @@ workflow PLASMID_LINEAGE {
 				record(name: 'plasmids.self.blastn', path: r.self_blast),
 				record(name: 'core_genes.tsv', path: r.core_genes.genes_tsv),
 				record(name: 'core_clusters.tsv', path: r.core_genes.clusters_tsv),
+				record(name: 'core_genes_index.tsv', path: r.core_genes.index_tsv),
 				record(name: 'pymlst', path: r.pymlst.dir),
 				record(name: 'core_genome.tsv', path: r.core_genome_tsv),
 				record(name: 'multitable_resistances.tsv', path: m.resistances_tsv as Path),
@@ -247,7 +270,7 @@ workflow PLASMID_LINEAGE {
 
 	emit:
 	prokka: Channel<Record>          = core.prokka        // records with fields meta (record(sample_id: plasmid id, set: name of the set)), dir, faa, gff, fna
-	core_genes: Value<Record>        = core_genes_ch      // records with fields meta (of the set), genes_tsv, clusters_tsv, template, genomes
+	core_genes: Value<Record>        = core_genes_ch      // records with fields meta (of the set), genes_tsv, clusters_tsv, index_tsv, template, genomes
 	pymlst: Value<Record>            = pymlst_ch          // records with fields meta (of the set), db, dir
 	core_genome: Channel<Record>     = core_genome_ch     // records with fields meta, tsv
 	report: Channel<Record>          = report_ch          // records with fields meta, html

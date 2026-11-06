@@ -92,6 +92,7 @@ output {
 		path { r ->
 			r.genes_tsv >> "${r.meta.sample_id}/core_genes.tsv"
 			r.clusters_tsv >> "${r.meta.sample_id}/core_clusters.tsv"
+			r.index_tsv >> "${r.meta.sample_id}/core_genes_index.tsv"    // the plasmid of each index (pyMLST strain)
 		}
 	}
 	pymlst: Value<Record> {

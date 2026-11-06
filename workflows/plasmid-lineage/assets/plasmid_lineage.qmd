@@ -148,14 +148,18 @@ p1 + p2
 # pyMLST typing of the core genes
 
 ```{r}
+# pyMLST strains: the index of the plasmids
+strains <- read_tsv("report_data/core_genes_index.tsv", col_types = "cc")
 pyDistMat <- read.table("report_data/pymlst/distance.tsv", sep = "\t", skip = 1, row.names = 1, check.names = FALSE) |>
 	data.matrix()
+rownames(pyDistMat) <- strains$plasmid[match(rownames(pyDistMat), strains$index)]
+colnames(pyDistMat) <- rownames(pyDistMat)
 h <- hclust(as.dist(pyDistMat), method = "single")
 
 mlst <- read.table("report_data/pymlst/mlst.tsv", sep = "\t", comment.char = "", header = TRUE, check.names = FALSE, colClasses = "character") |>
 	dplyr::rename(gene_id = `#GeneId`) |>
 	pivot_longer(!gene_id, names_to = "strain", values_to = "allele") |>
-	mutate(plasmid = factor(strain, h$labels[h$order])) |>
+	mutate(plasmid = factor(strains$plasmid[match(strain, strains$index)], h$labels[h$order])) |>
 	filter(!is.na(allele), allele != "") |>
 	group_by(gene_id) |>
 	mutate(allele_idx = as.integer(factor(allele))) |>
