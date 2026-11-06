@@ -1,15 +1,15 @@
 # Functions on BLAST results, shared by the R steps of the pipelines (reached through file links; sourced after
 # lib_io.R, whose read_blast6() reads the BLAST results they take)
 
-#' Reciprocal BLASTP hits of two sets of sequences A and B
+#' Reciprocal BLAST hits of two sets of sequences A and B
 #'
 #' The pairs of sequences of A and B aligned in both directions (hits covering more than min_cover of the query
-#' protein), with the identity and score of the worst direction (lowest bit score) of each pair.
+#' sequence), with the identity and score of the worst direction (lowest bit score) of each pair.
 #'
-#' @param blast1 BLASTP of A (query) against B (subject), in the format read by read_blast6().
-#' @param blast2 BLASTP of B (query) against A (subject), in the format read by read_blast6(). With A = B (blast1 =
+#' @param blast1 BLAST (BLASTP or BLASTN) of A (query) against B (subject), in the format read by read_blast6().
+#' @param blast2 BLAST of B (query) against A (subject), in the format read by read_blast6(). With A = B (blast1 =
 #'   blast2), each pair of distinct sequences is given in both orders, and each sequence is paired with itself.
-#' @param min_cover Minimum coverage of the query protein by its alignment.
+#' @param min_cover Minimum coverage of the query sequence by its alignment.
 #' @return A tibble with one row per pair: query_id (in A), subject_id (in B), and the pct_ident, align_len, evalue and
 #'   bit_score of the worst direction.
 blast_reciprocal_hits <- function(blast1, blast2, min_cover = 0.75) {

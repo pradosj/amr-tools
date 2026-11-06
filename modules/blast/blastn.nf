@@ -1,7 +1,15 @@
 nextflow.enable.types = true
 
-// BLASTN of the query sequences against the subject sequences, or against themselves when subject is null.
-// The subject is made into a BLAST database to run on several threads (-num_threads is ignored with -subject).
+// Sequences to align, and their meta: a FASTA file, or (subject only) the folder of a BLAST database made by
+// MAKEBLASTDB (<folder>/db.*)
+record BlastSequences {
+    meta: Record
+    path: Path
+}
+
+// BLASTN of the query sequences against the subject sequences, or against themselves when subject is null (do not give
+// the same file as query and subject: it would be staged only once).
+// A subject FASTA is made into a BLAST database to run on several threads (-num_threads is ignored with -subject).
 // Output: tabular format with the query and subject lengths (-outfmt "6 std qlen slen"),
 // query.self.blastn (self alignment) or query_vs_subject.blastn (empty when the query is empty).
 process BLASTN {
@@ -11,16 +19,29 @@ process BLASTN {
     time 2.h
 
     input:
-    record(meta: Record, query: Path, subject: Path?, args: String?)
+    record(query: BlastSequences, subject: BlastSequences?, args: String?)
+
+    stage:
+    stageAs(query.path, 'query.fasta')
+    stageAs(subject?.path, 'subject')
 
     output:
-    record(meta: meta, tsv: file(subject ? 'query_vs_subject.blastn' : 'query.self.blastn'))
+    record(
+        meta_query: query.meta,
+        meta_subject: subject ? subject.meta : query.meta,    // the query meta for a self alignment
+        tsv: file(subject ? 'query_vs_subject.blastn' : 'query.self.blastn')
+    )
 
     script:
     def out = subject ? 'query_vs_subject.blastn' : 'query.self.blastn'
     """
-    makeblastdb -in '${subject ?: query}' -dbtype nucl -out blastdb/subject
-    blastn ${args ?: ''} -num_threads ${task.cpus} -query '${query}' -db blastdb/subject -outfmt "6 std qlen slen" -out '${out}'
+    db=blastdb/db
+    if [ -d subject ]; then
+        db=subject/db
+    else
+        makeblastdb -in ${subject ? 'subject' : 'query.fasta'} -dbtype nucl -out "\$db"
+    fi
+    blastn ${args ?: ''} -num_threads ${task.cpus} -query query.fasta -db "\$db" -outfmt "6 std qlen slen" -out '${out}'
     """
 
     stub:

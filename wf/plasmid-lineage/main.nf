@@ -49,7 +49,8 @@ workflow {
 	if (!params.no_rotation) {
 		def blastn_args = params.lineage?.blastn_args ?: '-perc_identity 70 -evalue 1e-3 -subject_besthit'
 		def fasta_ch = CONCAT_FASTA(plasmids)
-		def self_ch = BLASTN_SELF(fasta_ch.map({ r -> record(meta: r.meta, query: r.fasta, subject: null, args: blastn_args) }))
+		def self_ch = BLASTN_SELF(fasta_ch.map({ r -> record(query: record(meta: r.meta, path: r.fasta), subject: null, args: blastn_args) }))
+			.map({ r -> record(meta: r.meta_query, tsv: r.tsv) })
 		def align_seq_ch = FIND_ALIGN_SEQ(
 			fasta_ch.join(self_ch, by: 'meta').map({ r -> record(meta: r.meta, fasta: r.fasta, blast: r.tsv) }),
 			file("${projectDir}/workflows/plasmid-lineage/assets")

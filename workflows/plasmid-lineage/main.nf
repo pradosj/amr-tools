@@ -184,7 +184,8 @@ workflow PLASMID_LINEAGE {
 
 	// Align the plasmids against each other
 	def fasta_ch = CONCAT_FASTA(plasmids)
-	def self_ch = BLASTN_SELF(fasta_ch.map({ r -> record(meta: r.meta, query: r.fasta, subject: null, args: blastn_args) }))
+	def self_ch = BLASTN_SELF(fasta_ch.map({ r -> record(query: record(meta: r.meta, path: r.fasta), subject: null, args: blastn_args) }))
+		.map({ r -> record(meta: r.meta_query, tsv: r.tsv) })
 
 	// AMR and plasmid typing annotations of the plasmids (one multiqc for all the sets), without orgfinder (and so
 	// without cgemlst, whose scheme depends on the organism found by orgfinder)

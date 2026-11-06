@@ -86,20 +86,15 @@ workflow CORE_GENES_PYMLST {
 	def prokka_ch = PROKKA(genomes.map({ g -> record(meta: g.meta, fasta: g.fasta, args: prokka_args) }))
 	def db_ch = MAKEBLASTDB(prokka_ch.map({ r -> record(meta: r.meta, fasta: r.faa, dbtype: 'prot', args: null) }))
 
-	// BLASTP of the proteins of each genome (meta1) against those of each genome (meta2), itself included (paralogs)
+	// BLASTP of the proteins of each genome (query) against those of each genome (subject), itself included (paralogs)
 	def blastp_ch = BLASTP(prokka_ch.combine(db_ch).map({ q, s -> record(
-		meta: record(meta1: q.meta, meta2: s.meta),
-		query: q.faa,
-		subject: null,
-		db: s.db,
+		query: record(meta: q.meta, path: q.faa),
+		subject: record(meta: s.meta, path: s.db),
 		args: blastp_args ?: '-subject_besthit'
 	) }))
 
 	// Reciprocal hits of each pair of genomes
-	def hits = BLAST_RECIPROCAL_HITS(
-		blastp_ch.map({ r -> record(meta1: r.meta.meta1, meta2: r.meta.meta2, blastp: r.tsv) }),
-		null
-	)
+	def hits = BLAST_RECIPROCAL_HITS(blastp_ch, null)
 
 	// All the prokka folders, named by the sample_id of their genomes
 	def all_prokka_ch = prokka_ch
