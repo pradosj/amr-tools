@@ -23,7 +23,8 @@ core_count <- function(n_core, n_plasmids) {
 #' - `pymlst_template.fasta`: the core genes of the genome with the most core genes, template of the pyMLST database.
 #'
 #' @param prokka_dirs prokka output folders of the genomes (prokka.gff, prokka.ffn).
-#' @param blastp Reciprocal alignment of the prokka proteins of all the genomes, as read by read_blast6().
+#' @param blastp BLASTP of the prokka proteins of each genome against those of each genome (itself included), as read
+#'   by read_blast6().
 #' @param n_core Minimum number of genomes sharing a core gene (NA: see core_count()).
 #' @param min_cover Minimum coverage of the query protein by its alignment.
 core_genes <- function(prokka_dirs, blastp, n_core = NA, min_cover = 0.75) {

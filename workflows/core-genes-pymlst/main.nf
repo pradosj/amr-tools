@@ -1,7 +1,7 @@
 nextflow.enable.types = true
 
 include { PROKKA        } from './modules/tseemann/prokka'
-include { FASTA_CONCAT  } from './modules/fasta/concat'
+include { MAKEBLASTDB   } from './modules/blast/makeblastdb'
 include { BLASTP        } from './modules/blast/blastp'
 include { PYMLST_WGMLST } from './modules/pymlst/wgmlst'
 
@@ -22,12 +22,12 @@ process CORE_GENES {
 	time 30.m
 
 	input:
-	record(meta: Map, prokka: List<Path>, blast: Path, n_core: Integer?)    // prokka: the prokka folder of each genome
+	record(meta: Map, prokka: List<Path>, blast: List<Path>, n_core: Integer?)    // the prokka folder of each genome, the BLASTP of each pair of genomes
 	libs: List<Path>    // lib_io.R, lib_core_gene.R
 
 	stage:
 	stageAs(prokka, 'prokka/?/*')
-	stageAs(blast, 'prokka.self.blastp')
+	stageAs(blast, 'blastp/?/*')
 	stageAs(libs, 'lib/*')
 
 	output:
@@ -44,7 +44,7 @@ process CORE_GENES {
 	#!/usr/bin/env Rscript
 	source("lib/lib_io.R")
 	source("lib/lib_core_gene.R")
-	core_genes(Sys.glob("prokka/*/*"), "prokka.self.blastp", n_core = ${n_core == null ? 'NA' : "${n_core}"})
+	core_genes(Sys.glob("prokka/*/*"), Sys.glob("blastp/*/*"), n_core = ${n_core == null ? 'NA' : "${n_core}"})
 	"""
 
 	stub:
@@ -84,16 +84,21 @@ workflow CORE_GENES_PYMLST {
 		.collect()
 		.map({ rs -> rs.toList().toSorted({ r -> r.meta.meta2.index }) })
 
-	// Reciprocal alignment of the proteins of all the genomes
-	def faa_ch = FASTA_CONCAT(all_prokka_ch.map({ rs -> record(meta: [:], fasta: rs.collect({ r -> r.faa }).toList()) }))
-	def blastp_ch = BLASTP(faa_ch.map({ r -> record(
-		meta: r.meta,
-		query: r.fasta,
+	// BLASTP of the proteins of each genome against those of each genome (itself included, for the paralogs)
+	def db_ch = MAKEBLASTDB(prokka_ch.map({ r -> record(meta: r.meta, fasta: r.faa, dbtype: 'prot', args: null) }))
+	def blastp_ch = BLASTP(prokka_ch.combine(db_ch).map({ q, s -> record(
+		meta: [query: q.meta, subject: s.meta],
+		query: q.faa,
 		subject: null,
+		db: s.db,
 		args: blastp_args ?: '-subject_besthit'
 	) }))
+	def all_blastp_ch = blastp_ch
+		.collect()
+		.map({ rs -> rs.collect({ r -> r.tsv }).toList().toSorted() })
+
 	def core_genes_ch = CORE_GENES(
-		all_prokka_ch.combine(blastp_ch).map({ rs, b -> record(meta: [:], prokka: rs.collect({ r -> r.dir }).toList(), blast: b.tsv, n_core: n_core) }),
+		all_prokka_ch.combine(all_blastp_ch).map({ ps, bs -> record(meta: [:], prokka: ps.collect({ r -> r.dir }).toList(), blast: bs.toList(), n_core: n_core) }),
 		[file("${moduleDir}/assets/lib_io.R"), file("${moduleDir}/assets/lib_core_gene.R")]
 	)
 	def pymlst_ch = PYMLST_WGMLST(core_genes_ch.map({ r -> record(
