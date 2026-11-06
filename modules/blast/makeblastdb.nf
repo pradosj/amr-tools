@@ -9,7 +9,7 @@ process MAKEBLASTDB {
     time 30.m
 
     input:
-    record(meta: Map, fasta: Path, dbtype: String, args: String?)
+    record(meta: Object, fasta: Path, dbtype: String, args: String?)
 
     output:
     record(meta: meta, db: file('blastdb'))

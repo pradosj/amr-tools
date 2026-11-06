@@ -167,7 +167,7 @@ workflow AMR_ANNOT_ASSEMBLY {
 			.join(cgemlst_ch.map({ r -> record(meta: r.meta, cgemlst: r.dir) }), by: 'meta', remainder: true)
 			.join(mobtyper_ch.map({ r -> record(meta: r.meta, mobtyper: r.tsv) }), by: 'meta', remainder: true)
 			.join(MLST_ch.map({ r -> record(meta: r.meta, MLST: r.txt) }), by: 'meta', remainder: true)
-			.join(prokka_ch.map({ r -> record(meta: r.meta, prokka: r.dir) }), by: 'meta', remainder: true),
+			.join(prokka_ch.map({ r -> record(meta: r.meta as Map, prokka: r.dir) }), by: 'meta', remainder: true),
 		[file("${moduleDir}/assets/lib_io.R"), file("${moduleDir}/assets/lib_typing.R")]
 	)
 	def combined_ch = assemblies

@@ -7,7 +7,7 @@ process PROKKA {
     time 1.h
 
     input:
-    record(meta: Map, fasta: Path, args: String?)
+    record(meta: Object, fasta: Path, args: String?)
 
     output:
     record(
