@@ -85,15 +85,15 @@ output {
 		path { r -> r.fasta >> "${r.meta.sample_id}/rotated.fasta" }
 	}
 	prokka: Channel<Record> {
-		path { r -> r.dir >> "${r.meta.sample_id}/prokka" }
+		path { r -> r.dir >> "${r.meta.set}/prokka/${r.meta.sample_id}" }    // prokka of each plasmid
 	}
-	core_genes: Channel<Record> {
+	core_genes: Value<Record> {
 		path { r ->
 			r.genes_tsv >> "${r.meta.sample_id}/core_genes.tsv"
 			r.clusters_tsv >> "${r.meta.sample_id}/core_clusters.tsv"
 		}
 	}
-	pymlst: Channel<Record> {
+	pymlst: Value<Record> {
 		path { r ->
 			r.db >> "${r.meta.sample_id}/pymlst/pymlst.db"
 			r.dir >> "${r.meta.sample_id}/pymlst/results"
