@@ -24,7 +24,7 @@ workflow {
 	def reads = INPUT_READS(params.reads?.ont, params.reads?.illumina)
 
 	// Reads of the sample of each assembly
-	def asm_keys = assemblies.map({ r -> record(meta: r.meta.subMap(['sample_id']), asm_meta: r.meta) })
+	def asm_keys = assemblies.map({ r -> record(meta: record(sample_id: r.meta.sample_id), asm_meta: r.meta) })
 	def asm_short_reads = asm_keys.join(reads.short_reads, by: 'meta').map({ r -> record(meta: r.asm_meta, read1: r.read1, read2: r.read2) })
 	def asm_long_reads = asm_keys.join(reads.long_reads, by: 'meta').map({ r -> record(meta: r.asm_meta, reads: r.reads) })
 

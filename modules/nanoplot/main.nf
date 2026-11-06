@@ -7,7 +7,7 @@ process NANOPLOT {
     time 1.h
 
     input:
-    record(meta: Map, reads: Path, args: String?)
+    record(meta: Record, reads: Path, args: String?)
 
     output:
     record(

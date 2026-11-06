@@ -14,7 +14,7 @@ process GTF2GFF {
 	time 30.m
 
 	input:
-	record(meta: Map, gtf: Path, assets: Path)
+	record(meta: Record, gtf: Path, assets: Path)
 
 	stage:
 	stageAs(gtf, 'ref.gtf')
@@ -48,7 +48,7 @@ workflow {
 	def assets = file("${projectDir}/assets")
 	def gtf_ch = channel.fromPath(params.gtf).map({ f ->
 		def id = f.name.replaceAll(/\.gtf(\.gz)?$/, '')
-		record(meta: [sample_id: id], gtf: f, assets: assets)
+		record(meta: record(sample_id: id), gtf: f, assets: assets)
 	})
 
 	def gff_ch = GTF2GFF(gtf_ch)

@@ -7,14 +7,14 @@ include { PILON       } from './modules/pilon'
 
 // Illumina reads of a sample: read2 is null for single-end reads
 record ShortReads {
-	meta: Map?
+	meta: Record?
 	read1: Path
 	read2: Path?
 }
 
 // Assembly of a sample: assembler output folder and assembly FASTA
 record Genome {
-	meta: Map
+	meta: Record
 	dir: Path
 	fasta: Path
 	info: Path?

@@ -64,6 +64,12 @@ record Sample {
 	assembly_fasta: Path?
 }
 
+// The FASTA file of an assembly, meta holding both sample_id and assembler_name
+record AssemblyFasta {
+	meta: Record
+	fasta: Path
+}
+
 def samplePart(id: String, reads_long: Path?, reads_short_1: Path?, reads_short_2: Path?, assembly_fasta: Path?) -> Sample {
 	return record(sample_id: id, reads_long: reads_long, reads_short_1: reads_short_1, reads_short_2: reads_short_2, assembly_fasta: assembly_fasta)
 }
@@ -154,12 +160,12 @@ workflow {
 	def sr_rec = COPY_SHORT_READS(
 		samples
 			.filter({ s -> s.reads_short_1 })
-			.map({ s -> record(meta: [sample_id: s.sample_id], file1: s.reads_short_1, file2: s.reads_short_2) })
+			.map({ s -> record(meta: record(sample_id: s.sample_id), file1: s.reads_short_1, file2: s.reads_short_2) })
 	).map({ r -> record(meta: r.meta, read1: r.file1, read2: r.file2) })
 	def lr_copy = COPY_LONG_READS(
 		samples
 			.filter({ s -> s.reads_long })
-			.map({ s -> record(meta: [sample_id: s.sample_id], file1: s.reads_long, file2: null) })
+			.map({ s -> record(meta: record(sample_id: s.sample_id), file1: s.reads_long, file2: null) })
 	)
 
 	// Convert long reads given in BAM/CRAM format into FASTQ format
@@ -190,7 +196,7 @@ workflow {
 	// De novo assembly of the samples given without assembly
 	def todo_ch = samples
 		.filter({ s -> !s.assembly_fasta })
-		.map({ s -> record(meta: [sample_id: s.sample_id]) })
+		.map({ s -> record(meta: record(sample_id: s.sample_id)) })
 	def assemblies = ASSEMBLE(
 		params.assembler,
 		sr_rec.join(todo_ch, by: 'meta'),
@@ -199,7 +205,7 @@ workflow {
 	// Given assemblies: copied in the work directory (to be published), or decompressed when gzipped
 	def given_ch = samples
 		.filter({ s -> s.assembly_fasta })
-		.map({ s -> record(meta: [sample_id: s.sample_id], fasta: s.assembly_fasta) })
+		.map({ s -> record(meta: record(sample_id: s.sample_id), fasta: s.assembly_fasta) })
 	def given_asm_ch = COPY_ASSEMBLY_FASTA(
 		given_ch
 			.filter({ r -> !r.fasta.name.endsWith('.gz') })
@@ -211,14 +217,14 @@ workflow {
 				.map({ r -> record(meta: r.meta, gz: r.fasta) })
 		).map({ r -> record(meta: r.meta, fasta: r.file) }))
 
-	// Assemblies are identified by a meta map holding both sample_id and assembler_name
-	def asm_rec = given_asm_ch
-		.map({ r -> record(meta: r.meta + [assembler_name: 'none'], fasta: r.fasta) })
+	// Assemblies are identified by a meta record holding both sample_id and assembler_name
+	def given_genome_ch: Channel<AssemblyFasta> = given_asm_ch.map({ r -> record(meta: r.meta + record(assembler_name: 'none'), fasta: r.fasta) })
+	def asm_rec = given_genome_ch
 		.mix(assemblies.map({ r -> record(meta: r.meta, fasta: r.fasta) }))
 	def asm_dir_ch = assemblies.map({ r -> record(meta: r.meta, dir: r.dir) })
 
 	// Reads of the sample of each assembly (a sample has a single assembly)
-	def asm_keys = asm_rec.map({ r -> record(meta: r.meta.subMap(['sample_id']), asm_meta: r.meta) })
+	def asm_keys = asm_rec.map({ r -> record(meta: record(sample_id: r.meta.sample_id), asm_meta: r.meta) })
 	def asm_short_reads = asm_keys.join(sr_rec, by: 'meta').map({ r -> record(meta: r.asm_meta, read1: r.read1, read2: r.read2) })
 	def asm_long_reads = asm_keys.join(lr_rec, by: 'meta').map({ r -> record(meta: r.asm_meta, reads: r.reads) })
 

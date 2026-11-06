@@ -8,7 +8,7 @@ process SPADES {
 
     input:
     // short reads (short_read1, short_read2) and/or long reads
-    record(meta: Map, short_read1: Path?, short_read2: Path?, long_reads: Path?, args: String?)
+    record(meta: Record, short_read1: Path?, short_read2: Path?, long_reads: Path?, args: String?)
 
     output:
     record(

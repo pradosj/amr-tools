@@ -17,7 +17,7 @@ record PlasmidLineageParams {
 
 // A set of plasmids to compare: FASTA files with one or several plasmid sequences
 record PlasmidSet {
-	meta: Map           // [sample_id: name of the set]
+	meta: Record           // record(sample_id: name of the set)
 	fasta: List<Path>
 }
 
@@ -27,7 +27,7 @@ process CONCAT_FASTA {
 	label 'local'
 
 	input:
-	record(meta: Map, fasta: List<Path>)
+	record(meta: Record, fasta: List<Path>)
 
 	stage:
 	stageAs(fasta, 'in/?/*')    // files may share the same name
@@ -51,7 +51,7 @@ process FIND_ALIGN_SEQ {
 	time 30.m
 
 	input:
-	record(meta: Map, fasta: Path, blast: Path)
+	record(meta: Record, fasta: Path, blast: Path)
 	assets: Path
 
 	stage:
@@ -86,7 +86,7 @@ process CORE_GENOME {
 	time 30.m
 
 	input:
-	record(meta: Map, fasta: Path, blast: Path, n_core: Integer?)
+	record(meta: Record, fasta: Path, blast: Path, n_core: Integer?)
 	assets: Path
 
 	stage:
@@ -127,7 +127,7 @@ process REPORT_FOLDER {
 	label 'local'
 
 	input:
-	record(meta: Map, entries: List<NamedFile>)
+	record(meta: Record, entries: List<NamedFile>)
 
 	stage:
 	stageAs(entries.collect({ e -> e.path }), 'in/?/*')    // files may share the same name
@@ -168,7 +168,7 @@ workflow PLASMID_LINEAGE {
 		amr_opts + record(orgfinder: record(skip: true, args: null), cgemlst: record(skip: true, args: null)),
 		null,
 		amrfinderplus_db,
-		fasta_ch.map({ r -> record(meta: r.meta + [assembler_name: 'none'], fasta: r.fasta, gff: null, info: null) }),
+		fasta_ch.map({ r -> record(meta: r.meta + record(assembler_name: 'none'), fasta: r.fasta, gff: null, info: null) }),
 		channel.empty(),
 		channel.empty()
 	)

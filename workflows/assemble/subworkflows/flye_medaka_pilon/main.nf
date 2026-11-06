@@ -9,7 +9,7 @@ include { PILON_POLISH as PILON_POLISH_ROUND3 } from './subworkflows/pilon_polis
 
 // Illumina reads of a sample: read2 is null for single-end reads
 record ShortReads {
-	meta: Map?
+	meta: Record?
 	read1: Path
 	read2: Path?
 }
@@ -25,7 +25,7 @@ record AssemblerArgs {
 
 // Input of an assembler: the reads of a sample (short_read2 is null for single-end reads) and the tools arguments
 record AssemblyInput {
-	meta: Map?
+	meta: Record?
 	short_read1: Path?
 	short_read2: Path?
 	long_reads: Path?
@@ -34,7 +34,7 @@ record AssemblyInput {
 
 // Assembly of a sample: assembler output folder and assembly FASTA
 record Genome {
-	meta: Map
+	meta: Record
 	dir: Path
 	fasta: Path
 	info: Path?
@@ -51,7 +51,7 @@ record NamedFile {
 process ASSEMBLY_FOLDER {
     label 'local'
     input:
-    record(meta: Map, files: List<NamedFile>)
+    record(meta: Record, files: List<NamedFile>)
     stage:
     stageAs(files.collect({ f -> f.path }), 'in/?/*')
     output:

@@ -7,7 +7,7 @@ process BWA_INDEX {
     time 1.h
 
     input:
-    record(meta: Map, fasta: Path, args: String?)
+    record(meta: Record, fasta: Path, args: String?)
 
     output:
     record(

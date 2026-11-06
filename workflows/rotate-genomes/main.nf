@@ -5,7 +5,7 @@ include { BLASTN as BLASTN_REFERENCE } from './modules/blast/blastn'
 
 // A genome: the sequences to rotate, or the rotated sequences (gff and info are not set on the rotated genomes)
 record Genome {
-	meta: Map
+	meta: Record
 	fasta: Path
 	gff: Path?
 	info: Path?
@@ -14,7 +14,7 @@ record Genome {
 // The reference of a genome (same meta), one of: the reference dataset (FASTA file or string) to align on it, or the
 // BLAST result of this alignment
 record RotationReference {
-	meta: Map
+	meta: Record
 	fasta: Path?        // FASTA reference dataset, aligned with BLASTN on the genome
 	sequence: String?   // reference as a string: FASTA text (starting with ">"), or a sequence (written under the header ">reference")
 	blast: Path?        // hits of the reference sequences (query) on the genome (subject), -outfmt "6 std qlen slen"
@@ -22,7 +22,7 @@ record RotationReference {
 
 // Hits of the reference sequences (query) on a genome (subject), -outfmt "6 std qlen slen"
 record ReferenceHits {
-	meta: Map
+	meta: Record
 	tsv: Path
 }
 
@@ -30,7 +30,7 @@ record ReferenceHits {
 // Reference given as a string: FASTA text (starting with '>'), or a sequence written under the header '>reference'
 process WRITE_FASTA {
 	input:
-	record(meta: Map, sequence: String)
+	record(meta: Record, sequence: String)
 	output:
 	record(meta: meta, fasta: file('reference.fasta'))
 	exec:    // native task: the file is written by Nextflow, without a shell script
@@ -48,7 +48,7 @@ process ROTATE_FASTA {
 	time 30.m
 
 	input:
-	record(meta: Map, fasta: Path, blast: Path)
+	record(meta: Record, fasta: Path, blast: Path)
 	libs: List<Path>    // lib_io.R, lib_rotate_genomes.R
 
 	stage:

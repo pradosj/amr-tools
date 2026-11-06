@@ -9,7 +9,7 @@ process QUARTO_RENDER {
     time 30.m
 
     input:
-    record(meta: Map, template: Path, extra: Path?, files: List<Path>, args: String?)
+    record(meta: Record, template: Path, extra: Path?, files: List<Path>, args: String?)
 
     stage:
     stageAs(template, 'report_template.qmd')

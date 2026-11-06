@@ -23,27 +23,27 @@ record AssembliesParams {
 
 // Illumina reads of a sample: read2 is null for single-end reads
 record ShortReads {
-	meta: Map?
+	meta: Record?
 	read1: Path
 	read2: Path?
 }
 
 // ONT reads of a sample: one FASTQ
 record LongReads {
-	meta: Map?
+	meta: Record?
 	reads: Path
 }
 
 // Sequencing reads of a sample: high quality ONT reads and/or Illumina reads
 record SeqReads {
-	meta: Map?
+	meta: Record?
 	ont_hq: LongReads?
 	illumina: ShortReads?
 }
 
 // Assembly given as input: meta holds sample_id, and assembler_name 'none'
 record Genome {
-	meta: Map
+	meta: Record
 	fasta: Path
 	gff: Path?
 	info: Path?
@@ -78,7 +78,7 @@ def shortReads(id: String, files: Bag<Path>) -> ShortReads {
 		log.error(msg)    // errors raised in operators are only reported in .nextflow.log
 		error(msg)
 	}
-	return record(meta: [sample_id: id], read1: fs[0], read2: fs.size() == 2 ? fs[1] : null)
+	return record(meta: record(sample_id: id), read1: fs[0], read2: fs.size() == 2 ? fs[1] : null)
 }
 
 // ONT (one FASTQ, BAM or CRAM per sample, BAM/CRAM converted to FASTQ) and Illumina reads (single-end, or paired-end R1/R2):
@@ -91,8 +91,8 @@ workflow INPUT_READS {
 	main:
 	def long_ch = channel.empty()
 	if (ont) {
-		def ont_ch = channel.fromList(pathList(ont)).map({ f ->
-			record(meta: [sample_id: f.name.replaceAll(/\.(fastq\.gz|fq\.gz|bam|cram)$/, '')], reads: f)
+		def ont_ch: Channel<LongReads> = channel.fromList(pathList(ont)).map({ f ->
+			record(meta: record(sample_id: f.name.replaceAll(/\.(fastq\.gz|fq\.gz|bam|cram)$/, '')), reads: f)
 		})
 		def bam_re = '.*\\.(bam|cram)$'
 		long_ch = ont_ch
@@ -126,7 +126,7 @@ workflow INPUT_READS {
 }
 
 // FASTA files of a comma-separated list of paths, glob patterns and URLs: gzipped files are decompressed.
-// Genome records: meta is [sample_id] (see fastaSampleId()), gff and info are not set.
+// Genome records: meta is record(sample_id) (see fastaSampleId()), gff and info are not set.
 workflow INPUT_FASTA {
 	take:
 	fasta: String?
@@ -134,7 +134,7 @@ workflow INPUT_FASTA {
 	main:
 	def fasta_ch = channel.empty()
 	if (fasta) {
-		def in_ch = channel.fromList(pathList(fasta)).map({ f -> record(meta: [sample_id: fastaSampleId(f.name)], fasta: f) })
+		def in_ch: Channel<Genome> = channel.fromList(pathList(fasta)).map({ f -> record(meta: record(sample_id: fastaSampleId(f.name)), fasta: f) })
 		fasta_ch = in_ch
 			.filter({ r -> !r.fasta.name.endsWith('.gz') })
 			.mix(GZIP_DECOMPRESS(
@@ -154,7 +154,7 @@ workflow INPUT_ASSEMBLIES {
 	fasta: String?
 
 	main:
-	def asm_ch = INPUT_FASTA(fasta).map({ r -> record(meta: (r.meta as Map) + [assembler_name: 'none'], fasta: r.fasta) })
+	def asm_ch = INPUT_FASTA(fasta).map({ r -> record(meta: r.meta + record(assembler_name: 'none'), fasta: r.fasta) })
 
 	emit:
 	assemblies: Channel<Genome> = asm_ch

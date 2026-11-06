@@ -5,7 +5,7 @@ include { FASTANI } from './modules/fastani/main.nf'
 
 // Genome to identify
 record Genome {
-	meta: Map
+	meta: Record
 	fasta: Path
 	gff: Path?
 	info: Path?
@@ -29,7 +29,7 @@ process FASTANI_TO_ORGFINDER {
 	time 30.m
 
 	input:
-	record(meta: Map, fastani: Path, db_dir: Path)
+	record(meta: Record, fastani: Path, db_dir: Path)
 	script_file: Path
 
 	stage:

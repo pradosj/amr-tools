@@ -34,7 +34,7 @@ record AmrParams {
 
 // Assembly to annotate. meta holds both sample_id and assembler_name.
 record Genome {
-	meta: Map
+	meta: Record
 	fasta: Path
 	gff: Path?
 	info: Path?
@@ -42,14 +42,14 @@ record Genome {
 
 // Short reads sample: read2 is null for single-end reads
 record ShortReads {
-	meta: Map?
+	meta: Record?
 	read1: Path
 	read2: Path?
 }
 
 // Long reads sample: one FASTQ per sample
 record LongReads {
-	meta: Map?
+	meta: Record?
 	reads: Path
 }
 
@@ -103,9 +103,9 @@ workflow AMR_ANNOT {
 	opts: AmrParams
 	org_db: Value<Path?>              // orgfinder database folder (null when orgfinder is skipped)
 	amrfinderplus_db: Value<Path?>    // AMRFinderPlus database folder (null when AMRFinderPlus is skipped)
-	assemblies: Channel<Genome>       // meta: [sample_id, assembler_name]
-	short_reads: Channel<ShortReads>    // meta: [sample_id]
-	long_reads: Channel<LongReads>      // meta: [sample_id]
+	assemblies: Channel<Genome>       // meta: record(sample_id, assembler_name)
+	short_reads: Channel<ShortReads>    // meta: record(sample_id)
+	long_reads: Channel<LongReads>      // meta: record(sample_id)
 
 	main:
 	def libs = [file("${moduleDir}/assets/lib_io.R"), file("${moduleDir}/assets/lib_typing.R")]

@@ -8,7 +8,7 @@ process IDENTITY {
     label 'local'
 
     input:
-    record(meta: Map, file1: Path, file2: Path?)
+    record(meta: Record, file1: Path, file2: Path?)
 
     output:
     record(

@@ -10,7 +10,7 @@ process PYMLST_WGMLST {
     time 2.h
 
     input:
-    record(meta: Map, template: Path, genomes: List<Path>, args: String?)
+    record(meta: Record, template: Path, genomes: List<Path>, args: String?)
 
     stage:
     stageAs(template, 'template.fasta')

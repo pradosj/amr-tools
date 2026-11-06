@@ -8,7 +8,7 @@ process BCFTOOLS_ASM5_MPILEUP {
     time 1.h
 
     input:
-    record(meta: Map, ref: Path, bam: Path, gff: Path?, args: String?)
+    record(meta: Record, ref: Path, bam: Path, gff: Path?, args: String?)
 
     stage:
     stageAs(ref, 'ref.fasta')

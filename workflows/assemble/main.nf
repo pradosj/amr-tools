@@ -25,7 +25,7 @@ record AssemblerParams {
 
 // Input of an assembler: the reads of a sample (short_read2 is null for single-end reads) and the tools arguments
 record AssemblyInput {
-	meta: Map?
+	meta: Record?
 	short_read1: Path?
 	short_read2: Path?
 	long_reads: Path?
@@ -34,20 +34,20 @@ record AssemblyInput {
 
 // Illumina reads of a sample: read2 is null for single-end reads
 record ShortReads {
-	meta: Map?
+	meta: Record?
 	read1: Path
 	read2: Path?
 }
 
 // ONT reads of a sample: one FASTQ
 record LongReads {
-	meta: Map?
+	meta: Record?
 	reads: Path
 }
 
 // Assembly of a sample: assembler output folder and assembly FASTA
 record Genome {
-	meta: Map
+	meta: Record
 	dir: Path
 	fasta: Path
 	info: Path?
@@ -99,5 +99,5 @@ workflow ASSEMBLE {
 
 	emit:
 	assemblies: Channel<Genome> = asm_ch    // meta holds sample_id and assembler_name
-		.map({ r -> r + record(meta: r.meta + [assembler_name: name]) })
+		.map({ r -> r + record(meta: r.meta + record(assembler_name: name)) })
 }

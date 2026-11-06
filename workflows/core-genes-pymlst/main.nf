@@ -41,7 +41,7 @@ process CORE_GENES {
 	time 30.m
 
 	input:
-	record(meta: Map, prokka: List<GenomeProkka>, blast: List<GenomePairBlast>, n_core: Integer?)
+	record(meta: Record, prokka: List<GenomeProkka>, blast: List<GenomePairBlast>, n_core: Integer?)
 	libs: List<Path>    // lib_io.R, lib_core_gene.R
 
 	stage:
@@ -99,7 +99,7 @@ workflow CORE_GENES_PYMLST {
 
 	// BLASTP of the proteins of each genome (meta1) against those of each genome (meta2), itself included (paralogs)
 	def blastp_ch = BLASTP(prokka_ch.combine(db_ch).map({ q, s -> record(
-		meta: [meta1: q.meta, meta2: s.meta],
+		meta: record(meta1: q.meta, meta2: s.meta),
 		query: q.faa,
 		subject: null,
 		db: s.db,
@@ -108,16 +108,16 @@ workflow CORE_GENES_PYMLST {
 
 	// All the prokka folders and BLASTP results, named by the sample_id of their genomes
 	def all_prokka_ch = prokka_ch
-		.map({ r -> record(genome: (r.meta as GenomeMeta).sample_id, dir: r.dir) })
+		.map({ r -> record(genome: r.meta.sample_id, dir: r.dir) })
 		.collect()
 		.map({ rs -> rs.toList().toSorted({ r -> r.genome }) })
 	def all_blastp_ch = blastp_ch
-		.map({ r -> record(query: (r.meta.meta1 as GenomeMeta).sample_id, subject: (r.meta.meta2 as GenomeMeta).sample_id, tsv: r.tsv) })
+		.map({ r -> record(query: r.meta.meta1.sample_id, subject: r.meta.meta2.sample_id, tsv: r.tsv) })
 		.collect()
 		.map({ rs -> rs.toList().toSorted({ r -> "${r.query}\t${r.subject}" }) })
 
 	def core_genes_ch = CORE_GENES(
-		all_prokka_ch.combine(all_blastp_ch).map({ ps, bs -> record(meta: [:], prokka: ps, blast: bs, n_core: n_core) }),
+		all_prokka_ch.combine(all_blastp_ch).map({ ps, bs -> record(meta: record(name: 'core_genes'), prokka: ps, blast: bs, n_core: n_core) }),
 		[file("${moduleDir}/assets/lib_io.R"), file("${moduleDir}/assets/lib_core_gene.R")]
 	)
 	def pymlst_ch = PYMLST_WGMLST(core_genes_ch.map({ r -> record(
@@ -129,8 +129,8 @@ workflow CORE_GENES_PYMLST {
 
 	emit:
 	prokka = prokka_ch            // records with fields meta (of the genome), dir, faa, gff, fna
-	core_genes = core_genes_ch    // records with fields meta ([:]), genes_tsv, clusters_tsv, template, genomes
-	pymlst = pymlst_ch            // records with fields meta ([:]), db, dir
+	core_genes = core_genes_ch    // records with fields meta (record(name: 'core_genes')), genes_tsv, clusters_tsv, template, genomes
+	pymlst = pymlst_ch            // records with fields meta (record(name: 'core_genes')), db, dir
 }
 
 // R character vector of values: c('x1', 'x2', ...)

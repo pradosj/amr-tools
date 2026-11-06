@@ -9,7 +9,7 @@ process BWA_MEM {
 
     input:
     // index: folder produced by BWA_INDEX; read1, read2: short reads (ShortReads)
-    record(meta: Map, index: Path, read1: Path, read2: Path?, args: String?)
+    record(meta: Record, index: Path, read1: Path, read2: Path?, args: String?)
 
     output:
     record(

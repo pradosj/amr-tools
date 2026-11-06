@@ -1,6 +1,6 @@
 nextflow.enable.types = true
 
-include { PLASMID_LINEAGE; PlasmidLineageParams; CONCAT_FASTA; FIND_ALIGN_SEQ } from './workflows/plasmid-lineage/main.nf'
+include { PLASMID_LINEAGE; PlasmidLineageParams; PlasmidSet; CONCAT_FASTA; FIND_ALIGN_SEQ } from './workflows/plasmid-lineage/main.nf'
 include { ROTATE_GENOMES } from './workflows/rotate-genomes/main.nf'
 include { BLASTN as BLASTN_SELF } from './modules/blast/blastn'
 include { AmrParams } from './workflows/plasmid-lineage/workflows/amr-annot/main.nf'
@@ -38,10 +38,10 @@ workflow {
 	log.info(paramsSummaryLog(workflow))
 
 	// one set of all the plasmids (gzipped files are decompressed)
-	def plasmids = INPUT_FASTA(params.fasta)
+	def plasmids: Channel<PlasmidSet> = INPUT_FASTA(params.fasta)
 		.map({ r -> r.fasta as Path })
 		.collect()
-		.flatMap({ fs -> fs.isEmpty() ? [] : [record(meta: [sample_id: params.name], fasta: fs.toList().toSorted({ f -> f.name }))] })
+		.flatMap({ fs -> fs.isEmpty() ? [] : [record(meta: record(sample_id: params.name), fasta: fs.toList().toSorted({ f -> f.name }))] })
 	// Rotate the plasmids to start on the longest region shared by most of them, on the strand of this region
 	// (unless --no_rotation)
 	def lineage_input_ch = plasmids

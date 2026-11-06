@@ -21,7 +21,7 @@ record AssembliesQcParams {
 
 // Assembly to check. meta holds both sample_id and assembler_name.
 record Genome {
-	meta: Map
+	meta: Record
 	fasta: Path
 	gff: Path?
 	info: Path?
@@ -29,14 +29,14 @@ record Genome {
 
 // Illumina reads of the sample of an assembly (same meta as the assembly): read2 is null for single-end reads
 record ShortReads {
-	meta: Map?
+	meta: Record?
 	read1: Path
 	read2: Path?
 }
 
 // ONT reads of the sample of an assembly (same meta as the assembly): one FASTQ
 record LongReads {
-	meta: Map?
+	meta: Record?
 	reads: Path
 }
 
@@ -49,7 +49,7 @@ process COMBINE_QC_STATS {
 	cpus 2
 	time 30.m
 	input:
-	record(meta: Map, fasta: Path, long_stats: Path?, short_stats: Path?, checkm2: Path?)
+	record(meta: Record, fasta: Path, long_stats: Path?, short_stats: Path?, checkm2: Path?)
 	libs: List<Path>    // lib_io.R, lib_assembly_stats.R
 	stage:
 	stageAs(libs, 'lib/*')
@@ -61,7 +61,7 @@ process COMBINE_QC_STATS {
 	record(meta: meta, rds: file('qc.rds'))
 	script:
 	// meta is reported as [[sample_id], [assembler_name]]
-	def meta_json = new groovy.json.JsonBuilder([meta.subMap(['sample_id']), meta.subMap(['assembler_name'])]).toString()
+	def meta_json = new groovy.json.JsonBuilder([[sample_id: meta.sample_id], [assembler_name: meta.assembler_name]]).toString()
 	"""
 	#!/usr/bin/env Rscript
 	source("lib/lib_io.R")

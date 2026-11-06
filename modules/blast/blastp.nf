@@ -12,7 +12,7 @@ process BLASTP {
     time 2.h
 
     input:
-    record(meta: Map, query: Path, subject: Path?, db: Path?, args: String?)
+    record(meta: Record, query: Path, subject: Path?, db: Path?, args: String?)
 
     stage:
     stageAs(db, 'blastdb')

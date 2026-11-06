@@ -7,7 +7,7 @@ process SPECIATOR {
     time 15.m
 
     input:
-    record(meta: Map, fasta: Path)
+    record(meta: Record, fasta: Path)
 
     output:
     record(

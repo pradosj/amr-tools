@@ -8,7 +8,7 @@ process MINIMAP2_ALIGN_ONT {
 
     input:
     // align the long reads on the assembly
-    record(meta: Map, fasta: Path, reads: Path, args: String?)
+    record(meta: Record, fasta: Path, reads: Path, args: String?)
 
     output:
     record(

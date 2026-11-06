@@ -9,7 +9,7 @@ process PLASMIDFINDER {
 
     input:
     // either an assembly (fasta), short reads (short_read1, short_read2) or long reads
-    record(meta: Map, fasta: Path?, short_read1: Path?, short_read2: Path?, long_reads: Path?, args: String?)
+    record(meta: Record, fasta: Path?, short_read1: Path?, short_read2: Path?, long_reads: Path?, args: String?)
 
     output:
     record(

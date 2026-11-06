@@ -9,7 +9,7 @@ process MLST {
 
     input:
     // species_args: MLST scheme selection, e.g. '--species ecoli'
-    record(meta: Map, fasta: Path, species_args: String, args: String?)
+    record(meta: Record, fasta: Path, species_args: String, args: String?)
 
     output:
     record(

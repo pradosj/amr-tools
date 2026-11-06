@@ -9,7 +9,7 @@ process GZIP_DECOMPRESS {
     time 30.m
 
     input:
-    record(meta: Map, gz: Path)
+    record(meta: Record, gz: Path)
 
     output:
     record(meta: meta, file: file(gz.baseName))

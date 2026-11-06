@@ -8,7 +8,7 @@ process CHOPPER {
     time 1.h + 1.h * (task.attempt - 1)
 
     input:
-    record(meta: Map, reads: Path, args: String?)
+    record(meta: Record, reads: Path, args: String?)
 
     output:
     record(

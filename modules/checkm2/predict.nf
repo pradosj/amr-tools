@@ -9,7 +9,7 @@ process CHECKM2_PREDICT {
 
     input:
     // db: CheckM2 database folder, as created by CHECKM2_DB
-    record(meta: Map, fasta: Path, db: Path, args: String?)
+    record(meta: Record, fasta: Path, db: Path, args: String?)
 
     output:
     record(

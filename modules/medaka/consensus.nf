@@ -9,7 +9,7 @@ process MEDAKA_CONSENSUS {
     time 2.h
 
     input:
-    record(meta: Map, fasta: Path, reads: Path, args: String?)
+    record(meta: Record, fasta: Path, reads: Path, args: String?)
 
     output:
     record(

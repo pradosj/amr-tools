@@ -7,7 +7,7 @@ process SAMTOOLS_STATS {
     time 30.m
 
     input:
-    record(meta: Map, bam: Path, args: String?)
+    record(meta: Record, bam: Path, args: String?)
 
     output:
     record(

@@ -8,7 +8,7 @@ process FASTANI {
     time 15.m
 
     input:
-    record(meta: Map, query: List<Path>, refs: List<Path>, args: String?)
+    record(meta: Record, query: List<Path>, refs: List<Path>, args: String?)
 
     stage:
     stageAs(query, 'query/*')

@@ -8,7 +8,7 @@ process SAMTOOLS_FASTQ {
 
     input:
     // bam: BAM or CRAM file
-    record(meta: Map, bam: Path, args: String?)
+    record(meta: Record, bam: Path, args: String?)
 
     output:
     record(

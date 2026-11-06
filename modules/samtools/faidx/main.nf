@@ -7,7 +7,7 @@ process SAMTOOLS_FAIDX {
     time 15.m
 
     input:
-    record(meta: Map, fasta: Path, args: String?)
+    record(meta: Record, fasta: Path, args: String?)
 
     output:
     record(

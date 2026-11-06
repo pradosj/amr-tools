@@ -21,14 +21,14 @@ record AmrReadsParams {
 
 // Short reads sample: read2 is null for single-end reads
 record ShortReads {
-	meta: Map?
+	meta: Record?
 	read1: Path
 	read2: Path?
 }
 
 // Long reads sample: one FASTQ per sample
 record LongReads {
-	meta: Map?
+	meta: Record?
 	reads: Path
 }
 
@@ -41,7 +41,7 @@ process AMR_COMBINE_READS {
 	cpus 2
 	time 30.m
 	input:
-	record(meta: Map, resfinder_long: Path?, resfinder_short: Path?, plasmidfinder_long: Path?, plasmidfinder_short: Path?)
+	record(meta: Record, resfinder_long: Path?, resfinder_short: Path?, plasmidfinder_long: Path?, plasmidfinder_short: Path?)
 	libs: List<Path>    // lib_io.R, lib_typing.R
 	stage:
 	stageAs(libs, 'lib/*')

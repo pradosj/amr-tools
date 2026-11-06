@@ -14,14 +14,14 @@ record ReadsFilterParams {
 
 // Illumina reads of a sample: read2 is null for single-end reads
 record ShortReads {
-	meta: Map?
+	meta: Record?
 	read1: Path
 	read2: Path?
 }
 
 // ONT reads of a sample: one FASTQ
 record LongReads {
-	meta: Map?
+	meta: Record?
 	reads: Path
 }
 

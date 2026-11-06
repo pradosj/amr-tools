@@ -8,7 +8,7 @@ process MINIMAP2_ALIGN_ASM5 {
     time 1.h
 
     input:
-    record(meta: Map, ref: Path, query: Path, args: String?)
+    record(meta: Record, ref: Path, query: Path, args: String?)
 
     stage:
     stageAs(ref, 'ref.fasta')

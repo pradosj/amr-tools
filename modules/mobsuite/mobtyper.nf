@@ -8,7 +8,7 @@ process MOBTYPER {
     time 30.m + 1.h * (task.attempt - 1)
 
     input:
-    record(meta: Map, fasta: Path, args: String?)
+    record(meta: Record, fasta: Path, args: String?)
 
     output:
     record(

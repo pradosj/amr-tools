@@ -33,7 +33,7 @@ record AmrAssemblyParams {
 
 // Assembly to annotate. meta holds both sample_id and assembler_name.
 record Genome {
-	meta: Map
+	meta: Record
 	fasta: Path
 	gff: Path?
 	info: Path?
@@ -48,7 +48,7 @@ process AMR_COMBINE_ASSEMBLY {
 	cpus 2
 	time 30.m
 	input:
-	record(meta: Map, fasta: Path, org_name: String?, orgfinder: Path?, amrfinderplus: Path?, resfinder: Path?, plasmidfinder: Path?, cgemlst: Path?, mobtyper: Path?, MLST: Path?, prokka: Path?)
+	record(meta: Record, fasta: Path, org_name: String?, orgfinder: Path?, amrfinderplus: Path?, resfinder: Path?, plasmidfinder: Path?, cgemlst: Path?, mobtyper: Path?, MLST: Path?, prokka: Path?)
 	libs: List<Path>    // lib_io.R, lib_typing.R
 	stage:
 	stageAs(libs, 'lib/*')
@@ -167,7 +167,7 @@ workflow AMR_ANNOT_ASSEMBLY {
 			.join(cgemlst_ch.map({ r -> record(meta: r.meta, cgemlst: r.dir) }), by: 'meta', remainder: true)
 			.join(mobtyper_ch.map({ r -> record(meta: r.meta, mobtyper: r.tsv) }), by: 'meta', remainder: true)
 			.join(MLST_ch.map({ r -> record(meta: r.meta, MLST: r.txt) }), by: 'meta', remainder: true)
-			.join(prokka_ch.map({ r -> record(meta: r.meta as Map, prokka: r.dir) }), by: 'meta', remainder: true),
+			.join(prokka_ch.map({ r -> record(meta: r.meta, prokka: r.dir) }), by: 'meta', remainder: true),
 		[file("${moduleDir}/assets/lib_io.R"), file("${moduleDir}/assets/lib_typing.R")]
 	)
 	def combined_ch = assemblies

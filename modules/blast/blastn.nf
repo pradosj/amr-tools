@@ -11,7 +11,7 @@ process BLASTN {
     time 2.h
 
     input:
-    record(meta: Map, query: Path, subject: Path?, args: String?)
+    record(meta: Record, query: Path, subject: Path?, args: String?)
 
     output:
     record(meta: meta, tsv: file(subject ? 'query_vs_subject.blastn' : 'query.self.blastn'))

@@ -7,7 +7,7 @@ process MLST {
     time 30.m
 
     input:
-    record(meta: Map, fasta: Path, args: String?)
+    record(meta: Record, fasta: Path, args: String?)
 
     output:
     record(

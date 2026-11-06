@@ -7,7 +7,7 @@ process FQ_SUBSAMPLE {
     time 30.m
 
     input:
-    record(meta: Map, read1: Path, read2: Path?, bp_limit: Integer?)   // ShortReads (or long reads as read1), bp_limit: maximum total read length in bp (default 1_000_000_000), negative to keep all reads
+    record(meta: Record, read1: Path, read2: Path?, bp_limit: Integer?)   // ShortReads (or long reads as read1), bp_limit: maximum total read length in bp (default 1_000_000_000), negative to keep all reads
 
     output:
     record(

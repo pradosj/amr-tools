@@ -19,7 +19,7 @@ params {
 
 // A query assembly to compare with the reference assembly
 record Comparison {
-	meta: Map
+	meta: Record
 	ref: Path
 	query: Path
 }
@@ -33,7 +33,7 @@ process ROTATE_FASTA {
 	time 30.m
 
 	input:
-	record(meta: Map, query: Path, bam: Path)
+	record(meta: Record, query: Path, bam: Path)
 	assets: Path
 
 	stage:
@@ -90,7 +90,7 @@ workflow {
 	// Reference and queries: gzipped files are decompressed
 	def ref: Value<Path> = channel.value(params.ref)
 	if (params.ref.name.endsWith('.gz')) {
-		ref = GZIP_DECOMPRESS(channel.value(record(meta: [:], gz: params.ref))).map({ r -> r.file })
+		ref = GZIP_DECOMPRESS(channel.value(record(meta: record(name: 'reference'), gz: params.ref))).map({ r -> r.file })
 	}
 	def query_ch = INPUT_FASTA(params.query)
 		.combine(ref: ref)

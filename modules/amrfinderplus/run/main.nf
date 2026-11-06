@@ -8,7 +8,7 @@ process AMRFINDERPLUS_RUN {
 
     input:
     // db: AMRFinderPlus database folder, as created by AMRFINDERPLUS_UPDATE
-    record(meta: Map, fasta: Path, db: Path, args: String?)
+    record(meta: Record, fasta: Path, db: Path, args: String?)
 
     output:
     record(

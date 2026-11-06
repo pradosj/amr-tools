@@ -7,7 +7,7 @@ process FASTP {
     time 30.m
 
     input:
-    record(meta: Map, read1: Path, read2: Path?, args: String?)    // ShortReads, plus args
+    record(meta: Record, read1: Path, read2: Path?, args: String?)    // ShortReads, plus args
 
     output:
     record(

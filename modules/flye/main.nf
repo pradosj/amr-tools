@@ -8,7 +8,7 @@ process FLYE {
     time 4.h + 8.h * (task.attempt - 1)
 
     input:
-    record(meta: Map, reads: Path, args: String?)
+    record(meta: Record, reads: Path, args: String?)
 
     output:
     record(
