@@ -1,0 +1,32 @@
+{
+	"$schema": "https://json-schema.org/draft/2020-12/schema",
+	"type": "object",
+	"required": ["fasta", "n_core"],
+	"properties": {
+		"fasta": {
+			"type": "string",
+			"pattern": "^(((https?|ftp)://[^,\\s]+|\\S+(\\.(fasta|fa|fna)(\\.gz)?|\\}))(,\\s*|$))+$",
+			"description": "FASTA files of the genomes (optionally gzipped): comma-separated paths, glob patterns or URLs (one genome per file, named by its file name)"
+		},
+		"n_core": {
+			"type": "integer",
+			"minimum": 1,
+			"description": "Minimum number of genomes sharing a core gene"
+		},
+		"prokka_args": {
+			"type": "string",
+			"default": "--kingdom Bacteria",
+			"description": "Options of prokka"
+		},
+		"blastn_args": {
+			"type": "string",
+			"default": "-subject_besthit",
+			"description": "Options of BLASTN for the alignment of the genes (megablast by default, -task blastn for divergent genes)"
+		},
+		"pymlst_args": {
+			"type": "string",
+			"default": "--coverage 0.85 --identity 0.85",
+			"description": "Options of `wgMLST add` (pyMLST)"
+		}
+	}
+}
