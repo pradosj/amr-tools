@@ -42,27 +42,12 @@
 				"core_genome_count": {
 					"type": "integer",
 					"minimum": 1,
-					"description": "Minimum number of plasmids sharing a core gene or a core genome region (required)"
+					"description": "Minimum number of plasmids sharing a core genome region (required)"
 				},
 				"blastn_args": {
 					"type": "string",
 					"default": "-perc_identity 70 -evalue 1e-3 -subject_besthit",
 					"description": "Options of BLASTN for the alignment of the plasmids"
-				},
-				"genes_blastn_args": {
-					"type": "string",
-					"default": "-subject_besthit",
-					"description": "Options of BLASTN for the alignment of the genes (core genes; megablast by default, -task blastn for divergent genes)"
-				},
-				"prokka_args": {
-					"type": "string",
-					"default": "--kingdom Bacteria",
-					"description": "Options of prokka"
-				},
-				"pymlst_args": {
-					"type": "string",
-					"default": "--coverage 0.85 --identity 0.85",
-					"description": "Options of `wgMLST add`"
 				}
 			}
 		},

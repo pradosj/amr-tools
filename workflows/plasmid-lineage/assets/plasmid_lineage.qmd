@@ -7,17 +7,14 @@ format:
     embed-resources: true
     code-fold: true
 params:
-  name: "plasmids"           # name of the set of plasmids (sample_id of the annotation tables)
-  core_genome_count: null    # minimum number of plasmids sharing a core gene or region (required)
+  name: "plasmids"           # name of the set of plasmids (title of the report)
+  core_genome_count: null    # minimum number of plasmids sharing a core genome region (required)
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
 source("assets/lib_io.R")
 source("assets/lib_plasmid_lineage.R")
-library(tidygraph)
-library(ggraph)
-library(patchwork)
 
 fa <- read_fasta("report_data/plasmids.fasta")
 n_plasmids <- length(fa)
@@ -55,7 +52,7 @@ plasmid_types <- tibble(contig_id = names(fa)) |>
 
 # Plasmids
 
-`r n_plasmids` plasmids. Core genes and core genome regions are shared by at least `r n_core` plasmids.
+`r n_plasmids` plasmids. Core genome regions are shared by at least `r n_core` plasmids.
 
 ```{r}
 seqlen |>
@@ -119,126 +116,6 @@ gg_alignment_polygons(polygons, seqlen_f) +
 	geom_segment(aes(x = start, xend = end, y = seq, yend = seq), data = mutate(inc_gff, seq = factor(seq, ani_levels)), linewidth = 2, color = "yellow") +
 	geom_segment(aes(x = start, xend = end, y = seq, yend = seq), data = mutate(res_gff, seq = factor(seq, ani_levels)), linewidth = 2, color = "red") +
 	theme(panel.grid = element_blank())
-```
-
-# Core genes
-
-Clusters of reciprocal best BLASTN hits (covering >75% of the gene) of the prokka genes, with one
-gene per plasmid. Core genes are in clusters found in at least `r n_core` plasmids.
-
-```{r}
-#| fig-height: 4
-clusters <- read_tsv("report_data/core_clusters.tsv", show_col_types = FALSE)
-p1 <- clusters |>
-	ggplot(aes(x = distinct_genome)) +
-		geom_bar() +
-		geom_vline(xintercept = n_core - 0.5, linetype = "dashed") +
-		xlab("Number of plasmids") + ylab("Number of gene clusters")
-p2 <- clusters |>
-	ggplot(aes(x = distinct_genome, y = mean_length)) +
-		geom_jitter(width = 0.2, height = 0) +
-		geom_vline(xintercept = n_core - 0.5, linetype = "dashed") +
-		xlab("Number of plasmids") + ylab("Mean gene length (bp)")
-p1 + p2
-```
-
-`r sum(clusters$is_core)` core genes.
-
-# pyMLST typing of the core genes
-
-```{r}
-# pyMLST strains: the index of the plasmids (genomes), with their sequences (contig_id), and their plasmid types
-strains <- read_tsv("report_data/core_genes_index.tsv", col_types = "ccc")
-genome_types <- strains |>
-	left_join(plasmid_types, by = "contig_id") |>
-	group_by(genome) |>
-	summarise(plasmid_types = str_c(sort(unique(plasmid_types)), collapse = ","))
-pyDistMat <- read.table("report_data/pymlst/distance.tsv", sep = "\t", skip = 1, row.names = 1, check.names = FALSE) |>
-	data.matrix()
-rownames(pyDistMat) <- strains$genome[match(rownames(pyDistMat), strains$index)]
-colnames(pyDistMat) <- rownames(pyDistMat)
-h <- hclust(as.dist(pyDistMat), method = "single")
-
-mlst <- read.table("report_data/pymlst/mlst.tsv", sep = "\t", comment.char = "", header = TRUE, check.names = FALSE, colClasses = "character") |>
-	dplyr::rename(gene_id = `#GeneId`) |>
-	pivot_longer(!gene_id, names_to = "strain", values_to = "allele") |>
-	mutate(plasmid = factor(strains$genome[match(strain, strains$index)], h$labels[h$order])) |>
-	filter(!is.na(allele), allele != "") |>
-	group_by(gene_id) |>
-	mutate(allele_idx = as.integer(factor(allele))) |>
-	ungroup()
-```
-
-## Minimum spanning tree
-
-Number of distinct alleles between the plasmids.
-
-```{r}
-#| fig-height: 6
-#| fig-width: 8
-as_tbl_graph(pyDistMat + 1) |>
-	left_join(genome_types, by = c(name = "genome")) |>
-	convert(to_minimum_spanning_tree, weights = weight) |>
-	ggraph("stress") +
-		geom_edge_link(aes(label = weight - 1), color = "grey", label_size = 4, angle_calc = "along", label_dodge = unit(3, "mm")) +
-		geom_node_point(aes(color = plasmid_types), size = 5) +
-		geom_node_text(aes(label = name), size = 3, repel = TRUE, max.overlaps = Inf, point.padding = unit(4, "mm"), segment.colour = "lightgrey") +
-		theme_void()
-```
-
-## Alleles
-
-```{r}
-#| fig-height: !expr fig_h(4, 0.3)
-#| fig-width: 15
-mlst |>
-	ggplot(aes(x = gene_id, y = plasmid, fill = factor(allele_idx))) +
-		geom_tile() +
-		scale_fill_brewer() +
-		theme_classic() +
-		theme(axis.text.x = element_blank(), legend.position = "right") +
-		labs(fill = "allele") + xlab("All core genes") + ylab("")
-```
-
-Core genes with distinct alleles:
-
-```{r}
-#| fig-height: !expr fig_h(4, 0.3)
-#| fig-width: 15
-prokka_genes <- read_tsv("report_data/core_genes.tsv", show_col_types = FALSE) |>
-	mutate(gene_id = str_replace_all(gene_id, "_", "-")) |>    # pyMLST gene ids
-	select(gene_id, product)
-mlst |>
-	group_by(gene_id) |>
-	filter(n_distinct(allele) > 1) |>
-	ungroup() |>
-	left_join(prokka_genes, by = "gene_id") |>
-	mutate(label = if_else(is.na(product) | product == "hypothetical protein", gene_id, product)) |>
-	ggplot(aes(x = label, y = plasmid, fill = factor(allele_idx))) +
-		geom_tile() +
-		scale_fill_brewer() +
-		theme_classic() +
-		theme(axis.text.x = element_text(angle = 45, hjust = 1), legend.position = "right") +
-		labs(fill = "allele") + xlab("Distinct core genes") + ylab("")
-```
-
-## Dendrogram
-
-Single linkage clustering on the number of distinct alleles.
-
-```{r}
-#| fig-height: !expr fig_h(5, 0.3)
-#| fig-width: 6
-as_tbl_graph(h) |>
-	left_join(genome_types, by = c(label = "genome")) |>
-	ggraph() +
-		coord_flip() +
-		scale_y_reverse() +
-		expand_limits(y = -max(h$height) / 2) +
-		geom_edge_elbow() +
-		geom_node_label(aes(label = label, filter = leaf, fill = plasmid_types), size = 3, hjust = 0, nudge_y = max(h$height) / 50) +
-		theme_void() +
-		theme(legend.position = "bottom")
 ```
 
 # Core genome

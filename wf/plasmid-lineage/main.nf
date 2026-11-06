@@ -19,10 +19,7 @@ params {
 	no_rotation: Boolean = false    // do not rotate the plasmids before the analysis
 	lineage: PlasmidLineageParams = record(
 		core_genome_count: null,    // required: --lineage.core_genome_count=<n>
-		blastn_args: '-perc_identity 70 -evalue 1e-3 -subject_besthit',
-		genes_blastn_args: '-subject_besthit',
-		prokka_args: '--kingdom Bacteria',
-		pymlst_args: '--coverage 0.85 --identity 0.85'
+		blastn_args: '-perc_identity 70 -evalue 1e-3 -subject_besthit'
 	)
 	amr: AmrParams = record(
 		amrfinderplus: record(skip: false, args: ''),
@@ -74,9 +71,6 @@ workflow {
 
 	publish:
 	rotated = rotated_ch
-	prokka = lineage.prokka
-	core_genes = lineage.core_genes
-	pymlst = lineage.pymlst
 	core_genome = lineage.core_genome
 	report = lineage.report
 	amr_assemblies = lineage.amr_assemblies
@@ -90,22 +84,6 @@ output {
 	}
 	rotated: Channel<Record> {
 		path { r -> r.fasta >> "${params.name}/rotated/${r.meta.sample_id}.fasta" }    // each rotated plasmid
-	}
-	prokka: Channel<Record> {
-		path { r -> r.dir >> "${params.name}/prokka/${r.meta.sample_id}" }    // prokka of each plasmid
-	}
-	core_genes: Value<Record> {
-		path { r ->
-			r.genes_tsv >> "${r.meta.sample_id}/core_genes.tsv"
-			r.clusters_tsv >> "${r.meta.sample_id}/core_clusters.tsv"
-			r.index_tsv >> "${r.meta.sample_id}/core_genes_index.tsv"    // the plasmid of each index (pyMLST strain)
-		}
-	}
-	pymlst: Value<Record> {
-		path { r ->
-			r.db >> "${r.meta.sample_id}/pymlst/pymlst.db"
-			r.dir >> "${r.meta.sample_id}/pymlst/results"
-		}
 	}
 	core_genome: Channel<Record> {
 		path { r -> r.tsv >> "${r.meta.sample_id}/core_genome.tsv" }
