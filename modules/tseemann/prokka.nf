@@ -14,6 +14,7 @@ process PROKKA {
         meta: meta,
         dir: file('prokka'),              // all the prokka outputs
         faa: file('prokka/prokka.faa'),   // proteins
+        ffn: file('prokka/prokka.ffn'),   // nucleotide sequences of the genes
         gff: file('prokka/prokka.gff'),   // annotations, followed by the sequences
         fna: file('prokka/prokka.fna')    // annotated sequences
     )

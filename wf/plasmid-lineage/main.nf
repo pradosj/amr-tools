@@ -18,7 +18,7 @@ params {
 	lineage: PlasmidLineageParams = record(
 		core_genome_count: null,    // required: --lineage.core_genome_count=<n>
 		blastn_args: '-perc_identity 70 -evalue 1e-3 -subject_besthit',
-		blastp_args: '-subject_besthit',
+		genes_blastn_args: '-subject_besthit',
 		prokka_args: '--kingdom Bacteria',
 		pymlst_args: '--coverage 0.85 --identity 0.85'
 	)

@@ -49,10 +49,10 @@
 					"default": "-perc_identity 70 -evalue 1e-3 -subject_besthit",
 					"description": "Options of BLASTN for the alignment of the plasmids"
 				},
-				"blastp_args": {
+				"genes_blastn_args": {
 					"type": "string",
 					"default": "-subject_besthit",
-					"description": "Options of BLASTP for the alignment of the proteins"
+					"description": "Options of BLASTN for the alignment of the genes (core genes; megablast by default, -task blastn for divergent genes)"
 				},
 				"prokka_args": {
 					"type": "string",

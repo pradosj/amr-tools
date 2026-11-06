@@ -10,7 +10,7 @@ include { CORE_GENES_PYMLST     } from './workflows/core-genes-pymlst/main.nf'
 record PlasmidLineageParams {
 	core_genome_count: Integer?    // minimum number of plasmids sharing a core gene or core region (required)
 	blastn_args: String?           // alignment of the plasmids
-	blastp_args: String?           // alignment of the proteins, for the core genes
+	genes_blastn_args: String?     // alignment of the genes, for the core genes
 	prokka_args: String?
 	pymlst_args: String?           // `wgMLST add` options
 }
@@ -200,13 +200,13 @@ workflow PLASMID_LINEAGE {
 		channel.empty()
 	)
 
-	// Core genes: prokka genes with reciprocal BLASTP hits in most plasmids, typed with pyMLST. Each plasmid is a genome
+	// Core genes: prokka genes with reciprocal BLASTN hits in most plasmids, typed with pyMLST. Each plasmid is a genome
 	// named by its id (first word of its header), its meta also holding the name of the set.
 	def genomes_ch = SPLIT_FASTA(fasta_ch).flatMap({ r -> r.fasta.collect({ f -> record(
 		meta: record(sample_id: fastaFirstId(f), set: r.meta.sample_id),
 		fasta: f
 	) }) })
-	def core = CORE_GENES_PYMLST(genomes_ch, n_core, opts.prokka_args, opts.blastp_args, opts.pymlst_args)
+	def core = CORE_GENES_PYMLST(genomes_ch, n_core, opts.prokka_args, opts.genes_blastn_args, opts.pymlst_args)
 	// the core genes and their pyMLST typing of the set (a single set: CORE_GENES_PYMLST takes all the genomes)
 	def set_meta = fasta_ch.map({ r -> r.meta }).collect().map({ ms -> ms.toList()[0] })
 	def core_genes_ch = core.core_genes.combine(set_meta: set_meta).map({ r -> record(meta: r.set_meta, genes_tsv: r.genes_tsv, clusters_tsv: r.clusters_tsv, template: r.template, genomes: r.genomes) })

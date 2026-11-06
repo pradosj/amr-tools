@@ -124,7 +124,7 @@ gg_alignment_polygons(polygons, seqlen_f) +
 
 # Core genes
 
-Clusters of reciprocal best BLASTP hits (covering >75% of the protein) of the prokka proteins, with one
+Clusters of reciprocal best BLASTN hits (covering >75% of the gene) of the prokka genes, with one
 gene per plasmid. Core genes are in clusters found in at least `r n_core` plasmids.
 
 ```{r}
@@ -139,7 +139,7 @@ p2 <- clusters |>
 	ggplot(aes(x = distinct_genome, y = mean_length)) +
 		geom_jitter(width = 0.2, height = 0) +
 		geom_vline(xintercept = n_core - 0.5, linetype = "dashed") +
-		xlab("Number of plasmids") + ylab("Mean protein length (aa)")
+		xlab("Number of plasmids") + ylab("Mean gene length (bp)")
 p1 + p2
 ```
 
