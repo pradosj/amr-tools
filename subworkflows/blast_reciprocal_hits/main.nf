@@ -8,7 +8,8 @@ record PairBlast {
 }
 
 
-// Reciprocal hits of a pair of genomes, from its two BLAST (the same file for a genome with itself)
+// Reciprocal hits of a pair of genomes, from its two BLAST (blast_rev null for a genome with itself: blast_fwd is then
+// used for both directions; the same file given twice would be staged only once, under one of the two names)
 process RECIPROCAL_HITS {
 	container 'registry.gitlab.unige.ch/amr-genomics/rscript:v3'
 	label 'rscript'
@@ -17,12 +18,12 @@ process RECIPROCAL_HITS {
 	time 30.m
 
 	input:
-	record(meta_query: Record, meta_subject: Record, blast_fwd: Path, blast_rev: Path, min_cover: Float)
+	record(meta_query: Record, meta_subject: Record, blast_fwd: Path, blast_rev: Path?, min_cover: Float)
 	libs: List<Path>    // lib_io.R, lib_blast.R
 
 	stage:
 	stageAs(blast_fwd, 'blast_fwd.tsv')    // the BLAST outputs share the same file name
-	stageAs(blast_rev, 'blast_rev.tsv')    // staged once as blast_fwd.tsv when it is the same file
+	stageAs(blast_rev, 'blast_rev.tsv')
 	stageAs(libs, 'lib/*')
 
 	output:
@@ -33,7 +34,7 @@ process RECIPROCAL_HITS {
 	#!/usr/bin/env Rscript
 	source("lib/lib_io.R")
 	source("lib/lib_blast.R")
-	hits <- blast_reciprocal_hits("blast_fwd.tsv", "blast_rev.tsv", min_cover = ${min_cover})
+	hits <- blast_reciprocal_hits("blast_fwd.tsv", "${blast_rev ? 'blast_rev.tsv' : 'blast_fwd.tsv'}", min_cover = ${min_cover})
 	write_tsv(hits, "reciprocal_hits.tsv", col_names = FALSE)
 	"""
 
@@ -67,7 +68,7 @@ workflow BLAST_RECIPROCAL_HITS {
 			meta_query: r.pair.meta_query,
 			meta_subject: r.pair.meta_subject,
 			blast_fwd: r.blast_fwd,
-			blast_rev: r.blast_rev,
+			blast_rev: r.pair.meta_query == r.pair.meta_subject ? null : r.blast_rev,    // a genome with itself: a single BLAST
 			min_cover: min_cover
 		) })
 	def hits_ch = RECIPROCAL_HITS(pairs_ch, [file("${moduleDir}/assets/lib_io.R"), file("${moduleDir}/assets/lib_blast.R")])
