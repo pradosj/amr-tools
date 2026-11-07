@@ -57,19 +57,19 @@ process CORE_GENES {
 	)
 
 	script:
+	// the staged files with the index of their genomes, given to R as JSON
+	def inputs = groovy.json.JsonOutput.toJson([
+		hits: hits.collect({ h -> [query_genome: h.index_query, subject_genome: h.index_subject, file: "${h.tsv}"] }),
+		ffn: ffn.collect({ g -> [genome: g.index, file: "${g.ffn}"] })
+	])
 	"""
 	#!/usr/bin/env Rscript
 	source("assets/lib_io.R")
 	source("assets/lib_core_gene.R")
-	hits <- tibble(
-		query_genome = ${rVector(hits.collect({ h -> h.index_query }))},
-		subject_genome = ${rVector(hits.collect({ h -> h.index_subject }))},
-		file = ${rVector(hits.collect({ h -> h.tsv }))}
-	)
-	ffn <- tibble(genome = ${rVector(ffn.collect({ g -> g.index }))}, file = ${rVector(ffn.collect({ g -> g.ffn }))})
-	core <- core_genes(hits, n_core = ${n_core})
+	inputs <- jsonlite::fromJSON('${inputs}')
+	core <- core_genes(as_tibble(inputs\$hits), n_core = ${n_core})
 	write_tsv(core\$clusters, "core_clusters.tsv")
-	core_genes_fasta(core\$genes, ffn)
+	core_genes_fasta(core\$genes, as_tibble(inputs\$ffn))
 	"""
 
 	stub:
@@ -141,9 +141,4 @@ workflow CORE_GENES_PYMLST {
 	prokka = prokka_ch            // records with fields meta (of the genome), dir, faa, ffn, gff, fna
 	core_genes = core_genes_ch    // records with fields meta (record(name: 'core_genes')), genes_tsv, clusters_tsv, template, genomes
 	pymlst = pymlst_ch            // records with fields meta (record(name: 'core_genes')), db, dir
-}
-
-// R character vector of values: c('x1', 'x2', ...)
-def rVector(xs: Iterable) -> String {
-	return "c(${xs.collect({ x -> "'${x}'" }).join(', ')})"
 }
