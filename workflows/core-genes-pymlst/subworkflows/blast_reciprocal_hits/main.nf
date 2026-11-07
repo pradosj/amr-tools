@@ -74,6 +74,6 @@ workflow BLAST_RECIPROCAL_HITS {
 	def hits_ch = RECIPROCAL_HITS(pairs_ch, [file("${moduleDir}/assets/lib_io.R"), file("${moduleDir}/assets/lib_blast.R")])
 
 	emit:
-	hits: Channel<Record> = hits_ch    // records with fields meta_query, meta_subject, tsv (the reciprocal hits of the pair)
+	hits: Channel<PairBlast> = hits_ch    // the reciprocal hits of each pair (blast6 format, as the BLAST)
 }
 

@@ -19,17 +19,17 @@ record GenomeIndex {
 }
 
 // The nucleotide sequences of the genes of a genome (prokka.ffn, header: id and product), named by the index of the
-// genome
+// genome (e.g. a PROKKA output joined with its index; other fields allowed)
 record GenomeGenes {
-	genome: Integer
+	index: Integer
 	ffn: Path
 }
 
 // The reciprocal hits of a pair of genomes (blast6 format, see BLAST_RECIPROCAL_HITS), named by the index of the
-// genomes of their query and subject
+// genomes of their query and subject (e.g. a BLAST_RECIPROCAL_HITS output joined with the indexes; other fields allowed)
 record GenomePairHits {
-	query: Integer
-	subject: Integer
+	index_query: Integer
+	index_subject: Integer
 	tsv: Path
 }
 
@@ -47,12 +47,12 @@ process CORE_GENES {
 	hits: List<GenomePairHits>
 	ffn: List<GenomeGenes>
 	n_core: Integer
-	libs: List<Path>    // lib_io.R, lib_core_gene.R
+	libs: Path    // folder of lib_io.R and lib_core_gene.R
 
 	stage:
 	stageAs(hits.collect({ h -> h.tsv }), 'reciprocal_hits/?/*')
 	stageAs(ffn.collect({ g -> g.ffn }), 'genes/?/*')
-	stageAs(libs, 'lib/*')
+	stageAs(libs, 'lib')
 
 	output:
 	record(
@@ -68,11 +68,11 @@ process CORE_GENES {
 	source("lib/lib_io.R")
 	source("lib/lib_core_gene.R")
 	hits <- tibble(
-		query_genome = ${rVector(hits.collect({ h -> h.query }))},
-		subject_genome = ${rVector(hits.collect({ h -> h.subject }))},
+		query_genome = ${rVector(hits.collect({ h -> h.index_query }))},
+		subject_genome = ${rVector(hits.collect({ h -> h.index_subject }))},
 		file = ${rVector(hits.collect({ h -> h.tsv }))}
 	)
-	ffn <- tibble(genome = ${rVector(ffn.collect({ g -> g.genome }))}, file = ${rVector(ffn.collect({ g -> g.ffn }))})
+	ffn <- tibble(genome = ${rVector(ffn.collect({ g -> g.index }))}, file = ${rVector(ffn.collect({ g -> g.ffn }))})
 	core <- core_genes(hits, n_core = ${n_core})
 	write_tsv(core\$clusters, "core_clusters.tsv")
 	core_genes_fasta(core\$genes, ffn)
@@ -99,8 +99,10 @@ workflow CORE_GENES_PYMLST {
 
 	main:
 	// Index of each genome, naming it in the core genes and pyMLST results
-	def metas_ch = genomes.collect().map({ gs -> gs.toList().collect({ g -> g.meta }).toSorted({ m -> "${m}" }) })
-	def index_ch = metas_ch.flatMap({ ms -> ms.withIndex().collect({ m, i -> record(meta: m, index: i + 1) }) })
+	def index_ch = genomes
+		.collect()
+		.map({ gs -> gs.toList().collect({ g -> g.meta }).toSorted({ m -> "${m}" }) })
+		.flatMap({ ms -> ms.withIndex().collect({ m, i -> record(meta: m, index: i + 1) }) })
 
 	// Annotate each genome, and make a BLAST database of its genes
 	def prokka_ch = PROKKA(genomes.map({ g -> record(meta: g.meta, fasta: g.fasta, args: prokka_args) }))
@@ -115,24 +117,19 @@ workflow CORE_GENES_PYMLST {
 
 	// Core genes: clusters of the reciprocal hits of each pair of genomes, and their sequences
 	def hits = BLAST_RECIPROCAL_HITS(blastn_ch, 0.75 as Float)
-	def all_hits_ch = hits
-		.collect()
-		.map({ rs -> record(hits: rs.toList()) })
-		.combine(metas: metas_ch)
-		.map({ r -> r.hits
-			.collect({ h -> record(query: r.metas.indexOf(h.meta_query) + 1, subject: r.metas.indexOf(h.meta_subject) + 1, tsv: h.tsv) })
-			.toSorted({ h -> h.query * 1000000 + h.subject })
-		})
-	def all_ffn_ch = prokka_ch
-		.collect()
-		.map({ rs -> record(prokka: rs.toList()) })
-		.combine(metas: metas_ch)
-		.map({ r -> r.prokka
-			.collect({ p -> record(genome: r.metas.indexOf(p.meta) + 1, ffn: p.ffn) })
-			.toSorted({ g -> g.genome })
-		})
-	def core_genes_ch = CORE_GENES(all_hits_ch, all_ffn_ch, n_core, [file("${moduleDir}/assets/lib_io.R"), file("${moduleDir}/assets/lib_core_gene.R")])
-		.map({ r -> r + record(meta: record(name: 'core_genes')) })
+	def core_genes_ch = CORE_GENES(
+		hits
+			.join(index_ch.map({ r -> record(meta_query: r.meta, index_query: r.index) }), by: 'meta_query')
+			.join(index_ch.map({ r -> record(meta_subject: r.meta, index_subject: r.index) }), by: 'meta_subject')
+			.collect()
+			.map({ rs -> rs.toList().toSorted({ r -> r.index_query * 1000000 + r.index_subject }) }),    // the same order in each run
+		prokka_ch
+			.join(index_ch, by: 'meta')
+			.collect()
+			.map({ rs -> rs.toList().toSorted({ r -> r.index }) }),
+		n_core,
+		file("${moduleDir}/assets/lib")
+	).map({ r -> r + record(meta: record(name: 'core_genes')) })
 
 	// pyMLST typing of the core genes
 	def pymlst_ch = PYMLST_WGMLST(core_genes_ch.map({ r -> record(
