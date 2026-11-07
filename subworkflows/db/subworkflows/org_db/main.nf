@@ -82,14 +82,12 @@ process STEP3_DB_BUILD {
 	input:
 	ncbi_db: Path
 	taxdump: Path
-	db_build_script: Path
-	lib_io: Path    // lib_io.R, sourced by db_build.R
+	assets: Path    // the assets folder of the subworkflow (db_build.R, lib_io.R)
 
 	stage:
 	stageAs(ncbi_db, 'ncbi_db')
 	stageAs(taxdump, 'taxdump')
-	stageAs(db_build_script, 'db_build.R')
-	stageAs(lib_io, 'lib_io.R')
+	stageAs(assets, 'assets')
 
 	output:
 	record(
@@ -100,7 +98,7 @@ process STEP3_DB_BUILD {
 
 	script:
 	"""
-	Rscript db_build.R
+	Rscript assets/db_build.R
 	"""
 
 	stub:
@@ -138,7 +136,7 @@ workflow ORG_DB_BUILD {
 		dir_name: 'taxdump'
 	)))
 
-	def db_built = STEP3_DB_BUILD(ncbi_db, taxdump, file("${moduleDir}/assets/db_build.R"), file("${moduleDir}/assets/lib_io.R"))
+	def db_built = STEP3_DB_BUILD(ncbi_db, taxdump, file("${moduleDir}/assets"))
 
 	emit:
 	db: Value<OrgfinderDb> = db_built

@@ -30,12 +30,12 @@ process FASTANI_TO_ORGFINDER {
 
 	input:
 	record(meta: Record, fastani: Path, db_dir: Path)
-	script_file: Path
+	assets: Path    // the assets folder of the workflow (fastani2orgfinder.R)
 
 	stage:
 	stageAs(fastani, 'input.fastani')
 	stageAs(db_dir, 'db')
-	stageAs(script_file, 'fastani2orgfinder.R')
+	stageAs(assets, 'assets')
 
 	output:
 	record(
@@ -50,7 +50,7 @@ process FASTANI_TO_ORGFINDER {
 	script:
 	"""
 	mkdir orgfinder
-	Rscript fastani2orgfinder.R
+	Rscript assets/fastani2orgfinder.R
 	cp -L db/db.tsv db/tax.tsv db/tax.rds orgfinder/
 	source org.env
 	"""
@@ -86,7 +86,7 @@ workflow ORGFINDER {
 			.combine(db_dir: db.map({ d -> d.dir }))
 			.filter({ r -> r.db_dir != null })
 			.map({ r -> record(meta: r.meta, fastani: r.tsv, db_dir: r.db_dir) }),
-		file("${moduleDir}/assets/fastani2orgfinder.R")
+		file("${moduleDir}/assets")
 	)
 
 	emit:

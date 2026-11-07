@@ -49,9 +49,9 @@ process AMR_COMBINE_ASSEMBLY {
 	time 30.m
 	input:
 	record(meta: Record, fasta: Path, org_name: String?, orgfinder: Path?, amrfinderplus: Path?, resfinder: Path?, plasmidfinder: Path?, cgemlst: Path?, mobtyper: Path?, MLST: Path?, prokka: Path?)
-	libs: List<Path>    // lib_io.R, lib_typing.R
+	assets: Path    // the assets folder of the workflow (lib_io.R, lib_typing.R)
 	stage:
-	stageAs(libs, 'lib/*')
+	stageAs(assets, 'assets')
 	stageAs(fasta, 'assembly.fasta')
 	stageAs(orgfinder, 'amr/orgfinder')
 	stageAs(amrfinderplus, 'amr/amrfinderplus')
@@ -66,8 +66,8 @@ process AMR_COMBINE_ASSEMBLY {
 	script:
 	"""
 	#!/usr/bin/env Rscript
-	source("lib/lib_io.R")
-	source("lib/lib_typing.R")
+	source("assets/lib_io.R")
+	source("assets/lib_typing.R")
 	fs::dir_create("amr")
 	${org_name != null ? "writeLines('${org_name}','amr/org_name.txt')" : ''}
 	read_assemblies_amr("amr","assembly.fasta",'${meta.sample_id}','${meta.assembler_name}') |> saveRDS("amr.rds")
@@ -168,7 +168,7 @@ workflow AMR_ANNOT_ASSEMBLY {
 			.join(mobtyper_ch.map({ r -> record(meta: r.meta, mobtyper: r.tsv) }), by: 'meta', remainder: true)
 			.join(MLST_ch.map({ r -> record(meta: r.meta, MLST: r.txt) }), by: 'meta', remainder: true)
 			.join(prokka_ch.map({ r -> record(meta: r.meta, prokka: r.dir) }), by: 'meta', remainder: true),
-		[file("${moduleDir}/assets/lib_io.R"), file("${moduleDir}/assets/lib_typing.R")]
+		file("${moduleDir}/assets")
 	)
 	def combined_ch = assemblies
 		.map({ r -> record(meta: r.meta, fasta: r.fasta) })

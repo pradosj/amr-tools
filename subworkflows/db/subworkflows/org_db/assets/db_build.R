@@ -1,6 +1,6 @@
 #!/usr/bin/env Rscript
 
-source("lib_io.R")    # read_tax()
+source("assets/lib_io.R")    # read_tax(): the assets folder of the subworkflow is staged as assets
 
 base_dir <- './'
 ncbi_dir <- fs::path(base_dir,"ncbi_db")

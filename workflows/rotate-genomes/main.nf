@@ -49,12 +49,12 @@ process ROTATE_FASTA {
 
 	input:
 	record(meta: Record, fasta: Path, blast: Path)
-	libs: List<Path>    // lib_io.R, lib_rotate_genomes.R
+	assets: Path    // the assets folder of the workflow (lib_io.R, lib_rotate_genomes.R)
 
 	stage:
 	stageAs(fasta, 'genome.fasta')
 	stageAs(blast, 'reference_vs_genome.blastn')
-	stageAs(libs, 'lib/*')
+	stageAs(assets, 'assets')
 
 	output:
 	record(meta: meta, fasta: file('rotated.fasta'))
@@ -62,8 +62,8 @@ process ROTATE_FASTA {
 	script:
 	"""
 	#!/usr/bin/env Rscript
-	source("lib/lib_io.R")
-	source("lib/lib_rotate_genomes.R")
+	source("assets/lib_io.R")
+	source("assets/lib_rotate_genomes.R")
 	rotate_fasta("genome.fasta", "reference_vs_genome.blastn", "rotated.fasta")
 	"""
 
@@ -119,7 +119,7 @@ workflow ROTATE_GENOMES {
 		genome_hits_ch
 			.filter({ r -> r.hits != null && !(r.hits as Path).isEmpty() })
 			.map({ r -> record(meta: r.meta, fasta: r.genome.fasta, blast: r.hits) }),
-		[file("${moduleDir}/assets/lib_io.R"), file("${moduleDir}/assets/lib_rotate_genomes.R")]
+		file("${moduleDir}/assets")
 	)
 		.map({ r -> record(meta: r.meta, fasta: r.fasta, gff: null, info: null) })    // the rotation invalidates the coordinates
 		.mix(genome_hits_ch

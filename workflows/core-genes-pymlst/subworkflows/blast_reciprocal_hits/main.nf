@@ -19,12 +19,12 @@ process RECIPROCAL_HITS {
 
 	input:
 	record(meta_query: Record, meta_subject: Record, blast_fwd: Path, blast_rev: Path?, min_cover: Float)
-	libs: List<Path>    // lib_io.R, lib_blast.R
+	assets: Path    // the assets folder of the workflow (lib_io.R, lib_blast.R)
 
 	stage:
 	stageAs(blast_fwd, 'blast_fwd.tsv')    // the BLAST outputs share the same file name
 	stageAs(blast_rev, 'blast_rev.tsv')
-	stageAs(libs, 'lib/*')
+	stageAs(assets, 'assets')
 
 	output:
 	record(meta_query: meta_query, meta_subject: meta_subject, tsv: file('reciprocal_hits.tsv'))
@@ -32,8 +32,8 @@ process RECIPROCAL_HITS {
 	script:
 	"""
 	#!/usr/bin/env Rscript
-	source("lib/lib_io.R")
-	source("lib/lib_blast.R")
+	source("assets/lib_io.R")
+	source("assets/lib_blast.R")
 	hits <- blast_reciprocal_hits("blast_fwd.tsv", "${blast_rev ? 'blast_rev.tsv' : 'blast_fwd.tsv'}", min_cover = ${min_cover})
 	write_tsv(hits, "reciprocal_hits.tsv", col_names = FALSE)
 	"""
@@ -71,7 +71,7 @@ workflow BLAST_RECIPROCAL_HITS {
 			blast_rev: r.pair.meta_query == r.pair.meta_subject ? null : r.blast_rev,    // a genome with itself: a single BLAST
 			min_cover: min_cover
 		) })
-	def hits_ch = RECIPROCAL_HITS(pairs_ch, [file("${moduleDir}/assets/lib_io.R"), file("${moduleDir}/assets/lib_blast.R")])
+	def hits_ch = RECIPROCAL_HITS(pairs_ch, file("${moduleDir}/assets"))
 
 	emit:
 	hits: Channel<PairBlast> = hits_ch    // the reciprocal hits of each pair (blast6 format, as the BLAST)

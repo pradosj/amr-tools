@@ -42,9 +42,9 @@ process AMR_COMBINE_READS {
 	time 30.m
 	input:
 	record(meta: Record, resfinder_long: Path?, resfinder_short: Path?, plasmidfinder_long: Path?, plasmidfinder_short: Path?)
-	libs: List<Path>    // lib_io.R, lib_typing.R
+	assets: Path    // the assets folder of the workflow (lib_io.R, lib_typing.R)
 	stage:
-	stageAs(libs, 'lib/*')
+	stageAs(assets, 'assets')
 	stageAs(resfinder_long, 'reads_amr/resfinder_long')
 	stageAs(resfinder_short, 'reads_amr/resfinder_short')
 	stageAs(plasmidfinder_long, 'reads_amr/plasmidfinder_long')
@@ -54,8 +54,8 @@ process AMR_COMBINE_READS {
 	script:
 	"""
 	#!/usr/bin/env Rscript
-	source("lib/lib_io.R")
-	source("lib/lib_typing.R")
+	source("assets/lib_io.R")
+	source("assets/lib_typing.R")
 	read_reads_amr("reads_amr",'${meta.sample_id}') |> saveRDS("reads_amr.rds")
 	"""
 	stub:
@@ -99,7 +99,7 @@ workflow AMR_ANNOT_READS {
 			.join(resfinder_short_ch.map({ r -> record(meta: r.meta, resfinder_short: r.dir) }), by: 'meta', remainder: true)
 			.join(plasmidfinder_long_ch.map({ r -> record(meta: r.meta, plasmidfinder_long: r.dir) }), by: 'meta', remainder: true)
 			.join(plasmidfinder_short_ch.map({ r -> record(meta: r.meta, plasmidfinder_short: r.dir) }), by: 'meta', remainder: true),
-		[file("${moduleDir}/assets/lib_io.R"), file("${moduleDir}/assets/lib_typing.R")]
+		file("${moduleDir}/assets")
 	)
 
 	emit:

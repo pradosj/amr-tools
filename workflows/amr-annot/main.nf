@@ -63,9 +63,9 @@ process AMR_MULTIQC {
 	time 30.m
 	input:
 	record(assemblies: List<Path>, reads: List<Path>)    // RDS files of AMR_COMBINE_ASSEMBLY and AMR_COMBINE_READS
-	libs: List<Path>    // lib_io.R, lib_typing.R
+	assets: Path    // the assets folder of the workflow (lib_io.R, lib_typing.R)
 	stage:
-	stageAs(libs, 'lib/*')
+	stageAs(assets, 'assets')
 	stageAs(assemblies, 'assemblies/amr*.rds')
 	stageAs(reads, 'reads/amr*.rds')
 	output:
@@ -80,8 +80,8 @@ process AMR_MULTIQC {
 	script:
 	"""
 	#!/usr/bin/env Rscript
-	source("lib/lib_io.R")
-	source("lib/lib_typing.R")
+	source("assets/lib_io.R")
+	source("assets/lib_typing.R")
 	db <- db_aggregate(Sys.glob("assemblies/amr*.rds"),Sys.glob("reads/amr*.rds"))
 	saveRDS(db,"amr_multiqc.rds")
 	tbl <- amr_tables(db)
@@ -108,7 +108,8 @@ workflow AMR_ANNOT {
 	long_reads: Channel<LongReads>      // meta: record(sample_id)
 
 	main:
-	def libs = [file("${moduleDir}/assets/lib_io.R"), file("${moduleDir}/assets/lib_typing.R")]
+	def assets = file("${moduleDir}/assets")
+	def libs = [file("${moduleDir}/assets/lib_io.R"), file("${moduleDir}/assets/lib_typing.R")]    // sourced by the report template
 	def asm = AMR_ANNOT_ASSEMBLY(opts, org_db, amrfinderplus_db, assemblies)
 	def rds = AMR_ANNOT_READS(opts, short_reads, long_reads)
 
@@ -121,7 +122,7 @@ workflow AMR_ANNOT {
 				assemblies: rs.findAll({ r -> r.assembly }).collect({ r -> r.rds as Path }).toSorted(),
 				reads: rs.findAll({ r -> !r.assembly }).collect({ r -> r.rds as Path }).toSorted()
 			)] }),
-		libs
+		assets
 	)
 	def html_ch = RMD_RENDER(multiqc_ch.map({ r -> record(
 		template: file("${moduleDir}/assets/multireport.Rmd"),
