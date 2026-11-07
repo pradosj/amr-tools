@@ -12,12 +12,6 @@ record Genome {
 	fasta: Path
 }
 
-// The index of a genome (from 1, in the order of the metas), naming it in the core genes and pyMLST results
-record GenomeIndex {
-	meta: Record
-	index: Integer
-}
-
 // The nucleotide sequences of the genes of a genome (prokka.ffn, header: id and product), named by the index of the
 // genome (e.g. a PROKKA output joined with its index; other fields allowed)
 record GenomeGenes {
@@ -122,10 +116,12 @@ workflow CORE_GENES_PYMLST {
 			.join(index_ch.map({ r -> record(meta_query: r.meta, index_query: r.index) }), by: 'meta_query')
 			.join(index_ch.map({ r -> record(meta_subject: r.meta, index_subject: r.index) }), by: 'meta_subject')
 			.collect()
-			.map({ rs -> rs.toList().toSorted({ r -> r.index_query * 1000000 + r.index_subject }) }),    // the same order in each run
+			// the same order in each run for the cache
+			.map({ rs -> rs.toList().toSorted({ a, b -> a.index_query <=> b.index_query ?: a.index_subject <=> b.index_subject }) }),
 		prokka_ch
 			.join(index_ch, by: 'meta')
 			.collect()
+			// the same order in each run for the cache
 			.map({ rs -> rs.toList().toSorted({ r -> r.index }) }),
 		n_core,
 		file("${moduleDir}/assets")
