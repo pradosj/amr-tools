@@ -47,12 +47,12 @@ process CORE_GENES {
 	hits: List<GenomePairHits>
 	ffn: List<GenomeGenes>
 	n_core: Integer
-	libs: Path    // folder of lib_io.R and lib_core_gene.R
+	assets: Path    // the assets folder of the workflow (lib_io.R, lib_core_gene.R)
 
 	stage:
 	stageAs(hits.collect({ h -> h.tsv }), 'reciprocal_hits/?/*')
 	stageAs(ffn.collect({ g -> g.ffn }), 'genes/?/*')
-	stageAs(libs, 'lib')
+	stageAs(assets, 'assets')
 
 	output:
 	record(
@@ -65,8 +65,8 @@ process CORE_GENES {
 	script:
 	"""
 	#!/usr/bin/env Rscript
-	source("lib/lib_io.R")
-	source("lib/lib_core_gene.R")
+	source("assets/lib_io.R")
+	source("assets/lib_core_gene.R")
 	hits <- tibble(
 		query_genome = ${rVector(hits.collect({ h -> h.index_query }))},
 		subject_genome = ${rVector(hits.collect({ h -> h.index_subject }))},
@@ -128,7 +128,7 @@ workflow CORE_GENES_PYMLST {
 			.collect()
 			.map({ rs -> rs.toList().toSorted({ r -> r.index }) }),
 		n_core,
-		file("${moduleDir}/assets/lib")
+		file("${moduleDir}/assets")
 	).map({ r -> r + record(meta: record(name: 'core_genes')) })
 
 	// pyMLST typing of the core genes
