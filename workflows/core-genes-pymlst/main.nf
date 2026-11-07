@@ -109,8 +109,9 @@ workflow CORE_GENES_PYMLST {
 		args: blastn_args ?: '-subject_besthit'
 	) }))
 
-	// Core genes: clusters of the reciprocal hits of each pair of genomes, and their sequences
 	def hits = BLAST_RECIPROCAL_HITS(blastn_ch, 0.75 as Float)
+	
+	// Core genes: clusters of the reciprocal hits of each pair of genomes, and their sequences
 	def core_genes_ch = CORE_GENES(
 		hits
 			.join(index_ch.map({ r -> record(meta_query: r.meta, index_query: r.index) }), by: 'meta_query')
