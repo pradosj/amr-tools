@@ -38,13 +38,13 @@ process CORE_GENES {
 
 	input:
 	hits: List<GenomePairHits>
-	ffn: List<GenomeGenes>
+	genomes: List<GenomeGenes>
 	n_core: Integer
 	assets: Path    // the assets folder of the workflow (lib_io.R, lib_core_gene.R)
 
 	stage:
 	stageAs(hits.collect({ h -> h.tsv }), 'reciprocal_hits/?/*')
-	stageAs(ffn.collect({ g -> g.ffn }), 'genes/?/*')
+	stageAs(genomes.collect({ g -> g.ffn }), 'genes/?/*')
 	stageAs(assets, 'assets')
 
 	output:
@@ -58,7 +58,7 @@ process CORE_GENES {
 	// the staged files with the index of their genomes, given to R as JSON
 	def inputs = groovy.json.JsonOutput.toJson([
 		hits: hits.collect({ h -> [query_genome: h.index_query, subject_genome: h.index_subject, file: "${h.tsv}"] }),
-		ffn: ffn.collect({ g -> [genome: g.index, file: "${g.ffn}"] })
+		ffn: genomes.collect({ g -> [genome: g.index, file: "${g.ffn}"] })
 	])
 	"""
 	#!/usr/bin/env Rscript
@@ -123,6 +123,12 @@ workflow CORE_GENES_PYMLST {
   // pairing of reciprocal BLASTs and filtering to keep for each query the worst of bests reciprocal alignments
 	def hits = BLAST_RECIPROCAL_HITS(blastn_ch, 0.75 as Float)
 	
+	// The genes of each genome with its index, sorted by index (the same order in each run for the cache)
+	def indexed_genomes_collection = prokka_ch
+		.join(index_ch, by: 'meta')
+		.collect()
+		.map({ rs -> rs.toList().toSorted({ r -> r.index }) })
+
 	// Core genes: clusters of the reciprocal hits of each pair of genomes, and extract template sequences
 	def core_genes_ch = CORE_GENES(
 		hits
@@ -130,24 +136,18 @@ workflow CORE_GENES_PYMLST {
 			.join(index_ch.map({ r -> record(meta_subject: r.meta, index_subject: r.index) }), by: 'meta_subject')
 			.collect()
 			.map({ rs -> rs.toList().toSorted({ a, b -> a.index_query <=> b.index_query ?: a.index_subject <=> b.index_subject }) }), // the same order in each run for the cache
-		prokka_ch
-			.join(index_ch, by: 'meta')
-			.collect()
-			.map({ rs -> rs.toList().toSorted({ r -> r.index }) }), // the same order in each run for the cache
+		indexed_genomes_collection,
 		n_core,
 		file("${moduleDir}/assets")
 	)
 
-	// pyMLST typing of the core genes
-	def pymlst_ch = channel.empty()
-	/*
-	PYMLST_WGMLST(core_genes_ch.map({ r -> record(
-		meta: r.meta,
-		template: r.template,
-		genomes: prokka_ch.map({ r -> record(meta: r.meta, fasta: r.ffn) }),
+	// pyMLST typing of the core genes: the strains are the indexes of the genomes (their position in genes)
+	def pymlst_ch = PYMLST_WGMLST(core_genes_ch.combine(genomes: indexed_genomes_collection).map({ r -> record(
+		meta: record(name: 'core_genes'),
+		template: r.core_template,
+		genomes: r.genomes.collect({ g -> g.ffn }).toList(),
 		args: pymlst_args ?: '--coverage 0.85 --identity 0.85'
 	) }))
-	*/
 
 	emit:
 	index = index_ch              // records with fields meta (of the genome), index (naming the genome in core_genes and pymlst)

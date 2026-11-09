@@ -1,7 +1,7 @@
 nextflow.enable.types = true
 
 // Whole/core genome MLST with pyMLST: create a database from the genes of `template`, add each genome
-// (strain named after the file, without extension), then extract the distances, the MLST table and the
+// (strain named by its position in `genomes`, from 1), then extract the distances, the MLST table and the
 // multiple sequence alignment. `args` are given to `wgMLST add` (e.g. --coverage 0.85 --identity 0.85).
 process PYMLST_WGMLST {
     container 'docker.io/staphb/pymlst:2.2.2'
@@ -14,7 +14,7 @@ process PYMLST_WGMLST {
 
     stage:
     stageAs(template, 'template.fasta')
-    stageAs(genomes, 'genomes/*')
+    stageAs(genomes, 'genomes/?/*')    // genomes/<position>/<file>: the files may have the same name
 
     output:
     record(
@@ -26,8 +26,8 @@ process PYMLST_WGMLST {
     script:
     """
     wgMLST create --force pymlst.db template.fasta
-    for f in genomes/*; do
-        wgMLST add ${args ?: ''} --strain "\$(basename "\${f%.*}")" pymlst.db "\$f"
+    for d in genomes/*; do
+        wgMLST add ${args ?: ''} --strain "\$(basename "\$d")" pymlst.db "\$d"/*
     done
     mkdir pymlst
     wgMLST distance --output pymlst/distance.tsv pymlst.db
