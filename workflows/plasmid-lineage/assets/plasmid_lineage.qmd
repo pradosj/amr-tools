@@ -8,7 +8,6 @@ format:
     code-fold: true
 params:
   name: "plasmids"           # name of the set of plasmids (title of the report)
-  core_genome_count: null    # minimum number of plasmids sharing a core genome region (required)
 ---
 
 ```{r setup, include=FALSE}
@@ -18,8 +17,6 @@ source("assets/lib_plasmid_lineage.R")
 
 fa <- read_fasta("report_data/plasmids.fasta")
 n_plasmids <- length(fa)
-stopifnot(!is.null(params$core_genome_count))
-n_core <- as.integer(params$core_genome_count)
 fig_h <- function(min = 4, per_seq = 0.5) max(min, per_seq * n_plasmids)
 
 seqlen <- tibble(seq = names(fa), seqlen = width(fa))
@@ -52,7 +49,7 @@ plasmid_types <- tibble(contig_id = names(fa)) |>
 
 # Plasmids
 
-`r n_plasmids` plasmids. Core genome regions are shared by at least `r n_core` plasmids.
+`r n_plasmids` plasmids.
 
 ```{r}
 seqlen |>
@@ -116,26 +113,4 @@ gg_alignment_polygons(polygons, seqlen_f) +
 	geom_segment(aes(x = start, xend = end, y = seq, yend = seq), data = mutate(inc_gff, seq = factor(seq, ani_levels)), linewidth = 2, color = "yellow") +
 	geom_segment(aes(x = start, xend = end, y = seq, yend = seq), data = mutate(res_gff, seq = factor(seq, ani_levels)), linewidth = 2, color = "red") +
 	theme(panel.grid = element_blank())
-```
-
-# Core genome
-
-Number of plasmids sharing each region of the plasmids (BLASTN alignments ≥500 bp). Core regions
-(≥500 bp, shared by at least `r n_core` plasmids) are in black.
-
-```{r}
-#| fig-height: !expr fig_h(6, 0.8)
-#| fig-width: 12
-read_tsv("report_data/core_genome.tsv", show_col_types = FALSE) |>
-	filter(n_plasmids > 1) |>
-	mutate(seqnames = factor(seqnames, ani_levels)) |>
-	ggplot(aes(xmin = start, xmax = end, ymin = 0, ymax = n_plasmids, fill = is_core)) +
-		facet_grid(seqnames ~ .) +
-		geom_rect() +
-		scale_fill_manual(values = c("TRUE" = "black", "FALSE" = "grey")) +
-		scale_x_continuous(labels = scales::label_number(scale_cut = scales::cut_short_scale())) +
-		theme(strip.text.y.right = element_text(angle = 0)) +
-		theme(panel.spacing = unit(0, "mm")) +
-		theme(legend.position = "top") +
-		xlab("Genomic position") + ylab("Number of plasmids")
 ```

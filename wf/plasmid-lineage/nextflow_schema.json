@@ -39,11 +39,6 @@
 			"title": "Options of the plasmid lineage analysis",
 			"type": "object",
 			"properties": {
-				"core_genome_count": {
-					"type": "integer",
-					"minimum": 1,
-					"description": "Minimum number of plasmids sharing a core genome region (required)"
-				},
 				"blastn_args": {
 					"type": "string",
 					"default": "-perc_identity 70 -evalue 1e-3 -subject_besthit",

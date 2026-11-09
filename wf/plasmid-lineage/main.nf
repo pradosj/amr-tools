@@ -18,7 +18,6 @@ params {
 	name: String = 'plasmids'
 	no_rotation: Boolean = false    // do not rotate the plasmids before the analysis
 	lineage: PlasmidLineageParams = record(
-		core_genome_count: null,    // required: --lineage.core_genome_count=<n>
 		blastn_args: '-perc_identity 70 -evalue 1e-3 -subject_besthit'
 	)
 	amr: AmrParams = record(
@@ -71,7 +70,6 @@ workflow {
 
 	publish:
 	rotated = rotated_ch
-	core_genome = lineage.core_genome
 	report = lineage.report
 	amr_assemblies = lineage.amr_assemblies
 	amr_multiqc = lineage.amr_multiqc
@@ -84,9 +82,6 @@ output {
 	}
 	rotated: Channel<Record> {
 		path { r -> r.fasta >> "${params.name}/rotated/${r.meta.sample_id}.fasta" }    // each rotated plasmid
-	}
-	core_genome: Channel<Record> {
-		path { r -> r.tsv >> "${r.meta.sample_id}/core_genome.tsv" }
 	}
 	report: Channel<Record> {
 		path { r -> r.html >> "${r.meta.sample_id}/report.html" }

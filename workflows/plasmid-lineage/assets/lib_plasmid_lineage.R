@@ -187,37 +187,3 @@ find_align_seq <- function(fasta, blast, out, min_len = 1000, min_frac = 0.8) {
 	}
 	writeXStringSet(align_seq, out)
 }
-
-#' Core genome: regions of each plasmid shared by at least n_core plasmids (itself included)
-#'
-#' Writes `core_genome.tsv`: the regions of each plasmid, with the number of plasmids sharing it and whether it is core.
-#'
-#' @param fasta FASTA file of the plasmids.
-#' @param blast Self alignment of the plasmids, as read by read_blast6().
-#' @param n_core Minimum number of plasmids sharing a core region.
-#' @param min_len Minimum length of the alignments and of the core regions.
-core_genome <- function(fasta, blast, n_core, min_len = 500) {
-	FA <- read_fasta(fasta)
-	hits <- read_blast6(blast) |>
-		filter(align_len >= min_len) |>
-		filter(query_id != subject_id)
-	hits <- c(
-		GRanges(hits$query_id, IRanges(hits$query_start, hits$query_end), name = hits$subject_id, seqinfo = Seqinfo(names(FA), width(FA))),
-		GRanges(hits$subject_id, IRanges(pmin(hits$subject_start, hits$subject_end), pmax(hits$subject_start, hits$subject_end)), name = hits$query_id, seqinfo = Seqinfo(names(FA), width(FA)))
-	)
-	hits <- splitAsList(hits, hits$name) |>
-		GenomicRanges::reduce() |>
-		coverage() |>
-		as("GRanges")
-	hits$n_plasmids <- hits$score + 1L    # the plasmids aligning, plus itself
-	core_mask <- hits |>
-		subset(n_plasmids >= n_core) |>
-		GenomicRanges::reduce() |>
-		subset(width >= min_len) |>
-		gaps(ignore.strand = TRUE)
-	hits$is_core <- countOverlaps(hits, core_mask) == 0
-	hits |>
-		as_tibble() |>
-		select(seqnames, start, end, n_plasmids, is_core) |>
-		write_tsv("core_genome.tsv")
-}

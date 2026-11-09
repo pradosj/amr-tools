@@ -7,7 +7,6 @@ include { AMR_ANNOT; AmrParams  } from './workflows/amr-annot/main.nf'
 
 // Options of PLASMID_LINEAGE (params.lineage). Fields are nullable: defaults are used when null.
 record PlasmidLineageParams {
-	core_genome_count: Integer?    // minimum number of plasmids sharing a core genome region (required)
 	blastn_args: String?           // alignment of the plasmids
 }
 
@@ -15,26 +14,6 @@ record PlasmidLineageParams {
 record Genome {
 	meta: Record
 	fasta: Path
-}
-
-
-// Gather the plasmid sequences in one FASTA (adding the final newline missing in some files)
-process CONCAT_FASTA {
-	label 'local'
-
-	input:
-	record(meta: Record, fasta: List<Path>)
-
-	stage:
-	stageAs(fasta, 'in/?/*')    // files may share the same name
-
-	output:
-	record(meta: meta, fasta: file('plasmids.fasta'))
-
-	script:
-	"""
-	awk 1 ${fasta.collect({ f -> "'${f}'" }).join(' ')} > plasmids.fasta
-	"""
 }
 
 
@@ -75,43 +54,6 @@ process FIND_ALIGN_SEQ {
 }
 
 
-// Core genome: regions of the plasmids shared by most plasmids
-process CORE_GENOME {
-	container 'registry.gitlab.unige.ch/amr-genomics/rscript:v3'
-	label 'rscript'
-	memory 8.GB
-	cpus 1
-	time 30.m
-
-	input:
-	record(meta: Record, fasta: Path, blast: Path, n_core: Integer)
-	assets: Path
-
-	stage:
-	stageAs(fasta, 'plasmids.fasta')
-	stageAs(blast, 'plasmids.self.blastn')
-	stageAs(assets, 'assets')
-
-	output:
-	record(
-		meta: meta,
-		tsv: file('core_genome.tsv')    // regions with the number of plasmids sharing them
-	)
-
-	script:
-	"""
-	#!/usr/bin/env Rscript
-	source("assets/lib_io.R")
-	source("assets/lib_plasmid_lineage.R")
-	core_genome("plasmids.fasta", "plasmids.self.blastn", n_core = ${n_core})
-	"""
-
-	stub:
-	"""
-	touch core_genome.tsv
-	"""
-}
-
 
 // A file or folder of the report data, and its name in the report_data folder
 record NamedFile {
@@ -141,22 +83,18 @@ process REPORT_FOLDER {
 }
 
 
-// Lineage of a set of plasmids (each a genome: a FASTA file): align the plasmids, annotate them, find their core
-// genome, and render an HTML report
+// Lineage of a set of plasmids (each a genome: a FASTA file): align the plasmids, annotate them, and render an HTML
+// report
 workflow PLASMID_LINEAGE {
 	take:
 	opts: PlasmidLineageParams
 	amr_opts: AmrParams
 	amrfinderplus_db: Value<Path?>    // database of AMR_ANNOT (null when AMRFinderPlus is skipped)
 	name: String                      // name of the set of plasmids (meta of its results: record(sample_id: name))
-	plasmids: Channel<Genome>         // the plasmids, named by the sample_id of their meta
+	plasmids: Channel<Genome>         // the plasmids
 
 	main:
 	def assets = file("${moduleDir}/assets")
-	if (opts.core_genome_count == null) {
-		error("PLASMID_LINEAGE: the minimum number of plasmids sharing a core genome region (--lineage.core_genome_count) is required")
-	}
-	def n_core = opts.core_genome_count as Integer
 	def blastn_args = opts.blastn_args ?: '-perc_identity 70 -evalue 1e-3 -subject_besthit'
 	def set_meta = record(sample_id: name)
 
@@ -180,22 +118,14 @@ workflow PLASMID_LINEAGE {
 		channel.empty()
 	)
 
-	// Core genome: regions shared by most plasmids
-	def core_genome_ch = CORE_GENOME(
-		fasta_ch.join(self_ch, by: 'meta').map({ r -> record(meta: r.meta, fasta: r.fasta, blast: r.tsv, n_core: n_core) }),
-		assets
-	)
-
 	// HTML report of the set of plasmids, from its files gathered in a folder under explicit names
 	def report_data_ch = REPORT_FOLDER(
 		fasta_ch.map({ r -> record(meta: r.meta, plasmids: r.fasta) })
 			.join(self_ch.map({ r -> record(meta: r.meta, self_blast: r.tsv) }), by: 'meta')
-			.join(core_genome_ch.map({ r -> record(meta: r.meta, core_genome_tsv: r.tsv) }), by: 'meta')
 			.combine(amr.multiqc)
 			.map({ r, m -> record(meta: r.meta, entries: [
 				record(name: 'plasmids.fasta', path: r.plasmids),
 				record(name: 'plasmids.self.blastn', path: r.self_blast),
-				record(name: 'core_genome.tsv', path: r.core_genome_tsv),
 				record(name: 'multitable_resistances.tsv', path: m.resistances_tsv as Path),
 				record(name: 'multitable_plasmidfinder_hits.tsv', path: m.plasmidfinder_hits_tsv as Path)
 			]) })
@@ -205,11 +135,10 @@ workflow PLASMID_LINEAGE {
 		template: file("${moduleDir}/assets/plasmid_lineage.qmd"),
 		extra: assets,
 		files: [r.dir],
-		args: "-P 'name:${r.meta.sample_id}' -P 'core_genome_count:${n_core}'"
+		args: "-P 'name:${r.meta.sample_id}'"
 	) }))
 
 	emit:
-	core_genome: Channel<Record>     = core_genome_ch     // records with fields meta (of the set), tsv
 	report: Channel<Record>          = report_ch          // records with fields meta (of the set), html
 	amr_assemblies: Channel<Record>  = amr.assemblies_amr    // records with fields meta (of the plasmid), fasta, fai, dir, rds
 	amr_multiqc: Channel<Record>     = amr.multiqc           // records with fields rds, html, xlsx, assemblies_tsv, contigs_tsv, resistances_tsv, plasmidfinder_hits_tsv
