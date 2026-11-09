@@ -1,16 +1,18 @@
 ---
 title: "Core genes: pyMLST typing"
 date: "`r format(Sys.time(), '%d %B, %Y')`"
-toc: true
-embed-resources: true
-code-fold: true
-format: html
+format:
+  dashboard:
+    theme: cosmo
+    embed-resources: true
+    nav-buttons: []
 params:
   n_core: null
   input_dir: "../results/core-genes-pymlst"    # folder of the pipeline outputs: core_genes_index.tsv, core_genes.tsv, pymlst/
 ---
 
-```{r setup, include=FALSE}
+```{r setup}
+#| include: false
 knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
 library(tidyverse)
 library(plotly)
@@ -21,8 +23,8 @@ library(tidygraph)
 #' @param f the distance file
 #' @return a numeric matrix, its rows and columns named by the genomes
 read_pymlst_distance <- function(f) {
-	m <- read_tsv(f, skip = 1, col_names = FALSE, col_types = cols(X1 = "c", .default = "d")) %>% 
-	  column_to_rownames("X1") %>% 
+	m <- read_tsv(f, skip = 1, col_names = FALSE, col_types = cols(X1 = "c", .default = "d")) %>%
+	  column_to_rownames("X1") %>%
 	  as.matrix()
 	colnames(m) <- rownames(m)
 	m
@@ -30,9 +32,10 @@ read_pymlst_distance <- function(f) {
 ```
 
 
-```{r}
+```{r data}
+#| include: false
 genomes <- read_tsv(
-  fs::path(params$input_dir, "core_genes_index.tsv"), 
+  fs::path(params$input_dir, "core_genes_index.tsv"),
   col_types = cols(index = "c", genome = "c")
 ) %>% dplyr::rename(genome_name=genome,genome=index)
 
@@ -43,44 +46,69 @@ if (nrow(dist_mat) > 2) {
 	dist_mat <- dist_mat[hclust(as.dist(dist_mat), method = "ward.D2")$order,]
 	dist_mat <- dist_mat[,rownames(dist_mat)]
 }
-```
 
-`r nrow(dist_mat)` genomes, typed with pyMLST (wgMLST) on their core genes (genes found in at least `r params$n_core` genomes).
+genes <- read_tsv(
+  fs::path(params$input_dir, "core_genes.tsv"),
+  col_types = cols(genome = "c", is_core_template = "l", .default = "c")
+) %>%
+  left_join(genomes)
+```
 
 # Summary
 
-The genes of the clusters of reciprocal hits (one gene per genome in each cluster), and the core template genes (one
-per core cluster: the template of the pyMLST database).
+## Row {height=20%}
 
-```{r summary}
-genes <- read_tsv(
-  fs::path(params$input_dir, "core_genes.tsv"), 
-  col_types = cols(genome = "c", is_core_template = "l", .default = "c")
-) %>% 
-  left_join(genomes)
+```{r}
+#| content: valuebox
+#| title: "Genomes"
+list(icon = "collection", color = "primary", value = n_distinct(genes$genome))
+```
 
-genes %>% 
-  ungroup() %>% 
-  summarize(
-    Genomes = n_distinct(genome),
-    Genes = n(),
-    `Gene clusters` = n_distinct(cluster_id),
-    `Core template genes` = sum(is_core_template)
-  ) |>
-	knitr::kable(caption = "All the genomes")
+```{r}
+#| content: valuebox
+#| title: "Genes"
+list(icon = "list-ul", color = "info", value = nrow(genes))
+```
 
+```{r}
+#| content: valuebox
+#| title: "Gene clusters"
+list(icon = "diagram-3", color = "secondary", value = n_distinct(genes$cluster_id))
+```
+
+```{r}
+#| content: valuebox
+#| title: "Core template genes"
+list(icon = "bullseye", color = "success", value = sum(genes$is_core_template))
+```
+
+## Row
+
+```{r}
+#| title: "Genes of each genome"
 genes |>
 	group_by(Index=genome,Genome = genome_name) |>
 	summarise(Genes = n(), `Core template genes` = sum(is_core_template)) |>
 	arrange(as.integer(Index)) |>
-	knitr::kable(caption = "Genes of each genome")
+	knitr::kable()
 ```
 
-# Distance matrix
+::: {.card title="About"}
+`r nrow(dist_mat)` genomes, typed with pyMLST (wgMLST) on their core genes: the clusters of genes found in at least
+`r params$n_core` genomes.
 
-The number of core genes with different alleles in each pair of genomes (genomes ordered by an average linkage clustering).
+- **Genes**: the genes of the clusters of reciprocal BLASTN hits (one gene per genome in each cluster).
+- **Core template genes**: one gene per core cluster, the template of the pyMLST database; counted in the genome of the
+  gene.
+- The genomes are named in the pyMLST results by their index.
+:::
+
+# Distances
+
+## Row
 
 ```{r distance_heatmap}
+#| title: "Distance matrix: number of core genes with different alleles (genomes ordered by a Ward clustering)"
 plot_ly(
 	x = colnames(dist_mat), y = rownames(dist_mat), z = dist_mat, type = "heatmap",
 	colorscale = "YlOrRd", reversescale = TRUE, colorbar = list(title = "Distance"),
@@ -97,57 +125,15 @@ plot_ly(
 	)
 ```
 
-# Allele matrix
-
-The allele of each core gene in each genome: in each gene, the alleles are numbered by decreasing frequency
-(1: the most frequent allele), white for a gene missing in the genome. Hover a cell for its pyMLST allele id.
-
-```{r allele_heatmap}
-alleles <- read_tsv(fs::path(params$input_dir, "pymlst/mlst.tsv"), col_types = cols(.default = "c")) |>
-	rename(gene_uid = 1) |>
-	pivot_longer(-gene_uid, names_to = "genome", values_to = "allele") |>
-  left_join(genomes) |>
-	group_by(gene_uid) |>
-	mutate(rank = match(allele, names(sort(table(allele), decreasing = TRUE)))) |>    # NA for a missing gene
-	ungroup() %>% 
-  mutate(
-    gene_uid = as_factor(gene_uid),
-    genome_name = fct_relevel(genome_name, rownames(dist_mat))
-  )
-
-local({
-  z_mat <- alleles %>% 
-    pivot_wider(id_cols=genome_name,names_from = gene_uid,values_from = rank) %>% 
-    column_to_rownames("genome_name") %>% 
-    as.matrix()
-  text_mat <- alleles %>% 
-    mutate(text = sprintf("gene: %s<br>genome: %s<br>allele: %s", gene_uid, genome_name, replace_na(allele, "missing"))) %>% 
-    pivot_wider(id_cols=genome_name,names_from = gene_uid,values_from = text) %>% 
-    column_to_rownames("genome_name") %>% 
-    as.matrix()
-  plot_ly(
-  	x = colnames(z_mat), y = rownames(z_mat), z = z_mat, text = text_mat, hoverinfo = "text",
-  	type = "heatmap", colorscale = "Viridis", colorbar = list(title = "Allele rank")
-  ) |>
-  	layout(
-  		xaxis = list(title = "Core gene", showticklabels = length(genes) <= 100),
-  		yaxis = list(title = "", autorange = "reversed")
-  	)  
-})
-```
-
-# Minimum spanning tree
-
-The minimum spanning tree of the genomes for the pyMLST distances (edges labelled by the distance).
-
-```{r mst, fig.width = 8, fig.height = 6}
+```{r mst}
+#| title: "Minimum spanning tree of the pyMLST distances (edges labelled by the distance)"
 # a distance of 0 (identical genomes) would be no edge in the adjacency graph: add a tiny weight to all the edges
-g <- igraph::graph_from_adjacency_matrix(dist_mat+1, mode = "undirected", weighted = TRUE, diag = TRUE) %>% 
-  as_tbl_graph() %>% 
-  activate(edges) %>% 
-  mutate(weight = weight-1) %>% 
+g <- igraph::graph_from_adjacency_matrix(dist_mat+1, mode = "undirected", weighted = TRUE, diag = TRUE) %>%
+  as_tbl_graph() %>%
+  activate(edges) %>%
+  mutate(weight = weight-1) %>%
   activate(nodes)
-mst_g <- g %>% 
+mst_g <- g %>%
   convert(to_minimum_spanning_tree, weights = weight)
 
 # interactive display
@@ -160,4 +146,41 @@ visNetwork::visNetwork(mst_vis$nodes, mst_vis$edges, width = "100%") |>
 	visNetwork::visEdges(color = "grey", font = list(align = "middle")) |>
 	visNetwork::visOptions(highlightNearest = TRUE) |>
 	visNetwork::visInteraction(navigationButtons = TRUE)
+```
+
+# Alleles
+
+```{r allele_heatmap}
+#| title: "Allele of each core gene in each genome: alleles numbered by decreasing frequency in each gene (1: the most frequent), white for a missing gene; hover a cell for its pyMLST allele id"
+alleles <- read_tsv(fs::path(params$input_dir, "pymlst/mlst.tsv"), col_types = cols(.default = "c")) |>
+	rename(gene_uid = 1) |>
+	pivot_longer(-gene_uid, names_to = "genome", values_to = "allele") |>
+  left_join(genomes) |>
+	group_by(gene_uid) |>
+	mutate(rank = match(allele, names(sort(table(allele), decreasing = TRUE)))) |>    # NA for a missing gene
+	ungroup() %>%
+  mutate(
+    gene_uid = as_factor(gene_uid),
+    genome_name = fct_relevel(genome_name, rownames(dist_mat))
+  )
+
+local({
+  z_mat <- alleles %>%
+    pivot_wider(id_cols=genome_name,names_from = gene_uid,values_from = rank) %>%
+    column_to_rownames("genome_name") %>%
+    as.matrix()
+  text_mat <- alleles %>%
+    mutate(text = sprintf("gene: %s<br>genome: %s<br>allele: %s", gene_uid, genome_name, replace_na(allele, "missing"))) %>%
+    pivot_wider(id_cols=genome_name,names_from = gene_uid,values_from = text) %>%
+    column_to_rownames("genome_name") %>%
+    as.matrix()
+  plot_ly(
+  	x = colnames(z_mat), y = rownames(z_mat), z = z_mat, text = text_mat, hoverinfo = "text",
+  	type = "heatmap", colorscale = "Viridis", colorbar = list(title = "Allele rank")
+  ) |>
+  	layout(
+  		xaxis = list(title = "Core gene", showticklabels = ncol(z_mat) <= 100),
+  		yaxis = list(title = "", autorange = "reversed")
+  	)
+})
 ```
