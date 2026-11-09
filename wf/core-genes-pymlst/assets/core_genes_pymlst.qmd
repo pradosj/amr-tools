@@ -143,13 +143,16 @@ The minimum spanning tree of the genomes for the pyMLST distances (edges labelle
 
 ```{r mst, fig.width = 8, fig.height = 6}
 # a distance of 0 (identical genomes) would be no edge in the adjacency graph: add a tiny weight to all the edges
-g0 <- igraph::graph_from_adjacency_matrix(dist_mat + 1e-9, mode = "undirected", weighted = TRUE, diag = FALSE)
-mst_g <- as_tbl_graph(igraph::mst(g0)) |>
-	activate(edges) |>
-	mutate(distance = round(weight))
+g <- igraph::graph_from_adjacency_matrix(dist_mat+1, mode = "undirected", weighted = TRUE, diag = TRUE) %>% 
+  as_tbl_graph() %>% 
+  activate(edges) %>% 
+  mutate(weight = weight-1) %>% 
+  activate(nodes)
+mst_g <- g %>% 
+  convert(to_minimum_spanning_tree)
 
 ggraph(mst_g, layout = "stress") +
-	geom_edge_link(aes(label = distance), angle_calc = "along", label_dodge = unit(2.5, "mm"), color = "grey50") +
+	geom_edge_link(aes(label = weight), angle_calc = "along", label_dodge = unit(2.5, "mm"), color = "grey50") +
 	geom_node_point(size = 6, color = "steelblue") +
 	geom_node_text(aes(label = name), repel = TRUE) +
 	theme_graph(base_family = "sans")
