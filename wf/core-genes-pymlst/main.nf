@@ -55,9 +55,9 @@ output {
 	}
 	core_genes: Value<Record> {
 		path { r ->
-			r.genes_tsv >> 'core-genes-pymlst/core_genes.tsv'
-			r.clusters_tsv >> 'core-genes-pymlst/core_clusters.tsv'
-			r.template >> 'core-genes-pymlst/core_template.fasta'
+			r.core_genes    >> 'core-genes-pymlst/core_genes.tsv'
+			r.core_graph    >> 'core-genes-pymlst/core_graph.rds'
+			r.core_template	>> 'core-genes-pymlst/core_template.fasta'
 		}
 	}
 	index: Value<Path> {

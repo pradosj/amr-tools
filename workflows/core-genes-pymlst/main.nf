@@ -71,12 +71,12 @@ process CORE_GENES {
 	as_tibble(g,'nodes') %>% 
 	  filter(is_core_template) %>% 
 	  select(genome,gene_id,gene_uid) %>% 
-	  left_join(inputs[['ffn']])) %>% 
+	  left_join(inputs[['ffn']],by='genome') %>% 
 	  group_by(genome,file) %>% 
-	  group_walk(seq=~{read_fasta(.y\$file)[.x\$gene_id] |> setNames(.x\$gene_uid)}) %>% 
-	  pull(seq) %>% 
+	  group_map(~{read_fasta(.y\$file)[.x\$gene_id] |> setNames(.x\$gene_uid)}) %>% 
+	  as("DNAStringSetList") %>% 
 	  unlist() %>% 
-	  writeDNAStringSet('core_template.fasta')
+	  Biostrings::writeXStringSet('core_template.fasta')
 	"""
 
 	stub:
@@ -152,6 +152,6 @@ workflow CORE_GENES_PYMLST {
 	emit:
 	index = index_ch              // records with fields meta (of the genome), index (naming the genome in core_genes and pymlst)
 	prokka = prokka_ch            // records with fields meta (of the genome), dir, faa, ffn, gff, fna
-	core_genes = core_genes_ch    // records with fields meta (record(name: 'core_genes')), genes_tsv, clusters_tsv, template, genomes
+	core_genes = core_genes_ch    // records with fields meta (of the genome), core_graph, core_genes, core_template
 	pymlst = pymlst_ch            // records with fields meta (record(name: 'core_genes')), db, dir
 }

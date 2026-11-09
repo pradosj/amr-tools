@@ -2,11 +2,6 @@
 source("assets/lib_io.R")
 
 
-
-read_fasta <- function() {
-  
-}
-
 #' Core genes of genomes: clusters of reciprocal BLAST hits of the genes, with one gene in at least n_core genomes
 #'
 #' The genes are those of the reciprocal hits, each identified by `<genome>:<id>` (see gene_uid()) and linked to the
