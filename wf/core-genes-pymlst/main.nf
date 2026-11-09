@@ -2,6 +2,7 @@ nextflow.enable.types = true
 
 include { CORE_GENES_PYMLST; Genome } from './workflows/core-genes-pymlst/main.nf'
 include { INPUT_FASTA } from './subworkflows/input/main.nf'
+include { QUARTO_RENDER } from './modules/quarto/render'
 include { validateParameters; paramsSummaryLog } from 'plugin/nf-schema'
 
 
@@ -41,11 +42,21 @@ workflow {
 		"index\tgenome\n" + rs.toList().toSorted({ r -> r.index }).collect({ r -> "${r.index}\t${r.meta.sample_id}\n" }).join('')
 	}))
 
+	// HTML report: distance and allele heatmaps, minimum spanning tree of the pyMLST results
+	def report_ch = QUARTO_RENDER(core.pymlst.combine(index: index_tsv, genes: core.core_genes.map({ r -> r.core_genes })).map({ r -> record(
+		meta: r.meta,
+		template: file("${projectDir}/assets/core_genes_pymlst.qmd"),
+		extra: null,
+		files: [r.dir, r.index, r.genes],    // pymlst/ (distance.tsv, mlst.tsv), core_genes_index.tsv, core_genes.tsv
+		args: "-P 'n_core:${params.n_core}'"
+	) }))
+
 	publish:
 	prokka = core.prokka
 	core_genes = core.core_genes
 	index = index_tsv
 	pymlst = core.pymlst
+	report = report_ch
 }
 
 
@@ -67,5 +78,8 @@ output {
 		path { r ->
 			r.dir >> 'core-genes-pymlst/pymlst'
 		}
+	}
+	report: Value<Record> {
+		path { r -> r.html >> 'core-genes-pymlst/report.html' }    // distance and allele heatmaps, minimum spanning tree
 	}
 }

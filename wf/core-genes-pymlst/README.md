@@ -9,7 +9,8 @@
    [`blast_reciprocal_hits`](../../subworkflows/blast_reciprocal_hits));
 3. the genes are clustered by their reciprocal hits, with one gene per genome in each cluster: the clusters found in
    at least `--n_core` genomes are the core genes;
-4. the core genes are typed with pyMLST (wgMLST): allele distances between the genomes, MLST table, alignment.
+4. the core genes are typed with pyMLST (wgMLST): allele distances between the genomes, MLST table, alignment;
+5. an HTML report shows the distances, the alleles and the minimum spanning tree of the genomes.
 
 # Installation
 
@@ -39,7 +40,9 @@ Outputs, in the output folder (`results/` by default):
 - `pymlst/`: the pyMLST database (`pymlst.db`), its template (`template.fasta`, the core genes of the genome with the
   most core genes) and results (`results/`: `distance.tsv`, `mlst.tsv`, `msa.fasta`), the strains being the indexes
   of the genomes;
-- `prokka/<genome>`: the prokka annotation of each genome.
+- `prokka/<genome>`: the prokka annotation of each genome;
+- `report.html`: a heatmap of the pyMLST distances, an interactive heatmap (plotly) of the alleles of the core genes
+  in the genomes, and the minimum spanning tree of the genomes for the pyMLST distances.
 
 # Test the pipeline
 

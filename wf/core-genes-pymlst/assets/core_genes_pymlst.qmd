@@ -1,0 +1,135 @@
+---
+title: "Core genes: pyMLST typing"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+format:
+  html:
+    toc: true
+    embed-resources: true
+    code-fold: true
+params:
+  n_core: null    # minimum number of genomes sharing a core gene
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+library(tidyverse)
+library(plotly)
+library(tidygraph)
+library(ggraph)
+
+# the genome of each index (the pyMLST strains are the indexes of the genomes)
+index <- read_tsv("core_genes_index.tsv", col_types = cols(index = "c", genome = "c"))
+genome_name <- setNames(index$genome, index$index)
+
+#' Read the distance matrix of `wgMLST distance` (first line: the number of strains, then one row per strain)
+#'
+#' @param f the distance file
+#' @return a numeric matrix, its rows and columns named by the genomes
+read_pymlst_distance <- function(f) {
+	d <- read_tsv(f, skip = 1, col_names = FALSE, col_types = cols(X1 = "c", .default = "d"))
+	m <- as.matrix(d[-1])
+	dimnames(m) <- list(genome_name[d$X1], genome_name[d$X1])
+	m
+}
+
+dist_mat <- read_pymlst_distance("pymlst/distance.tsv")
+# genomes ordered by a hierarchical clustering of their distances
+genome_order <- if (nrow(dist_mat) > 2) {
+	rownames(dist_mat)[hclust(as.dist(dist_mat), method = "average")$order]
+} else rownames(dist_mat)
+```
+
+`r nrow(dist_mat)` genomes, typed with pyMLST (wgMLST) on their core genes (genes found in at least `r params$n_core` genomes).
+
+# Summary
+
+The genes of the clusters of reciprocal hits (one gene per genome in each cluster), and the core template genes (one
+per core cluster: the template of the pyMLST database).
+
+```{r summary}
+genes <- read_tsv("core_genes.tsv", col_types = cols(genome = "c", is_core_template = "l", .default = "c"))
+
+tibble(
+	Genomes = n_distinct(genes$genome),
+	Genes = nrow(genes),
+	`Gene clusters` = n_distinct(genes$cluster_id),
+	`Core template genes` = sum(genes$is_core_template)
+) |>
+	knitr::kable(caption = "All the genomes")
+
+genes |>
+	group_by(index = genome) |>
+	summarise(Genes = n(), `Core template genes` = sum(is_core_template)) |>
+	mutate(Genome = genome_name[index]) |>
+	arrange(as.integer(index)) |>
+	select(Index = index, Genome, Genes, `Core template genes`) |>
+	knitr::kable(caption = "Genes of each genome")
+```
+
+# Distance matrix
+
+The number of core genes with different alleles in each pair of genomes (genomes ordered by an average linkage clustering).
+
+```{r distance_heatmap, fig.width = 7, fig.height = 6}
+as_tibble(dist_mat, rownames = "genome1") |>
+	pivot_longer(-genome1, names_to = "genome2", values_to = "distance") |>
+	mutate(genome1 = factor(genome1, genome_order), genome2 = factor(genome2, rev(genome_order))) |>
+	ggplot(aes(genome1, genome2, fill = distance)) +
+	geom_tile(color = "white") +
+	geom_text(aes(label = distance), size = 3) +
+	scale_fill_distiller(palette = "YlOrRd", direction = 1) +
+	coord_equal() +
+	labs(x = NULL, y = NULL, fill = "Distance") +
+	theme_minimal() +
+	theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+# Allele matrix
+
+The allele of each core gene in each genome: in each gene, the alleles are numbered by decreasing frequency
+(1: the most frequent allele), white for a gene missing in the genome. Hover a cell for its pyMLST allele id.
+
+```{r allele_heatmap}
+alleles <- read_tsv("pymlst/mlst.tsv", col_types = cols(.default = "c")) |>
+	rename(gene = 1) |>
+	pivot_longer(-gene, names_to = "index", values_to = "allele") |>
+	mutate(genome = genome_name[index]) |>
+	group_by(gene) |>
+	mutate(rank = match(allele, names(sort(table(allele), decreasing = TRUE)))) |>    # NA for a missing gene
+	ungroup()
+
+genes <- unique(alleles$gene)
+z <- alleles |>
+	mutate(gene = factor(gene, genes), genome = factor(genome, genome_order)) |>
+	arrange(genome, gene)
+z_mat <- matrix(z$rank, nrow = length(genome_order), byrow = TRUE)
+text_mat <- matrix(sprintf("gene: %s<br>genome: %s<br>allele: %s", z$gene, z$genome, replace_na(z$allele, "missing")),
+	nrow = length(genome_order), byrow = TRUE)
+
+plot_ly(
+	x = genes, y = genome_order, z = z_mat, text = text_mat, hoverinfo = "text",
+	type = "heatmap", colorscale = "Viridis", colorbar = list(title = "Allele rank")
+) |>
+	layout(
+		xaxis = list(title = "Core gene", showticklabels = length(genes) <= 100),
+		yaxis = list(title = "", autorange = "reversed")
+	)
+```
+
+# Minimum spanning tree
+
+The minimum spanning tree of the genomes for the pyMLST distances (edges labelled by the distance).
+
+```{r mst, fig.width = 8, fig.height = 6}
+# a distance of 0 (identical genomes) would be no edge in the adjacency graph: add a tiny weight to all the edges
+g0 <- igraph::graph_from_adjacency_matrix(dist_mat + 1e-9, mode = "undirected", weighted = TRUE, diag = FALSE)
+mst_g <- as_tbl_graph(igraph::mst(g0)) |>
+	activate(edges) |>
+	mutate(distance = round(weight))
+
+ggraph(mst_g, layout = "stress") +
+	geom_edge_link(aes(label = distance), angle_calc = "along", label_dodge = unit(2.5, "mm"), color = "grey50") +
+	geom_node_point(size = 6, color = "steelblue") +
+	geom_node_text(aes(label = name), repel = TRUE) +
+	theme_graph(base_family = "sans")
+```
