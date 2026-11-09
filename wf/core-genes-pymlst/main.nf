@@ -48,7 +48,7 @@ workflow {
 		template: file("${projectDir}/assets/core_genes_pymlst.qmd"),
 		extra: null,
 		files: [r.dir, r.index, r.genes],    // pymlst/ (distance.tsv, mlst.tsv), core_genes_index.tsv, core_genes.tsv
-		args: "-P 'n_core:${params.n_core}'"
+		args: "-P 'n_core:${params.n_core}' -P 'input_dir:./'"    // the files are staged next to the template
 	) }))
 
 	publish:
