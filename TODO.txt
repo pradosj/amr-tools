@@ -1,0 +1,25 @@
+
+
+
+- Ajouter des qc d'assemblage, et notemment la couverture en read par contig extraite des BAM
+- Faire un pipeline de variant calling a partir des reads ONT sur un assemblage
+- Generer le VCF a partir du BAM pour chaque assemblage
+
+- Produire les informations de circularité des contigs dans les assemblers et les ajouter a info
+
+- Ajouter REsfinder et plasmid finder au databases ?
+- Ajouter une database RepA et Inc pour la rotation des plasmids et des chromosomes
+- ajouter les GTF quand on download les databases de NCBI dans org_db ?
+- Ajouter l'option de rotate dans INPUT_FASTA
+- Supprimer les plasmids de la org_db pour OrgFinder
+
+
+## Pipeline concepts
+
+Reads: Sequencing reads
+Genome: a set of DNA sequences
+Annotation: A information linked to a Fasta (GFF format)
+Assembly: A Fasta + 
+Genome: A Fasta + FastaAnnotation
+
+
