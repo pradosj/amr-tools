@@ -15,7 +15,6 @@ knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
 library(tidyverse)
 library(plotly)
 library(tidygraph)
-library(ggraph)
 
 #' Read the distance matrix of `wgMLST distance` (first line: the number of strains, then one row per strain)
 #'
