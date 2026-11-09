@@ -65,8 +65,7 @@ output {
 	}
 	pymlst: Value<Record> {
 		path { r ->
-			r.db >> 'core-genes-pymlst/pymlst/pymlst.db'
-			r.dir >> 'core-genes-pymlst/pymlst/results'
+			r.dir >> 'core-genes-pymlst/pymlst'
 		}
 	}
 }
