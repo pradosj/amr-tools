@@ -24,10 +24,12 @@ curl -s https://get.nextflow.io | bash
 
 ```bash
 nextflow run pradosj/amr-tools/wf/core-genes-pymlst --fasta='genomes/*.fasta' --n_core=3
+nextflow run pradosj/amr-tools/wf/core-genes-pymlst --fasta_multi=plasmids.fasta --n_core=3
 ```
 
 Each FASTA file is a genome (a plasmid, a bacterial genome, ... with one or several sequences), named by its file name
-(without the FASTA extension). A gene is core when it is found in at least `--n_core` genomes (required). The options
+(without the FASTA extension). With `--fasta_multi` (one FASTA file, a path or an URL), each sequence of the file is a
+genome, named by its id (e.g. a set of plasmids); `--fasta` and `--fasta_multi` are exclusive. A gene is core when it is found in at least `--n_core` genomes (required). The options
 of the tools are given with `--prokka_args`, `--blastn_args` (e.g. `-task blastn` for divergent genes) and
 `--pymlst_args`.
 
