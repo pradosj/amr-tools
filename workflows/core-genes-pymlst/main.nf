@@ -27,9 +27,8 @@ record GenomePairHits {
 	tsv: Path
 }
 
-// Core genes from the reciprocal BLASTN hits of the genes of genomes (see core_genes()), and their sequences for
-// pyMLST (see core_genes_fasta()). Each gene is identified by the index of its genome and its id (ids may be the same
-// in two genomes).
+// Core genes from the reciprocal BLASTN hits of the genes of genomes and their sequences for pyMLST 
+// Each gene is identified by the index of its genome
 process CORE_GENES {
 	container 'registry.gitlab.unige.ch/amr-genomics/rscript:v3'
 	label 'rscript'
@@ -50,10 +49,9 @@ process CORE_GENES {
 
 	output:
 	record(
-		genes_tsv: file('core_genes.tsv'),          // genes with their genome, product and cluster, and whether the cluster is core
-		clusters_tsv: file('core_clusters.tsv'),    // size and number of genomes of each cluster
-		template: file('pymlst_template.fasta'),    // core genes of the genome with the most core genes
-		genomes: files('pymlst_genomes/*.fasta').toSorted()    // core genes of each genome (pymlst_genomes/<index>.fasta)
+	  core_graph: file('core_graph.rds'),
+	  core_genes: file('core_genes.tsv'),
+		core_template: file('core_template.fasta')
 	)
 
 	script:
@@ -64,18 +62,26 @@ process CORE_GENES {
 	])
 	"""
 	#!/usr/bin/env Rscript
-	source("assets/lib_io.R")
 	source("assets/lib_core_gene.R")
 	inputs <- jsonlite::fromJSON('${inputs}')
-	core <- core_genes(as_tibble(inputs\$hits), n_core = ${n_core})
-	write_tsv(core\$clusters, "core_clusters.tsv")
-	core_genes_fasta(core\$genes, as_tibble(inputs\$ffn))
+	g <- core_genes(as_tibble(inputs[['hits']]),as_tibble(inputs[['ffn']]), n_core = ${n_core})
+	saveRDS(g,'core_graph.rds')
+	write_tsv(as_tibble(g,'nodes'),'core_genes.tsv')
+	
+	as_tibble(g,'nodes') %>% 
+	  filter(is_core_template) %>% 
+	  select(genome,gene_id,gene_uid) %>% 
+	  left_join(inputs[['ffn']])) %>% 
+	  group_by(genome,file) %>% 
+	  group_walk(seq=~{read_fasta(.y\$file)[.x\$gene_id] |> setNames(.x\$gene_uid)}) %>% 
+	  pull(seq) %>% 
+	  unlist() %>% 
+	  writeDNAStringSet('core_template.fasta')
 	"""
 
 	stub:
 	"""
-	mkdir pymlst_genomes
-	touch core_genes.tsv core_clusters.tsv pymlst_template.fasta pymlst_genomes/genome.fasta
+	touch core_genes.tsv core_graph.rds core_template.fasta
 	"""
 }
 
@@ -98,43 +104,50 @@ workflow CORE_GENES_PYMLST {
 		.map({ gs -> gs.toList().collect({ g -> g.meta }).toSorted({ m -> "${m}" }) })
 		.flatMap({ ms -> ms.withIndex().collect({ m, i -> record(meta: m, index: i + 1) }) })
 
+
 	// Annotate each genome, and make a BLAST database of its genes
 	def prokka_ch = PROKKA(genomes.map({ g -> record(meta: g.meta, fasta: g.fasta, args: prokka_args) }))
 	def db_ch = MAKEBLASTDB(prokka_ch.map({ r -> record(meta: r.meta, fasta: r.ffn, dbtype: 'nucl', args: null) }))
 
 	// BLASTN of the genes of each genome (query) against those of each genome (subject), itself included (paralogs)
-	def blastn_ch = BLASTN(prokka_ch.combine(db_ch).map({ q, s -> record(
-		query: record(meta: q.meta, path: q.ffn),
-		subject: record(meta: s.meta, path: s.db),
-		args: blastn_args ?: '-subject_besthit'
-	) }))
-
+	def blastn_ch = BLASTN(
+	  prokka_ch.combine(db_ch)
+	  .filter({ q, s -> q.meta != s.meta})
+  	.map({ q, s -> record(
+  		query: record(meta: q.meta, path: q.ffn),
+  		subject: record(meta: s.meta, path: s.db),
+  		args: blastn_args ?: '-subject_besthit'
+  	)})
+  )
+	
+  // pairing of reciprocal BLASTs and filtering to keep for each query the worst of bests reciprocal alignments
 	def hits = BLAST_RECIPROCAL_HITS(blastn_ch, 0.75 as Float)
 	
-	// Core genes: clusters of the reciprocal hits of each pair of genomes, and their sequences
+	// Core genes: clusters of the reciprocal hits of each pair of genomes, and extract template sequences
 	def core_genes_ch = CORE_GENES(
 		hits
 			.join(index_ch.map({ r -> record(meta_query: r.meta, index_query: r.index) }), by: 'meta_query')
 			.join(index_ch.map({ r -> record(meta_subject: r.meta, index_subject: r.index) }), by: 'meta_subject')
 			.collect()
-			// the same order in each run for the cache
-			.map({ rs -> rs.toList().toSorted({ a, b -> a.index_query <=> b.index_query ?: a.index_subject <=> b.index_subject }) }),
+			.map({ rs -> rs.toList().toSorted({ a, b -> a.index_query <=> b.index_query ?: a.index_subject <=> b.index_subject }) }), // the same order in each run for the cache
 		prokka_ch
 			.join(index_ch, by: 'meta')
 			.collect()
-			// the same order in each run for the cache
-			.map({ rs -> rs.toList().toSorted({ r -> r.index }) }),
+			.map({ rs -> rs.toList().toSorted({ r -> r.index }) }), // the same order in each run for the cache
 		n_core,
 		file("${moduleDir}/assets")
-	).map({ r -> r + record(meta: record(name: 'core_genes')) })
+	)
 
 	// pyMLST typing of the core genes
-	def pymlst_ch = PYMLST_WGMLST(core_genes_ch.map({ r -> record(
+	def pymlst_ch = channel.empty()
+	/*
+	PYMLST_WGMLST(core_genes_ch.map({ r -> record(
 		meta: r.meta,
 		template: r.template,
-		genomes: r.genomes,
+		genomes: prokka_ch.map({ r -> record(meta: r.meta, fasta: r.ffn) }),
 		args: pymlst_args ?: '--coverage 0.85 --identity 0.85'
 	) }))
+	*/
 
 	emit:
 	index = index_ch              // records with fields meta (of the genome), index (naming the genome in core_genes and pymlst)

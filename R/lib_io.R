@@ -35,7 +35,7 @@ read_blast6 <- function(f) {
 #' @return A DNAStringSet, its sequences named by their id (first word of the header), as BLAST does.
 read_fasta <- function(f) {
 	fa <- readDNAStringSet(f)
-	names(fa) <- sub("\\s.*", "", names(fa))
+	names(fa) <- str_remove(names(fa),"\\s.*")
 	fa
 }
 

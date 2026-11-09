@@ -63,7 +63,7 @@ output {
 	index: Value<Path> {
 		path { f -> f >> 'core-genes-pymlst/core_genes_index.tsv' }    // the genome of each index (pyMLST strain, genome column of the tables)
 	}
-	pymlst: Value<Record> {
+	pymlst: Channel<Record> {
 		path { r ->
 			r.db >> 'core-genes-pymlst/pymlst/pymlst.db'
 			r.dir >> 'core-genes-pymlst/pymlst/results'
