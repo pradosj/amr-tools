@@ -6,11 +6,9 @@ include { QUARTO_RENDER } from './modules/quarto/render'
 include { validateParameters; paramsSummaryLog } from 'plugin/nf-schema'
 
 
-// The genomes (FASTA files of one genome each, or one FASTA file of one genome per sequence), and the options of
-// CORE_GENES_PYMLST
+// FASTA files of the genomes (one genome per file), and the options of CORE_GENES_PYMLST
 params {
-	fasta: String?          // FASTA files, one genome per file (exclusive with fasta_multi)
-	fasta_multi: String?    // one FASTA file, one genome per sequence (e.g. plasmids; exclusive with fasta)
+	fasta: String
 	n_core: Integer                               // minimum number of genomes sharing a core gene (required)
 	prokka_args: String = '--kingdom Bacteria'
 	blastn_args: String = '-subject_besthit'      // alignment of the genes
@@ -28,16 +26,6 @@ process INDEX_TSV {
 	task.workDir.resolve('core_genes_index.tsv').text = text
 }
 
-// A sequence of the fasta_multi file (its FASTA entry) written to its own FASTA file
-process WRITE_SEQUENCE {
-	input:
-	record(meta: Record, text: String)
-	output:
-	record(meta: meta, fasta: file('sequence.fasta'))
-	exec:    // native task: the file is written by Nextflow, without a shell script
-	task.workDir.resolve('sequence.fasta').text = text
-}
-
 
 workflow {
 	main:
@@ -45,21 +33,8 @@ workflow {
 	validateParameters()
 	log.info(paramsSummaryLog(workflow))
 
-	if (!params.fasta == !params.fasta_multi) {
-		error('Give the genomes either with --fasta or with --fasta_multi (exclusive)')
-	}
-
-	// the genomes (gzipped files are decompressed): one per FASTA file of --fasta, named by its sample_id, or one per
-	// sequence of --fasta_multi, named by its id
-	def fasta_ch = INPUT_FASTA(params.fasta ?: params.fasta_multi)
-	def genomes: Channel<Genome> = fasta_ch.map({ r -> record(meta: r.meta, fasta: r.fasta) })
-	if (params.fasta_multi) {
-		genomes = WRITE_SEQUENCE(
-			fasta_ch
-				.flatMap({ r -> r.fasta.splitFasta(record: [id: true, text: true]) })
-				.map({ s -> record(meta: record(sample_id: s.id), text: s.text) })
-		)
-	}
+	// the genomes: one per FASTA file, named by its sample_id (gzipped files are decompressed)
+	def genomes: Channel<Genome> = INPUT_FASTA(params.fasta).map({ r -> record(meta: r.meta, fasta: r.fasta) })
 	def core = CORE_GENES_PYMLST(genomes, params.n_core, params.prokka_args, params.blastn_args, params.pymlst_args)
 
 	// the genome of each index naming the genomes in the core genes and pyMLST results

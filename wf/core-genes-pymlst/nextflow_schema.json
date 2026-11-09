@@ -1,17 +1,12 @@
 {
 	"$schema": "https://json-schema.org/draft/2020-12/schema",
 	"type": "object",
-	"required": ["n_core"],
+	"required": ["fasta", "n_core"],
 	"properties": {
 		"fasta": {
 			"type": "string",
-			"pattern": "^(((https?|ftp)://[^,\\s]+|\\S+(\\.(fasta|fa|fna)(\\.gz)?|\\}))(,\\s*|$))+$",
-			"description": "FASTA files of the genomes (optionally gzipped): comma-separated paths, glob patterns or URLs (one genome per file, named by its file name; exclusive with --fasta_multi)"
-		},
-		"fasta_multi": {
-			"type": "string",
-			"pattern": "^((https?|ftp)://\\S+|\\S+\\.(fasta|fa|fna)(\\.gz)?)$",
-			"description": "One FASTA file (optionally gzipped) of one genome per sequence, named by its id (e.g. plasmids): a path or an URL (exclusive with --fasta)"
+			"pattern": "^(((https?|ftp)://[^,\\s]+|\\S+(\\.(fasta|fa|fna)(\\.gz)?|\\})!?)(,\\s*|$))+$",
+			"description": "FASTA files of the genomes (optionally gzipped): comma-separated paths, glob patterns or URLs (one genome per file, named by its file name)"
 		},
 		"n_core": {
 			"type": "integer",

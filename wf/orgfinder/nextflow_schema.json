@@ -5,7 +5,7 @@
 
 		"query": {
 			"type": "string",
-			"pattern": "^(((https?|ftp)://[^,\\s]+|\\S+(\\.(fasta|fa|fna)(\\.gz)?|\\}))(,\\s*|$))+$",
+			"pattern": "^(((https?|ftp)://[^,\\s]+|\\S+(\\.(fasta|fa|fna)(\\.gz)?|\\})!?)(,\\s*|$))+$",
 			"description": "FASTA files of the query genomes (optionally gzipped): comma-separated paths, glob patterns or URLs"
 		},
 		
@@ -15,7 +15,7 @@
 			"properties": {
 				"fasta": {
 					"type": "string",
-					"pattern": "^(((https?|ftp)://[^,\\s]+|\\S+(\\.(fasta|fa|fna)(\\.gz)?|\\}))(,\\s*|$))+$",
+					"pattern": "^(((https?|ftp)://[^,\\s]+|\\S+(\\.(fasta|fa|fna)(\\.gz)?|\\})!?)(,\\s*|$))+$",
 					"description": "FASTA files of the reference genomes (optionally gzipped): comma-separated paths, glob patterns or URLs",
 					"default": null
 				},

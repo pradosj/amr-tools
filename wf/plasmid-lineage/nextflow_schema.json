@@ -22,7 +22,7 @@
 		},
 		"fasta": {
 			"type": "string",
-			"pattern": "^(((https?|ftp)://[^,\\s]+|\\S+(\\.(fasta|fa|fna)(\\.gz)?|\\}))(,\\s*|$))+$",
+			"pattern": "^(((https?|ftp)://[^,\\s]+|\\S+(\\.(fasta|fa|fna)(\\.gz)?|\\})!?)(,\\s*|$))+$",
 			"description": "FASTA files of the plasmids to compare (optionally gzipped): comma-separated paths, glob patterns or URLs (one plasmid per file, named by its file name; all the plasmids form one set; sequence ids must be unique)"
 		},
 		"name": {
