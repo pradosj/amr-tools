@@ -43,7 +43,7 @@ blast_reciprocal_hits <- function(blast1, blast2, min_cover = 0.75) {
 #' @param x Alignments, as read by read_blast6().
 #' @param ... Metadata columns of the GRanges.
 #' @return A GRanges: one range per alignment, on its subject.
-subject_granges <- function(x, ...) {
+blast_subject_granges <- function(x, ...) {
 	GenomicRanges::GRanges(
 		x$subject_id,
 		IRanges::IRanges(pmin(x$subject_start, x$subject_end), pmax(x$subject_start, x$subject_end)),
@@ -57,7 +57,7 @@ subject_granges <- function(x, ...) {
 #' @param x Alignments, as read by read_blast6().
 #' @param ... Metadata columns of the GRanges.
 #' @return A GRanges: one range per alignment, on its query.
-query_granges <- function(x, ...) {
+blast_query_granges <- function(x, ...) {
 	GenomicRanges::GRanges(
 		x$query_id,
 		IRanges::IRanges(x$query_start, x$query_end),
@@ -71,7 +71,7 @@ query_granges <- function(x, ...) {
 #' @param aln Alignments, as read by read_blast6().
 #' @return The alignments that are not included in another one.
 blast_filter_inner_alignments <- function(aln) {
-	S <- BiocGenerics::unstrand(subject_granges(aln))
+	S <- BiocGenerics::unstrand(blast_subject_granges(aln))
 	w <- IRanges::findOverlaps(S, S, type = "within")
 	w <- w[S4Vectors::queryHits(w) != S4Vectors::subjectHits(w)]
 	w <- w[aln$query_id[S4Vectors::queryHits(w)] == aln$query_id[S4Vectors::subjectHits(w)]]

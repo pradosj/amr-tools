@@ -20,10 +20,10 @@ suppressPackageStartupMessages({
 #' @return A GRanges of the disjoint regions of the queries, with the ids of the subjects aligning on each of
 #'   them in `subjects`.
 find_shared_regions <- function(aln) {
-	d <- query_granges(aln) |>
+	d <- blast_query_granges(aln) |>
 		unstrand() |>
 		disjoin()
-	h <- findOverlaps(d, unstrand(query_granges(aln)), type = "within")
+	h <- findOverlaps(d, unstrand(blast_query_granges(aln)), type = "within")
 	d$subjects <- extractList(aln$subject_id, as(h, "List")) |> unique()
 	d
 }
