@@ -102,7 +102,7 @@ alignment_polygons <- function(aln, seq_levels, min_len = 1000) {
 		mutate(across(c(query_id, subject_id), ~ factor(., seq_levels))) |>
 		filter(abs(as.integer(query_id) - as.integer(subject_id)) == 1L) |>
 		filter(align_len >= min_len) |>
-		filter_inner_alignments() |>
+		blast_filter_inner_alignments() |>
 		aln_polygons() |>
 		mutate(seq = factor(seq, seq_levels)) |>
 		group_by(poly_id) |>

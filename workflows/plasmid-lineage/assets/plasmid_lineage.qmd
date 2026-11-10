@@ -8,6 +8,7 @@ format:
     code-fold: true
 params:
   name: "plasmids"           # name of the set of plasmids (title of the report)
+  min_len: 1000
 ---
 
 ```{r setup, include=FALSE}
@@ -124,12 +125,12 @@ gg_alignment_polygons(polygons, seqlen_f) +
 # MST
 
 ```{r}
-g <- read_blast6("self.blast") |>
-	filter(align_len >= min_len) |>
+g <- read_blast6("report_data/plasmids.self.blastn") |>
+	filter(align_len >= params$min_len) |>
 	blast_filter_inner_alignments() |>
 	blast_distance_graph()
 g_mst <- g |>
-	convert(to_minimum_spanning_tree(weights=weight))
+	convert(to_minimum_spanning_tree,weights=weight)
 
 ```
 

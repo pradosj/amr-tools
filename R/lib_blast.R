@@ -84,7 +84,7 @@ blast_filter_inner_alignments <- function(aln) {
 #' filter_inner_alignments()) give the errors: the mismatches, plus one per extra fragment (n_frag - 1). The weight of
 #' an edge is the number of errors per aligned bp, the worst of the two directions.
 #'
-#' @param blast BLASTN of the sequences against themselves (-outfmt "6 std qlen slen", read by read_blast6()).
+#' @param aln Blast alignments, as read by read_blast6().
 #' @return An undirected tbl_graph: the sequences as nodes (name), and an edge per pair of sequences aligning (each
 #'   sequence with itself included), with num_mis, num_gapopen, n_frag, total_frag_len, err and weight.
 blast_distance_graph <- function(aln) {
