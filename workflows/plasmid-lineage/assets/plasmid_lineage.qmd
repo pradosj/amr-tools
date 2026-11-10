@@ -23,6 +23,9 @@ fig_h <- function(min = 4, per_seq = 0.5) max(min, per_seq * n_plasmids)
 seqlen <- tibble(seq = names(fa), seqlen = width(fa))
 ```
 
+
+
+
 ```{r annotations}
 # Positions of the AMR and plasmid typing annotations of the plasmids
 pos_pat <- "([0-9]+)(-|\\.\\.)([0-9]+)(:([-+]))?"
@@ -115,3 +118,18 @@ gg_alignment_polygons(polygons, seqlen_f) +
 	geom_segment(aes(x = start, xend = end, y = seq, yend = seq), data = mutate(res_gff, seq = factor(seq, ani_levels)), linewidth = 2, color = "red") +
 	theme(panel.grid = element_blank())
 ```
+
+
+
+# MST
+
+```{r}
+g <- read_blast6("self.blast") |>
+	filter(align_len >= min_len) |>
+	blast_filter_inner_alignments() |>
+	blast_distance_graph()
+g_mst <- g |>
+	convert(to_minimum_spanning_tree(weights=weight))
+
+```
+

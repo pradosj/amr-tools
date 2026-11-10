@@ -55,7 +55,6 @@ process FIND_ALIGN_SEQ {
 }
 
 
-
 // A file or folder of the report data, and its name in the report_data folder
 record NamedFile {
 	name: String
@@ -83,6 +82,7 @@ process REPORT_FOLDER {
 	"""
 }
 
+			
 
 // Lineage of a set of plasmids (each a genome: a FASTA file): align the plasmids, annotate them, and render an HTML
 // report
