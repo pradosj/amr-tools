@@ -43,6 +43,7 @@ process FIND_ALIGN_SEQ {
 	"""
 	#!/usr/bin/env Rscript
 	source("assets/lib_io.R")
+	source("assets/lib_blast.R")
 	source("assets/lib_plasmid_lineage.R")
 	find_align_seq("plasmids.fasta", "plasmids.self.blastn", "align_seq.fasta")
 	"""

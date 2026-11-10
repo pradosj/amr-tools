@@ -37,3 +37,83 @@ blast_reciprocal_hits <- function(blast1, blast2, min_cover = 0.75) {
 		) |>
 		select(!ends_with("_2"))
 }
+
+#' Ranges of the subjects of alignments, on the strand of the alignment
+#'
+#' @param x Alignments, as read by read_blast6().
+#' @param ... Metadata columns of the GRanges.
+#' @return A GRanges: one range per alignment, on its subject.
+subject_granges <- function(x, ...) {
+	GenomicRanges::GRanges(
+		x$subject_id,
+		IRanges::IRanges(pmin(x$subject_start, x$subject_end), pmax(x$subject_start, x$subject_end)),
+		strand = ifelse(x$subject_start > x$subject_end, "-", "+"),
+		...
+	)
+}
+
+#' Ranges of the queries of alignments (strand +)
+#'
+#' @param x Alignments, as read by read_blast6().
+#' @param ... Metadata columns of the GRanges.
+#' @return A GRanges: one range per alignment, on its query.
+query_granges <- function(x, ...) {
+	GenomicRanges::GRanges(
+		x$query_id,
+		IRanges::IRanges(x$query_start, x$query_end),
+		strand = "+",
+		...
+	)
+}
+
+#' Remove the alignments included in another alignment of the same query on the same subject region
+#'
+#' @param aln Alignments, as read by read_blast6().
+#' @return The alignments that are not included in another one.
+filter_inner_alignments <- function(aln) {
+	S <- BiocGenerics::unstrand(subject_granges(aln))
+	w <- IRanges::findOverlaps(S, S, type = "within")
+	w <- w[S4Vectors::queryHits(w) != S4Vectors::subjectHits(w)]
+	w <- w[aln$query_id[S4Vectors::queryHits(w)] == aln$query_id[S4Vectors::subjectHits(w)]]
+	filter(aln, !seq(nrow(aln)) %in% S4Vectors::queryHits(w))
+}
+
+#' Distance graph of the sequences, from their BLASTN against themselves
+#'
+#' For each pair of sequences, the alignments of at least min_len bp that are not included in another one (see
+#' filter_inner_alignments()) give the errors: the mismatches, plus one per extra fragment (n_frag - 1). The weight of
+#' an edge is the number of errors per aligned bp, the worst of the two directions.
+#'
+#' @param blast BLASTN of the sequences against themselves (-outfmt "6 std qlen slen", read by read_blast6()).
+#' @param min_len Minimum length of the alignments.
+#' @return An undirected tbl_graph: the sequences as nodes (name), and an edge per pair of sequences aligning (each
+#'   sequence with itself included), with num_mis, num_gapopen, n_frag, total_frag_len, err and weight.
+blast_distance_graph <- function(blast, min_len = 1000) {
+	ALN <- read_blast6(blast)
+
+	g <- ALN |>
+		filter(align_len >= min_len) |>
+		filter_inner_alignments() |>
+		group_by(query_id, subject_id) |>
+		summarise(
+			num_mis = sum(num_mismatch),
+			num_gapopen = sum(num_gapopen),
+			n_frag = n(),
+			total_frag_len = sum(align_len)
+		) |>
+		mutate(
+			err = (num_mis + (n_frag - 1)),
+			weight = err / total_frag_len
+		) |>
+		group_by(
+			qid = pmin(as.character(query_id), as.character(subject_id)),
+			sid = pmax(as.character(query_id), as.character(subject_id))
+		) |>
+		slice_max(weight, n = 1L, with_ties = FALSE)
+
+	tbl_graph(
+		nodes = tibble(name = unique(c(g$qid, g$sid))),
+		edges = g,
+		directed = FALSE
+	)
+}

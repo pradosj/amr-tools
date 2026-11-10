@@ -6,7 +6,6 @@ suppressPackageStartupMessages({
 	library(tidyverse)
 })
 
-
 # ---------------------------------------
 #  Input / output
 # ---------------------------------------
@@ -14,24 +13,6 @@ suppressPackageStartupMessages({
 # ---------------------------------------
 #  Alignments
 # ---------------------------------------
-
-subject_granges <- function(x, ...) {
-	GRanges(
-		x$subject_id,
-		IRanges(pmin(x$subject_start, x$subject_end), pmax(x$subject_start, x$subject_end)),
-		strand = ifelse(x$subject_start > x$subject_end, "-", "+"),
-		...
-	)
-}
-
-query_granges <- function(x, ...) {
-	GRanges(
-		x$query_id,
-		IRanges(x$query_start, x$query_end),
-		strand = "+",
-		...
-	)
-}
 
 #' Regions of the queries, with the subjects aligning on each of them
 #'
@@ -45,18 +26,6 @@ find_shared_regions <- function(aln) {
 	h <- findOverlaps(d, unstrand(query_granges(aln)), type = "within")
 	d$subjects <- extractList(aln$subject_id, as(h, "List")) |> unique()
 	d
-}
-
-#' Remove the alignments included in another alignment of the same query on the same subject region
-#'
-#' @param aln Alignments, as read by read_blast6().
-#' @return The alignments that are not included in another one.
-filter_inner_alignments <- function(aln) {
-	S <- subject_granges(aln) |> unstrand()
-	w <- findOverlaps(S, S, type = "within")
-	w <- w[queryHits(w) != subjectHits(w)]
-	w <- w[aln$query_id[queryHits(w)] == aln$query_id[subjectHits(w)]]
-	filter(aln, !seq(nrow(aln)) %in% queryHits(w))
 }
 
 #' Polygons joining the aligned regions of the query and of the subject
@@ -103,7 +72,6 @@ ani_hclust <- function(ani) {
 	as.dist(100 - M) |>
 		hclust(method = "single")
 }
-
 
 # ---------------------------------------
 #  Plots
@@ -161,7 +129,6 @@ gg_alignment_polygons <- function(polygons, seqlen) {
 		ylab("") + xlab("Genomic position")
 }
 
-
 # ---------------------------------------
 #  Steps of the pipeline
 # ---------------------------------------
@@ -187,3 +154,4 @@ find_align_seq <- function(fasta, blast, out, min_len = 1000, min_frac = 0.8) {
 	}
 	writeXStringSet(align_seq, out)
 }
+
