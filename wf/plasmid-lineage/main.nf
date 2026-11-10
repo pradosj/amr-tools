@@ -50,7 +50,7 @@ workflow {
 			.collect()
 			.flatMap({ fs -> fs.isEmpty() ? [] : [record(meta: record(sample_id: params.name), fasta: fs.toList().toSorted())] })
 		)
-		def self_ch = BLASTN_SELF(fasta_ch.map({ r -> record(query: record(meta: r.meta, path: r.fasta), subject: null, args: blastn_args) }))
+		def self_ch = BLASTN_SELF(fasta_ch.map({ r -> record(query: record(meta: r.meta, fasta: r.fasta), subject: null, args: blastn_args) }))
 			.map({ r -> record(meta: r.meta_query, tsv: r.tsv) })
 		def align_seq_ch = FIND_ALIGN_SEQ(
 			fasta_ch.join(self_ch, by: 'meta').map({ r -> record(meta: r.meta, fasta: r.fasta, blast: r.tsv) }),

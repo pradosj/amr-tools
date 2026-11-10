@@ -104,7 +104,7 @@ workflow PLASMID_LINEAGE {
 		.collect()
 		.flatMap({ fs -> fs.isEmpty() ? [] : [record(meta: set_meta, fasta: fs.toList().toSorted())] })
 	)
-	def self_ch = BLASTN_SELF(fasta_ch.map({ r -> record(query: record(meta: r.meta, path: r.fasta), subject: null, args: blastn_args) }))
+	def self_ch = BLASTN_SELF(fasta_ch.map({ r -> record(query: record(meta: r.meta, fasta: r.fasta), subject: null, args: blastn_args) }))
 		.map({ r -> record(meta: r.meta_query, tsv: r.tsv) })
 
 	// AMR and plasmid typing annotations of each plasmid, without orgfinder (and so without cgemlst, whose scheme

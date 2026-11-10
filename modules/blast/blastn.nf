@@ -1,10 +1,10 @@
 nextflow.enable.types = true
 
-// Sequences to align, and their meta: a FASTA file, or (subject only) the folder of a BLAST database made by
+// Sequences to align, and their meta: fasta is a FASTA file, or (subject only) the folder of a BLAST database made by
 // MAKEBLASTDB (<folder>/db.*)
 record BlastSequences {
     meta: Record
-    path: Path
+    fasta: Path
 }
 
 // BLASTN of the query sequences against the subject sequences, or against themselves when subject is null (do not give
@@ -22,8 +22,8 @@ process BLASTN {
     record(query: BlastSequences, subject: BlastSequences?, args: String?)
 
     stage:
-    stageAs(query.path, 'query.fasta')
-    stageAs(subject?.path, 'subject')
+    stageAs(query.fasta, 'query.fasta')
+    stageAs(subject?.fasta, 'subject')
 
     output:
     record(

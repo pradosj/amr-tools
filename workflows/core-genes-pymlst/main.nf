@@ -114,8 +114,8 @@ workflow CORE_GENES_PYMLST {
 	  prokka_ch.combine(db_ch)
 	  .filter({ q, s -> q.meta != s.meta})
   	.map({ q, s -> record(
-  		query: record(meta: q.meta, path: q.ffn),
-  		subject: record(meta: s.meta, path: s.db),
+  		query: record(meta: q.meta, fasta: q.ffn),
+  		subject: record(meta: s.meta, fasta: s.db),
   		args: blastn_args ?: '-subject_besthit'
   	)})
   )
