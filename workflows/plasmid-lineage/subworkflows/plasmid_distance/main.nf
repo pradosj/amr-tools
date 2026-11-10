@@ -12,7 +12,7 @@ record SequenceSet {
 
 // SNP + structural variant distance of each pair of sequences (plasmid_distance() of assets/lib_plasmid_distance.R),
 // from their BLASTN against themselves
-process SNP_SV_DISTANCE {
+process SELF_BLASTN_DISTANCE_GRAPH {
 	container 'registry.gitlab.unige.ch/amr-genomics/rscript:v3'
 	label 'rscript'
 	memory 4.GB
@@ -62,7 +62,7 @@ workflow PLASMID_DISTANCE {
 		query: r,
 		args: blastn_args ?: '-perc_identity 70 -evalue 1e-3 -subject_besthit'
 	) }))
-	def distance_ch = SNP_SV_DISTANCE(
+	def distance_ch = SELF_BLASTN_DISTANCE_GRAPH(
 		blast_ch.map({ r -> record(meta: r.meta_query, blast: r.tsv) }),
 		file("${moduleDir}/assets")
 	)
