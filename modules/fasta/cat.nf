@@ -1,13 +1,19 @@
 nextflow.enable.types = true
 
-// A FASTA file to concatenate, and the id prefixing the names of its sequences
-record IdFasta {
-    path: Path
-    id: String
+// The meta of a FASTA file to concatenate: its id, when not null, prefixes the names of its sequences (other fields
+// allowed)
+record FastaMeta {
+	id: String?
 }
 
-// Concatenation of FASTA files (in the order of the list), each sequence name prefixed by the id of its file:
-// `>name ...` -> `>id:name ...`
+// A FASTA file to concatenate, and its meta
+record IdFasta {
+	meta: FastaMeta
+	fasta: Path
+}
+
+// Concatenation of FASTA files (in the order of the list), each sequence name prefixed by the id of the meta of its
+// file when not null: `>name ...` -> `>id:name ...`. A missing final newline is added.
 // Output: cat.fasta
 process FASTA_CAT {
     container 'docker.io/ubuntu:24.04'
@@ -20,13 +26,14 @@ process FASTA_CAT {
     record(meta: Record, fasta: List<IdFasta>)
 
     stage:
-    stageAs(fasta.collect({ f -> f.path }), 'in/?/*')    // files may share the same name
+    stageAs(fasta.collect({ f -> f.fasta }), 'in/?/*')    // files may share the same name
 
     output:
     record(meta: meta, fasta: file('cat.fasta'))
 
     script:
-    def cmds = fasta.collect({ f -> "awk -v id='${f.id}' '/^>/ { sub(/^>/, \">\" id \":\") } 1' '${f.path}'" }).join('\n')
+    def sep = ':'
+    def cmds = fasta.collect({ f -> "awk -v prefix='${f.meta.id?"${f.meta.id}${sep}":""}' '/^>/ { sub(/^>/, \">\" prefix) } 1' '${f.fasta}'"}).join('\n')
     """
     {
     ${cmds}
