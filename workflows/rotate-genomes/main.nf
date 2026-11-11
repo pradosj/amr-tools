@@ -110,9 +110,9 @@ workflow ROTATE_GENOMES {
 	)
 	def blast_ch = BLASTN_REFERENCE(
 		ref_fasta_ch
-			.join(genome_db_ch, by: 'meta')
-			.map({ r -> record(query: record(meta: r.meta, path: r.ref_fasta), subject_db: record(meta: r.meta, path: r.db), args: blastn_args) })
-	).map({ r -> record(meta: r.meta_query, blast6: r.blast6) })
+			.join(genome_db_ch.map({ d -> record(meta: d.meta, db: d) }), by: 'meta')
+			.map({ r -> record(query: record(meta: r.meta, path: r.ref_fasta), subject_db: r.db, args: blastn_args) })
+	).map({ r -> record(meta: r.meta_query, blast6: r.path) })
 	def hits_ch = input_ch
 		.filter({ r -> r.ref?.blast != null })
 		.map({ r -> record(meta: r.meta, blast6: r.ref.blast) })

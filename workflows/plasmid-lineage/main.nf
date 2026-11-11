@@ -108,10 +108,10 @@ workflow PLASMID_LINEAGE {
 	)
 	def self_ch = BLASTN_SELF(
 		fasta_ch
-			.join(MAKEBLASTDB(fasta_ch.map({ r -> record(fasta: record(meta: r.meta, path: r.fasta), args: null) })), by: 'meta')
-			.map({ r -> record(query: record(meta: r.meta, path: r.fasta), subject_db: record(meta: r.meta, path: r.db), args: blastn_args) })
+			.join(MAKEBLASTDB(fasta_ch.map({ r -> record(fasta: record(meta: r.meta, path: r.fasta), args: null) })).map({ d -> record(meta: d.meta, db: d) }), by: 'meta')
+			.map({ r -> record(query: record(meta: r.meta, path: r.fasta), subject_db: r.db, args: blastn_args) })
 	)
-		.map({ r -> record(meta: r.meta_query, blast6: r.blast6) })
+		.map({ r -> record(meta: r.meta_query, blast6: r.path) })
 
 	// AMR and plasmid typing annotations of each plasmid, without orgfinder (and so without cgemlst, whose scheme
 	// depends on the organism found by orgfinder)

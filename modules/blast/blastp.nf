@@ -22,7 +22,7 @@ process BLASTP {
     stageAs(subject_db.path, 'subject_db')
 
     output:
-    record(meta_query: query.meta, meta_subject: subject_db.meta, blast6: file('query_vs_subject.blastp'))
+    blast6 = record(meta_query: query.meta, meta_subject: subject_db.meta, path: file('query_vs_subject.blastp'))
 
     script:
     """

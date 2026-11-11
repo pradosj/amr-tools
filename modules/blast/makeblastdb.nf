@@ -17,7 +17,7 @@ process MAKEBLASTDB {
     record(fasta: MetaPath, dbtype: String?, args: String?)    // dbtype: nucl or prot (nucl by default)
 
     output:
-    record(meta: fasta.meta, db: file('blastdb'))
+    db: MetaPath = record(meta: fasta.meta, path: file('blastdb'))
 
     script:
     """

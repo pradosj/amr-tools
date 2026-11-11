@@ -93,13 +93,13 @@ workflow CORE_GENES_PYMLST {
 	// Call BLASTN to find all vs all hits, keeping only one best subject hit
 	def blastn_ch = BLASTN(all_genes_collection.combine(db: db_ch).map({ r -> record(
 		query: record(meta: r.meta, path: r.fasta),
-		subject_db: record(meta: r.db.meta, path: r.db.db),
+		subject_db: r.db,
 		args: blastn_args ?: '-subject_besthit'
 	)}))
 
 	// Core genes: clusters of the reciprocal hits, and their template sequences
 	def core_genes_ch = CORE_GENES(
-		blastn_ch.map({ r -> r.blast6 }),
+		blastn_ch.map({ r -> r.path }),
 		all_genes_collection.map({ r -> r.fasta }),
 		n_core,
 		file("${moduleDir}/assets")
