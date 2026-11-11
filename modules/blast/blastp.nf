@@ -1,15 +1,8 @@
 nextflow.enable.types = true
 
-// Query sequences to align (a FASTA file), and their meta
-record BlastSequences {
+record MetaPath {
     meta: Record?
-    fasta: Path
-}
-
-// BLAST database to align on (the folder made by MAKEBLASTDB with dbtype 'prot': <folder>/db.*), and its meta
-record BlastDb {
-    meta: Record?
-    db: Path
+    path: Path
 }
 
 // BLASTP of the query sequences against the database subject_db (for a self alignment, give the database of the query).
@@ -22,14 +15,14 @@ process BLASTP {
     time 2.h
 
     input:
-    record(query: BlastSequences, subject_db: BlastDb, args: String?)
+    record(query: MetaPath, subject_db: MetaPath, args: String?)
 
     stage:
     stageAs(query.fasta, 'query.fasta')
     stageAs(subject_db.db, 'subject_db')
 
     output:
-    record(meta_query: query.meta, meta_subject: subject_db.meta, blast6: file('query_vs_subject.blastp'))
+    blast6: record(meta_query: query.meta, meta_subject: subject_db.meta, path: file('query_vs_subject.blastp'))
 
     script:
     """

@@ -1,5 +1,10 @@
 nextflow.enable.types = true
 
+record MetaPath {
+    meta: Record?
+    path: Path
+}
+
 // BLAST database of the sequences of a FASTA file (dbtype: nucl, the default, or prot), for BLASTN/BLASTP `subject_db`
 // Output: the folder of the database files, blastdb/db.*
 process MAKEBLASTDB {
@@ -9,7 +14,7 @@ process MAKEBLASTDB {
     time 30.m
 
     input:
-    record(meta: Record?, fasta: Path, dbtype: String?, args: String?)    // dbtype: nucl (default, when null) or prot
+    record(fasta: MetaPath, dbtype: String?, args: String?)    // dbtype: nucl or prot (nucle by default)
 
     output:
     record(meta: meta, db: file('blastdb'))
