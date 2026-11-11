@@ -119,7 +119,7 @@ workflow AMR_ANNOT_ASSEMBLY {
 	// PROKKA annotations (disabled unless skip is explicitly false)
 	def prokka_ch = channel.empty()
 	if (opts.prokka?.skip == false) {
-		prokka_ch = PROKKA(assemblies.map({ r -> r + record(args: opts.prokka?.args) }))
+		prokka_ch = PROKKA(assemblies.map({ r -> record(fasta: record(meta: r.meta, path: r.fasta), args: opts.prokka?.args) }))
 	}
 
 	// Speciator (disabled unless skip is explicitly false)

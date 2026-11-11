@@ -1,5 +1,10 @@
 nextflow.enable.types = true
 
+record MetaPath {
+    meta: Record?
+    path: Path
+}
+
 process PROKKA {
     container "docker.io/staphb/prokka:1.14.6"
     memory 12.GB
@@ -7,11 +12,11 @@ process PROKKA {
     time 1.h
 
     input:
-    record(meta: Record, fasta: Path, args: String?)
+    record(fasta: MetaPath, args: String?)
 
     output:
     record(
-        meta: meta,
+        meta: fasta.meta,
         dir: file('prokka'),              // all the prokka outputs
         faa: file('prokka/prokka.faa'),   // proteins
         ffn: file('prokka/prokka.ffn'),   // nucleotide sequences of the genes
@@ -21,7 +26,7 @@ process PROKKA {
 
     script:
     """
-    prokka ${args ?: '--kingdom Bacteria'} --outdir 'prokka/' --cpus ${task.cpus} --prefix prokka ${fasta}
+    prokka ${args ?: '--kingdom Bacteria'} --outdir 'prokka/' --cpus ${task.cpus} --prefix prokka ${fasta.path}
     """
 
     stub:
