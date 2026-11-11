@@ -22,7 +22,7 @@ process BLASTN {
     stageAs(subject_db.path, 'subject_db')
 
     output:
-    blast6 = record(meta_query: query.meta, meta_subject: subject_db.meta, path: file('query_vs_subject.blastn'))
+    blast6 = record(meta: query.meta, meta_subject: subject_db.meta, path: file('query_vs_subject.blastn'))
 
     script:
     """

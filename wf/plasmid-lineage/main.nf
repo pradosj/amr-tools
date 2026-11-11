@@ -56,9 +56,8 @@ workflow {
 				.join(MAKEBLASTDB(fasta_ch.map({ r -> record(fasta: record(meta: r.meta, path: r.fasta), args: null) })).map({ d -> record(meta: d.meta, db: d) }), by: 'meta')
 				.map({ r -> record(query: record(meta: r.meta, path: r.fasta), subject_db: r.db, args: blastn_args) })
 		)
-			.map({ r -> record(meta: r.meta_query, blast6: r.path) })
 		def align_seq_ch = FIND_ALIGN_SEQ(
-			fasta_ch.join(self_ch, by: 'meta').map({ r -> record(meta: r.meta, fasta: r.fasta, blast: r.blast6) }),
+			fasta_ch.join(self_ch, by: 'meta').map({ r -> record(meta: r.meta, fasta: r.fasta, blast: r.path) }),
 			file("${projectDir}/workflows/plasmid-lineage/assets")
 		)
 		// the same reference for each plasmid
