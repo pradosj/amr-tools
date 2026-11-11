@@ -2,6 +2,7 @@ nextflow.enable.types = true
 
 include { PLASMID_LINEAGE; PlasmidLineageParams; Genome; CONCAT_FASTA; FIND_ALIGN_SEQ } from './workflows/plasmid-lineage/main.nf'
 include { ROTATE_GENOMES } from './workflows/rotate-genomes/main.nf'
+include { MAKEBLASTDB } from './modules/blast/makeblastdb'
 include { BLASTN as BLASTN_SELF } from './modules/blast/blastn'
 include { IDENTITY as COPY_FASTA } from './modules/identity/main.nf'
 include { AmrParams } from './workflows/plasmid-lineage/workflows/amr-annot/main.nf'
@@ -50,10 +51,14 @@ workflow {
 			.collect()
 			.flatMap({ fs -> fs.isEmpty() ? [] : [record(meta: record(sample_id: params.name), fasta: fs.toList().toSorted())] })
 		)
-		def self_ch = BLASTN_SELF(fasta_ch.map({ r -> record(query: record(meta: r.meta, fasta: r.fasta), subject: null, args: blastn_args) }))
-			.map({ r -> record(meta: r.meta_query, tsv: r.tsv) })
+		def self_ch = BLASTN_SELF(
+			fasta_ch
+				.join(MAKEBLASTDB(fasta_ch.map({ r -> record(meta: r.meta, fasta: r.fasta, dbtype: 'nucl', args: null) })), by: 'meta')
+				.map({ r -> record(query: record(meta: r.meta, fasta: r.fasta), subject_db: record(meta: r.meta, db: r.db), args: blastn_args) })
+		)
+			.map({ r -> record(meta: r.meta_query, blast6: r.blast6) })
 		def align_seq_ch = FIND_ALIGN_SEQ(
-			fasta_ch.join(self_ch, by: 'meta').map({ r -> record(meta: r.meta, fasta: r.fasta, blast: r.tsv) }),
+			fasta_ch.join(self_ch, by: 'meta').map({ r -> record(meta: r.meta, fasta: r.fasta, blast: r.blast6) }),
 			file("${projectDir}/workflows/plasmid-lineage/assets")
 		)
 		// the same reference for each plasmid

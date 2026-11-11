@@ -24,7 +24,7 @@ record GenomeGenes {
 record GenomePairHits {
 	index_query: Integer
 	index_subject: Integer
-	tsv: Path
+	blast6: Path
 }
 
 // Core genes from the reciprocal BLASTN hits of the genes of genomes and their sequences for pyMLST 
@@ -43,7 +43,7 @@ process CORE_GENES {
 	assets: Path    // the assets folder of the workflow (lib_io.R, lib_core_gene.R)
 
 	stage:
-	stageAs(hits.collect({ h -> h.tsv }), 'reciprocal_hits/?/*')
+	stageAs(hits.collect({ h -> h.blast6 }), 'reciprocal_hits/?/*')
 	stageAs(genomes.collect({ g -> g.ffn }), 'genes/?/*')
 	stageAs(assets, 'assets')
 
@@ -57,7 +57,7 @@ process CORE_GENES {
 	script:
 	// the staged files with the index of their genomes, given to R as JSON
 	def inputs = groovy.json.JsonOutput.toJson([
-		hits: hits.collect({ h -> [query_genome: h.index_query, subject_genome: h.index_subject, file: "${h.tsv}"] }),
+		hits: hits.collect({ h -> [query_genome: h.index_query, subject_genome: h.index_subject, file: "${h.blast6}"] }),
 		ffn: genomes.collect({ g -> [genome: g.index, file: "${g.ffn}"] })
 	])
 	"""
@@ -115,7 +115,7 @@ workflow CORE_GENES_PYMLST {
 	  .filter({ q, s -> q.meta != s.meta})
   	.map({ q, s -> record(
   		query: record(meta: q.meta, fasta: q.ffn),
-  		subject: record(meta: s.meta, fasta: s.db),
+  		subject_db: record(meta: s.meta, db: s.db),
   		args: blastn_args ?: '-subject_besthit'
   	)})
   )

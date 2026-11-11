@@ -1,5 +1,6 @@
 nextflow.enable.types = true
 
+include { MAKEBLASTDB } from './modules/blast/makeblastdb'
 include { BLASTN as BLASTN_REFERENCE } from './modules/blast/blastn'
 
 
@@ -23,7 +24,7 @@ record RotationReference {
 // Hits of the reference sequences (query) on a genome (subject), -outfmt "6 std qlen slen"
 record ReferenceHits {
 	meta: Record
-	tsv: Path
+	blast6: Path
 }
 
 
@@ -102,19 +103,24 @@ workflow ROTATE_GENOMES {
 				.map({ r -> record(meta: r.meta, sequence: r.ref.sequence) })
 		).map({ r -> record(meta: r.meta, ref_fasta: r.fasta) }))
 
-	def blast_ch = BLASTN_REFERENCE(
+	def genome_db_ch = MAKEBLASTDB(
 		input_ch
 			.join(ref_fasta_ch, by: 'meta')
-			.map({ r -> record(query: record(meta: r.meta, fasta: r.ref_fasta), subject: record(meta: r.meta, fasta: r.genome.fasta), args: blastn_args) })
-	).map({ r -> record(meta: r.meta_query, tsv: r.tsv) })
+			.map({ r -> record(meta: r.meta, fasta: r.genome.fasta, dbtype: 'nucl', args: null) })
+	)
+	def blast_ch = BLASTN_REFERENCE(
+		ref_fasta_ch
+			.join(genome_db_ch, by: 'meta')
+			.map({ r -> record(query: record(meta: r.meta, fasta: r.ref_fasta), subject_db: record(meta: r.meta, db: r.db), args: blastn_args) })
+	).map({ r -> record(meta: r.meta_query, blast6: r.blast6) })
 	def hits_ch = input_ch
 		.filter({ r -> r.ref?.blast != null })
-		.map({ r -> record(meta: r.meta, tsv: r.ref.blast) })
+		.map({ r -> record(meta: r.meta, blast6: r.ref.blast) })
 		.mix(blast_ch)
 
 	// One output per genome: the rotated genome, or the input genome when it has no reference or no hit
 	def genome_hits_ch = input_ch
-		.join(hits_ch.map({ r -> record(meta: r.meta, hits: r.tsv) }), by: 'meta', remainder: true)
+		.join(hits_ch.map({ r -> record(meta: r.meta, hits: r.blast6) }), by: 'meta', remainder: true)
 	def rotated_ch = ROTATE_FASTA(
 		genome_hits_ch
 			.filter({ r -> r.hits != null && !(r.hits as Path).isEmpty() })

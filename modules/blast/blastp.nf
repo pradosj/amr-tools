@@ -1,17 +1,20 @@
 nextflow.enable.types = true
 
-// Sequences to align, and their meta: fasta is a FASTA file, or (subject only) the folder of a BLAST database made by
-// MAKEBLASTDB (<folder>/db.*)
+// Query sequences to align (a FASTA file), and their meta
 record BlastSequences {
     meta: Record
     fasta: Path
 }
 
-// BLASTP of the query sequences against the subject sequences, or against themselves when subject is null (do not give
-// the same file as query and subject: it would be staged only once).
-// A subject FASTA is made into a BLAST database to run on several threads (-num_threads is ignored with -subject).
-// Output: tabular format with the query and subject lengths (-outfmt "6 std qlen slen"),
-// query.self.blastp (self alignment) or query_vs_subject.blastp (empty when the query is empty).
+// BLAST database to align on (the folder made by MAKEBLASTDB with dbtype 'prot': <folder>/db.*), and its meta
+record BlastDb {
+    meta: Record
+    db: Path
+}
+
+// BLASTP of the query sequences against the database subject_db (for a self alignment, give the database of the query).
+// Output: tabular format with the query and subject lengths (-outfmt "6 std qlen slen"), query_vs_subject.blastp
+// (empty when the query is empty).
 process BLASTP {
     container 'docker.io/ncbi/blast:2.13.0'
     memory 8.GB
@@ -19,34 +22,22 @@ process BLASTP {
     time 2.h
 
     input:
-    record(query: BlastSequences, subject: BlastSequences?, args: String?)
+    record(query: BlastSequences, subject_db: BlastDb, args: String?)
 
     stage:
     stageAs(query.fasta, 'query.fasta')
-    stageAs(subject?.fasta, 'subject')
+    stageAs(subject_db.db, 'subject_db')
 
     output:
-    record(
-        meta_query: query.meta,
-        meta_subject: subject ? subject.meta : query.meta,    // the query meta for a self alignment
-        tsv: file(subject ? 'query_vs_subject.blastp' : 'query.self.blastp')
-    )
+    record(meta_query: query.meta, meta_subject: subject_db.meta, blast6: file('query_vs_subject.blastp'))
 
     script:
-    def out = subject ? 'query_vs_subject.blastp' : 'query.self.blastp'
     """
-    db=blastdb/db
-    if [ -d subject ]; then
-        db=subject/db
-    else
-        makeblastdb -in ${subject ? 'subject' : 'query.fasta'} -dbtype prot -out "\$db"
-    fi
-    blastp ${args ?: ''} -num_threads ${task.cpus} -query query.fasta -db "\$db" -outfmt "6 std qlen slen" -out '${out}'
+    blastp ${args ?: ''} -num_threads ${task.cpus} -query query.fasta -db subject_db/db -outfmt "6 std qlen slen" -out query_vs_subject.blastp
     """
 
     stub:
-    def out = subject ? 'query_vs_subject.blastp' : 'query.self.blastp'
     """
-    touch '${out}'
+    touch query_vs_subject.blastp
     """
 }

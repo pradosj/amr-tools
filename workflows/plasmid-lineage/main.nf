@@ -1,5 +1,6 @@
 nextflow.enable.types = true
 
+include { MAKEBLASTDB } from './modules/blast/makeblastdb'
 include { BLASTN as BLASTN_SELF } from './modules/blast/blastn'
 include { QUARTO_RENDER         } from './modules/quarto/render'
 include { AMR_ANNOT; AmrParams  } from './workflows/amr-annot/main.nf'
@@ -105,8 +106,12 @@ workflow PLASMID_LINEAGE {
 		.collect()
 		.flatMap({ fs -> fs.isEmpty() ? [] : [record(meta: set_meta, fasta: fs.toList().toSorted())] })
 	)
-	def self_ch = BLASTN_SELF(fasta_ch.map({ r -> record(query: record(meta: r.meta, fasta: r.fasta), subject: null, args: blastn_args) }))
-		.map({ r -> record(meta: r.meta_query, tsv: r.tsv) })
+	def self_ch = BLASTN_SELF(
+		fasta_ch
+			.join(MAKEBLASTDB(fasta_ch.map({ r -> record(meta: r.meta, fasta: r.fasta, dbtype: 'nucl', args: null) })), by: 'meta')
+			.map({ r -> record(query: record(meta: r.meta, fasta: r.fasta), subject_db: record(meta: r.meta, db: r.db), args: blastn_args) })
+	)
+		.map({ r -> record(meta: r.meta_query, blast6: r.blast6) })
 
 	// AMR and plasmid typing annotations of each plasmid, without orgfinder (and so without cgemlst, whose scheme
 	// depends on the organism found by orgfinder)
@@ -122,7 +127,7 @@ workflow PLASMID_LINEAGE {
 	// HTML report of the set of plasmids, from its files gathered in a folder under explicit names
 	def report_data_ch = REPORT_FOLDER(
 		fasta_ch.map({ r -> record(meta: r.meta, plasmids: r.fasta) })
-			.join(self_ch.map({ r -> record(meta: r.meta, self_blast: r.tsv) }), by: 'meta')
+			.join(self_ch.map({ r -> record(meta: r.meta, self_blast: r.blast6) }), by: 'meta')
 			.combine(amr.multiqc)
 			.map({ r, m -> record(meta: r.meta, entries: [
 				record(name: 'plasmids.fasta', path: r.plasmids),

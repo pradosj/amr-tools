@@ -4,7 +4,7 @@ nextflow.enable.types = true
 record PairBlast {
 	meta_query: Record
 	meta_subject: Record
-	tsv: Path
+	blast6: Path
 }
 
 
@@ -27,7 +27,7 @@ process RECIPROCAL_HITS {
 	stageAs(assets, 'assets')
 
 	output:
-	record(meta_query: meta_query, meta_subject: meta_subject, tsv: file('reciprocal_hits.tsv'))
+	record(meta_query: meta_query, meta_subject: meta_subject, blast6: file('reciprocal_hits.tsv'))
 
 	script:
 	"""
@@ -59,9 +59,9 @@ workflow BLAST_RECIPROCAL_HITS {
 	main:
 	// Each ordered pair of genomes, with the BLAST of its two directions
 	def pairs_ch = blast
-		.map({ r -> record(pair: record(meta_query: r.meta_query, meta_subject: r.meta_subject), blast_fwd: r.tsv) })
+		.map({ r -> record(pair: record(meta_query: r.meta_query, meta_subject: r.meta_subject), blast_fwd: r.blast6) })
 		.join(
-			blast.map({ r -> record(pair: record(meta_query: r.meta_subject, meta_subject: r.meta_query), blast_rev: r.tsv) }),
+			blast.map({ r -> record(pair: record(meta_query: r.meta_subject, meta_subject: r.meta_query), blast_rev: r.blast6) }),
 			by: 'pair'
 		)
 		.map({ r -> record(
