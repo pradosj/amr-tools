@@ -1,4 +1,4 @@
-# Functions of ROTATE_GENOMES (sourced after lib_io.R, whose read_blast6() and read_fasta() it uses)
+# Functions of FASTA_ROTATE (sourced after lib_io.R, whose read_blast6() and read_fasta() it uses)
 
 suppressPackageStartupMessages({
 	library(GenomicRanges)

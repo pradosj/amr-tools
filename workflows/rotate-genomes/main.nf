@@ -2,6 +2,7 @@ nextflow.enable.types = true
 
 include { MAKEBLASTDB } from './modules/blast/makeblastdb'
 include { BLASTN as BLASTN_REFERENCE } from './modules/blast/blastn'
+include { FASTA_ROTATE } from './modules/fasta/rotate'
 
 record MetaPath {
     meta: Record?
@@ -14,41 +15,6 @@ record RotationReference {
 	meta: Record
 	fasta: Path?        // FASTA reference dataset, aligned with BLASTN on the genome
 	blast: Path?        // hits of the reference sequences (query) on the genome (subject), -outfmt "6 std qlen slen"
-}
-
-
-// Rotate the sequences to start at their best hit of the reference, on its strand
-process ROTATE_FASTA {
-	container 'registry.gitlab.unige.ch/amr-genomics/rscript:v3'
-	label 'rscript'
-	memory 8.GB
-	cpus 1
-	time 30.m
-
-	input:
-	record(fasta: MetaPath, blast6: MetaPath)
-	assets: Path    // the assets folder of the workflow (lib_io.R, lib_rotate_genomes.R)
-
-	stage:
-	stageAs(fasta.path, 'genome.fasta')
-	stageAs(blast6.path, 'reference_vs_genome.blastn')
-	stageAs(assets, 'assets')
-
-	output:
-	fasta: MetaPath = record(meta: fasta.meta, path: file('rotated.fasta'))
-
-	script:
-	"""
-	#!/usr/bin/env Rscript
-	source("assets/lib_io.R")
-	source("assets/lib_rotate_genomes.R")
-	rotate_fasta("genome.fasta", "reference_vs_genome.blastn", "rotated.fasta")
-	"""
-
-	stub:
-	"""
-	touch rotated.fasta
-	"""
 }
 
 
@@ -93,11 +59,10 @@ workflow ROTATE_GENOMES {
 	// One output per FASTA: the rotated FASTA, or the input FASTA when it has no reference or no hit
 	def genome_hits_ch = input_ch
 		.join(hits_ch.map({ r -> record(meta: r.meta, hits: r) }), by: 'meta', remainder: true)
-	def rotated_ch = ROTATE_FASTA(
+	def rotated_ch = FASTA_ROTATE(
 		genome_hits_ch
 			.filter({ r -> r.hits != null && !(r.hits.path as Path).isEmpty() })
-			.map({ r -> record(fasta: r.fasta, blast6: r.hits) }),
-		file("${moduleDir}/assets")
+			.map({ r -> record(fasta: r.fasta, blast6: r.hits) })
 	)
 		.mix(genome_hits_ch
 			.filter({ r -> r.hits == null || (r.hits.path as Path).isEmpty() })
