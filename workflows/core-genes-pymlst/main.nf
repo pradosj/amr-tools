@@ -86,14 +86,14 @@ workflow CORE_GENES_PYMLST {
 		.view()
 
 	// Concatenate them in a single FASTA
-	def all_genes_collection = FASTA_CAT(genes_collection.map({ rs -> record(fasta: rs) }))
+	def all_genes_collection = FASTA_CAT(genes_collection.map({ rs -> record(fasta: rs) })).fasta
 
   // Build BLAST database of all genes
-	def db_ch = MAKEBLASTDB(all_genes_collection.map({ r -> record(fasta: record(meta: r.meta, path: r.fasta)) }))
+	def db_ch = MAKEBLASTDB(all_genes_collection.map({ r -> record(fasta: r) }))
 	
 	// Call BLASTN to find all vs all hits, keeping only one best subject hit
 	def blastn_ch = BLASTN(all_genes_collection.combine(db: db_ch).map({ r -> record(
-		query: record(meta: r.meta, path: r.fasta),
+		query: record(meta: r.meta, path: r.path),
 		subject_db: r.db,
 		args: blastn_args ?: '-subject_besthit'
 	)}))
@@ -101,7 +101,7 @@ workflow CORE_GENES_PYMLST {
 	// Core genes: clusters of the reciprocal hits, and their template sequences
 	def core_genes_ch = CORE_GENES(
 		blastn_ch.map({ r -> r.path }),
-		all_genes_collection.map({ r -> r.fasta }),
+		all_genes_collection.map({ r -> r.path }),
 		n_core,
 		file("${moduleDir}/assets")
 	)

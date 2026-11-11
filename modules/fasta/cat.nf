@@ -30,7 +30,8 @@ process FASTA_CAT {
     stageAs(fasta.collect({ f -> f.fasta }), 'in/?/*')    // files may share the same name
 
     output:
-    record(meta: meta, fasta: file('cat.fasta'), tsv: file('cat.tsv'))
+    fasta = record(meta: meta, path: file('cat.fasta'))
+    tsv = record(meta: meta, path: file('cat.tsv'))
 
     script:
     def sep = ':'
