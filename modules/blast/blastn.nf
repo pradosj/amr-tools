@@ -2,13 +2,13 @@ nextflow.enable.types = true
 
 // Query sequences to align (a FASTA file), and their meta
 record BlastSequences {
-    meta: Record
+    meta: Record?
     fasta: Path
 }
 
 // BLAST database to align on (the folder made by MAKEBLASTDB with dbtype 'nucl': <folder>/db.*), and its meta
 record BlastDb {
-    meta: Record
+    meta: Record?
     db: Path
 }
 
