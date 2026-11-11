@@ -88,12 +88,12 @@ workflow CORE_GENES_PYMLST {
 	def all_genes_collection = FASTA_CAT(genes_collection.map({ rs -> record(fasta: rs) }))
 
   // Build BLAST database of all genes
-	def db_ch = MAKEBLASTDB(all_genes_collection)
+	def db_ch = MAKEBLASTDB(all_genes_collection.map({ r -> record(fasta: record(meta: r.meta, path: r.fasta), args: null) }))
 	
 	// Call BLASTN to find all vs all hits, keeping only one best subject hit
 	def blastn_ch = BLASTN(all_genes_collection.combine(db: db_ch).map({ r -> record(
-		query: record(meta: r.meta, fasta: r.fasta),
-		subject_db: record(meta: r.db.meta, db: r.db.db),
+		query: record(meta: r.meta, path: r.fasta),
+		subject_db: record(meta: r.db.meta, path: r.db.db),
 		args: blastn_args ?: '-subject_besthit'
 	)}))
 

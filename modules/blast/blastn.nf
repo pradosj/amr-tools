@@ -18,8 +18,8 @@ process BLASTN {
     record(query: MetaPath, subject_db: MetaPath, args: String?)
 
     stage:
-    stageAs(query.fasta, 'query.fasta')
-    stageAs(subject_db.db, 'subject_db')
+    stageAs(query.path, 'query.fasta')
+    stageAs(subject_db.path, 'subject_db')
 
     output:
     record(meta_query: query.meta, meta_subject: subject_db.meta, blast6: file('query_vs_subject.blastn'))

@@ -14,14 +14,14 @@ process MAKEBLASTDB {
     time 30.m
 
     input:
-    record(fasta: MetaPath, dbtype: String?, args: String?)    // dbtype: nucl or prot (nucle by default)
+    record(fasta: MetaPath, dbtype: String?, args: String?)    // dbtype: nucl or prot (nucl by default)
 
     output:
-    record(meta: meta, db: file('blastdb'))
+    record(meta: fasta.meta, db: file('blastdb'))
 
     script:
     """
-    makeblastdb ${args ?: ''} -in '${fasta}' -dbtype ${dbtype ?: 'nucl'} -out blastdb/db
+    makeblastdb ${args ?: ''} -in '${fasta.path}' -dbtype ${dbtype ?: 'nucl'} -out blastdb/db
     """
 
     stub:
