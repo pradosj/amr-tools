@@ -14,7 +14,8 @@ record IdFasta {
 
 // Concatenation of FASTA files (in the order of the list), each sequence name prefixed by the id of the meta of its
 // file when the meta and its id are not null or empty: `>name ...` -> `>id:name ...`. A missing final newline is added.
-// Output: cat.fasta
+// Output: cat.fasta, and cat.tsv, the new id of each sequence (columns meta_id (empty when null), old_seq_id,
+// new_seq_id; a sequence id is the first word of its header)
 process FASTA_CAT {
     container 'docker.io/ubuntu:24.04'
     label 'local'
@@ -29,12 +30,18 @@ process FASTA_CAT {
     stageAs(fasta.collect({ f -> f.fasta }), 'in/?/*')    // files may share the same name
 
     output:
-    record(meta: meta, fasta: file('cat.fasta'))
+    record(meta: meta, fasta: file('cat.fasta'), tsv: file('cat.tsv'))
 
     script:
     def sep = ':'
-    def cmds = fasta.collect({ f -> "awk -v prefix='${f.meta?.id ? "${f.meta.id}${sep}" : ""}' '/^>/ { sub(/^>/, \">\" prefix) } 1' '${f.fasta}'"}).join('\n')
+    def cmds = fasta.collect({ f -> """
+        awk -v id='${f.meta?.id ?: ''}' \
+            -v prefix='${f.meta?.id ? "${f.meta.id}${sep}" : ''}' \
+            '/^>/ { old = substr(\$1, 2); sub(/^>/, ">" prefix); print id "\\t" old "\\t" prefix old >> "cat.tsv" } 1' \
+            '${f.fasta}'
+    """}).join('\n')
     """
+    printf 'meta_id\\told_seq_id\\tnew_seq_id\\n' > cat.tsv
     {
     ${cmds}
     } > cat.fasta
@@ -42,6 +49,6 @@ process FASTA_CAT {
 
     stub:
     """
-    touch cat.fasta
+    touch cat.fasta cat.tsv
     """
 }
