@@ -3,6 +3,10 @@ nextflow.enable.types = true
 include { MAKEBLASTDB } from './modules/blast/makeblastdb'
 include { BLASTN as BLASTN_REFERENCE } from './modules/blast/blastn'
 
+record MetaPath {
+    meta: Record?
+    path: Path
+}
 
 // A genome: the sequences to rotate, or the rotated sequences (gff and info are not set on the rotated genomes)
 record Genome {
@@ -20,13 +24,6 @@ record RotationReference {
 	sequence: String?   // reference as a string: FASTA text (starting with ">"), or a sequence (written under the header ">reference")
 	blast: Path?        // hits of the reference sequences (query) on the genome (subject), -outfmt "6 std qlen slen"
 }
-
-// Hits of the reference sequences (query) on a genome (subject), -outfmt "6 std qlen slen"
-record ReferenceHits {
-	meta: Record
-	blast6: Path
-}
-
 
 // Reference given as a string: FASTA text (starting with '>'), or a sequence written under the header '>reference'
 process WRITE_FASTA {
@@ -49,16 +46,16 @@ process ROTATE_FASTA {
 	time 30.m
 
 	input:
-	record(meta: Record, fasta: Path, blast: Path)
+	record(fasta: MetaPath, blast6: MetaPath)
 	assets: Path    // the assets folder of the workflow (lib_io.R, lib_rotate_genomes.R)
 
 	stage:
-	stageAs(fasta, 'genome.fasta')
-	stageAs(blast, 'reference_vs_genome.blastn')
+	stageAs(fasta.path, 'genome.fasta')
+	stageAs(blast6.path, 'reference_vs_genome.blastn')
 	stageAs(assets, 'assets')
 
 	output:
-	record(meta: meta, fasta: file('rotated.fasta'))
+	fasta: MetaPath = record(meta: fasta.meta, path: file('rotated.fasta'))
 
 	script:
 	"""
@@ -112,27 +109,27 @@ workflow ROTATE_GENOMES {
 		ref_fasta_ch
 			.join(genome_db_ch.map({ d -> record(meta: d.meta, db: d) }), by: 'meta')
 			.map({ r -> record(query: record(meta: r.meta, path: r.ref_fasta), subject_db: r.db, args: blastn_args) })
-	).map({ r -> record(meta: r.meta_query, blast6: r.path) })
+	).map({ r -> record(meta: r.meta_query, path: r.path) })
 	def hits_ch = input_ch
 		.filter({ r -> r.ref?.blast != null })
-		.map({ r -> record(meta: r.meta, blast6: r.ref.blast) })
+		.map({ r -> record(meta: r.meta, path: r.ref.blast) })
 		.mix(blast_ch)
 
 	// One output per genome: the rotated genome, or the input genome when it has no reference or no hit
 	def genome_hits_ch = input_ch
-		.join(hits_ch.map({ r -> record(meta: r.meta, hits: r.blast6) }), by: 'meta', remainder: true)
+		.join(hits_ch.map({ r -> record(meta: r.meta, hits: r) }), by: 'meta', remainder: true)
 	def rotated_ch = ROTATE_FASTA(
 		genome_hits_ch
-			.filter({ r -> r.hits != null && !(r.hits as Path).isEmpty() })
-			.map({ r -> record(meta: r.meta, fasta: r.genome.fasta, blast: r.hits) }),
+			.filter({ r -> r.hits != null && !(r.hits.path as Path).isEmpty() })
+			.map({ r -> record(fasta: record(meta: r.meta, path: r.genome.fasta), blast6: r.hits) }),
 		file("${moduleDir}/assets")
 	)
-		.map({ r -> record(meta: r.meta, fasta: r.fasta, gff: null, info: null) })    // the rotation invalidates the coordinates
+		.map({ r -> record(meta: r.meta, fasta: r.path, gff: null, info: null) })    // the rotation invalidates the coordinates
 		.mix(genome_hits_ch
-			.filter({ r -> r.hits == null || (r.hits as Path).isEmpty() })
+			.filter({ r -> r.hits == null || (r.hits.path as Path).isEmpty() })
 			.map({ r -> r.genome }))
 
 	emit:
 	rotated: Channel<Genome>       = rotated_ch
-	hits: Channel<ReferenceHits>  = hits_ch
+	hits: Channel<MetaPath>   = hits_ch    // the hits of each genome (path: -outfmt "6 std qlen slen")
 }
