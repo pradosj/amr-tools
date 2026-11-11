@@ -16,17 +16,6 @@ params {
 }
 
 
-// The genome named by each index of CORE_GENES_PYMLST (e.g. the pyMLST strains): a TSV with columns index, genome
-process INDEX_TSV {
-	input:
-	text: String
-	output:
-	file('core_genes_index.tsv')
-	exec:    // native task: the file is written by Nextflow, without a shell script
-	task.workDir.resolve('core_genes_index.tsv').text = text
-}
-
-
 workflow {
 	main:
 	// Validate parameters and print summary of supplied ones
@@ -34,27 +23,21 @@ workflow {
 	log.info(paramsSummaryLog(workflow))
 
 	// the genomes: one per FASTA file, named by its sample_id (gzipped files are decompressed)
-	def genomes: Channel<Genome> = INPUT_FASTA(params.fasta).map({ r -> record(meta: r.meta, fasta: r.fasta) })
+	def genomes: Channel<Genome> = INPUT_FASTA(params.fasta).map({ r -> record(meta: record(id: r.meta.sample_id), fasta: r.fasta) })
 	def core = CORE_GENES_PYMLST(genomes, params.n_core, params.prokka_args, params.blastn_args, params.pymlst_args)
 
-	// the genome of each index naming the genomes in the core genes and pyMLST results
-	def index_tsv = INDEX_TSV(core.index.collect().map({ rs ->
-		"index\tgenome\n" + rs.toList().toSorted({ r -> r.index }).collect({ r -> "${r.index}\t${r.meta.sample_id}\n" }).join('')
-	}))
-
 	// HTML report: distance and allele heatmaps, minimum spanning tree of the pyMLST results
-	def report_ch = QUARTO_RENDER(core.pymlst.combine(index: index_tsv, genes: core.core_genes.map({ r -> r.core_genes })).map({ r -> record(
+	def report_ch = QUARTO_RENDER(core.pymlst.combine(genes: core.core_genes.map({ r -> r.core_genes })).map({ r -> record(
 		meta: r.meta,
 		template: file("${projectDir}/assets/core_genes_pymlst.qmd"),
 		extra: null,
-		files: [r.dir, r.index, r.genes],    // pymlst/ (distance.tsv, mlst.tsv), core_genes_index.tsv, core_genes.tsv
+		files: [r.dir, r.genes],    // pymlst/ (distance.tsv, mlst.tsv), core_genes.tsv
 		args: "-P 'n_core:${params.n_core}' -P 'input_dir:./'"    // the files are staged next to the template
 	) }))
 
 	publish:
 	prokka = core.prokka
 	core_genes = core.core_genes
-	index = index_tsv
 	pymlst = core.pymlst
 	report = report_ch
 }
@@ -62,7 +45,7 @@ workflow {
 
 output {
 	prokka: Channel<Record> {
-		path { r -> r.dir >> "core-genes-pymlst/prokka/${r.meta.sample_id}" }    // prokka of each genome
+		path { r -> r.dir >> "core-genes-pymlst/prokka/${r.meta.id}" }    // prokka of each genome
 	}
 	core_genes: Value<Record> {
 		path { r ->
@@ -70,9 +53,6 @@ output {
 			r.core_graph    >> 'core-genes-pymlst/core_graph.rds'
 			r.core_template	>> 'core-genes-pymlst/core_template.fasta'
 		}
-	}
-	index: Value<Path> {
-		path { f -> f >> 'core-genes-pymlst/core_genes_index.tsv' }    // the genome of each index (pyMLST strain, genome column of the tables)
 	}
 	pymlst: Value<Record> {
 		path { r ->

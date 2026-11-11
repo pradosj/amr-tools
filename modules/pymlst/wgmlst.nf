@@ -1,8 +1,14 @@
 nextflow.enable.types = true
 
-// Whole/core genome MLST with pyMLST: create a database from the genes of `template`, add each genome
-// (strain named by its position in `genomes`, from 1), then extract the distances, the MLST table and the
-// multiple sequence alignment. `args` are given to `wgMLST add` (e.g. --coverage 0.85 --identity 0.85).
+// The genes of a genome (FASTA file) to add to the pyMLST database, and its strain name
+record IdFasta {
+    path: Path
+    id: String
+}
+
+// Whole/core genome MLST with pyMLST: create a database from the genes of `template`, add each genome (strain named by
+// its id), then extract the distances, the MLST table and the multiple sequence alignment. `args` are given to
+// `wgMLST add` (e.g. --coverage 0.85 --identity 0.85).
 process PYMLST_WGMLST {
     container 'docker.io/staphb/pymlst:2.2.2'
     memory 8.GB
@@ -10,11 +16,11 @@ process PYMLST_WGMLST {
     time 2.h
 
     input:
-    record(meta: Record, template: Path, genomes: List<Path>, args: String?)
+    record(meta: Record, template: Path, genomes: List<IdFasta>, args: String?)
 
     stage:
     stageAs(template, 'template.fasta')
-    stageAs(genomes, 'genomes/?/*')    // genomes/<position>/<file>: the files may have the same name
+    stageAs(genomes.collect({ g -> g.path }), 'genomes/?/*')    // the files may have the same name
 
     output:
     record(
@@ -24,11 +30,10 @@ process PYMLST_WGMLST {
     )
 
     script:
+    def adds = genomes.collect({ g -> "wgMLST add ${args ?: ''} --strain '${g.id}' pymlst.db '${g.path}'" }).join('\n')
     """
     wgMLST create --force pymlst.db template.fasta
-    for d in genomes/*; do
-        wgMLST add ${args ?: ''} --strain "\$(basename "\$d")" pymlst.db "\$d"/*
-    done
+    ${adds}
     mkdir pymlst
     wgMLST distance --output pymlst/distance.tsv pymlst.db
     wgMLST mlst --output pymlst/mlst.tsv pymlst.db

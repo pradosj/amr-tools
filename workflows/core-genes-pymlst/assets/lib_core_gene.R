@@ -1,40 +1,26 @@
-
 source("assets/lib_io.R")
+source("assets/lib_blast.R")
 
 
 #' Core genes of genomes: clusters of reciprocal BLAST hits of the genes, with one gene in at least n_core genomes
 #'
-#' The genes are those of the reciprocal hits, each identified by `<genome>:<id>` (see gene_uid()) and linked to the
-#' genes of its reciprocal hits. The genomes are those of the hits (a genome is paired with itself).
+#' The genes are those of the FASTA file of the genes of all the genomes, each named `<genome>:<id>` (gene_uid), as
+#' written by FASTA_CAT with the id of the genome (which may contain ":", the gene id does not). Each gene is linked to the genes of other genomes of its
+#' reciprocal hits (the hits between genes of the same genome are ignored).
 #'
-#' @param hits A tibble of the reciprocal BLAST hits of the genes of each pair of genomes (itself included): the
-#'   genomes of the query (query_genome) and of the subject (subject_genome), and the file of their hits (file), as
-#'   written by the BLAST_RECIPROCAL_HITS subworkflow in the format of read_blast6().
+#' @param blast Self BLAST (BLASTN) of the genes FASTA file, in the format of read_blast6().
+#' @param genes_fasta FASTA file of the genes of all the genomes, named `<genome>:<id>`.
 #' @param n_core Minimum number of genomes sharing a core gene.
-#' @return A list of two tibbles: `genes` (gene_id, genome, ID, length of the gene, cluster_id, is_core) and
-#'   `clusters` (cluster_id, cluster_size, distinct_genome, mean_length, is_core), the clusters with more than one gene
-#'   per genome being removed.
-core_genes <- function(hits_tbl, ffn_tbl, n_core) {
-  library(tidygraph)
-  
-  # Read ffn_tbl to determine all gene ids, not only the ones in hits
-	genes <- ffn_tbl %>% 
-		mutate(gene_id = map(file,~{
-			seq <- read_fasta(.x)
-			names(seq)
-		})) %>% 
-		select(!file) %>% 
-		unnest(-1) %>% 
-		mutate(gene_uid = str_c(genome,":",gene_id)) %>% 
-		relocate(gene_uid)
-  
-  # Read hits
-  hits <- hits_tbl |>
-    mutate(blast = map(file, read_blast6)) |>
-    unnest(blast) |>
-  	left_join(select(genes,query_uid=gene_uid,query_id=gene_id,query_genome=genome),by=c("query_genome","query_id")) %>% 
-  	left_join(select(genes,subject_uid=gene_uid,subject_id=gene_id,subject_genome=genome),by=c("subject_genome","subject_id")) %>%
-    relocate(query_uid,subject_uid)
+#' @param min_cover Minimum coverage of the query gene by its alignment (see blast_reciprocal_hits()).
+#' @return A tbl_graph: the genes as nodes (gene_uid, genome, gene_id, cluster_id, score, is_core_template), a single
+#'   gene per genome and cluster (the most central), linked by their reciprocal hits.
+core_genes <- function(blast, genes_fasta, n_core, min_cover = 0.75) {
+	genes <- tibble(gene_uid = names(read_fasta(genes_fasta))) |>
+		mutate(genome = str_remove(gene_uid, ":[^:]*$"), gene_id = str_extract(gene_uid, "[^:]*$"))    # the genome id may contain ":"
+
+	# Reciprocal hits between genes of distinct genomes
+	hits <- blast_reciprocal_hits(blast, blast, min_cover = min_cover) |>
+		filter(str_remove(query_id, ":[^:]*$") != str_remove(subject_id, ":[^:]*$"))
   
 	# Clusters of genes linked by their reciprocal hits
 	g <- tbl_graph(

@@ -8,7 +8,7 @@ format:
     nav-buttons: []
 params:
   n_core: null
-  input_dir: "../results/core-genes-pymlst"    # folder of the pipeline outputs: core_genes_index.tsv, core_genes.tsv, pymlst/
+  input_dir: "../results/core-genes-pymlst"    # folder of the pipeline outputs: core_genes.tsv, pymlst/
 ---
 
 ```{r setup}
@@ -34,14 +34,7 @@ read_pymlst_distance <- function(f) {
 
 ```{r data}
 #| include: false
-genomes <- read_tsv(
-  fs::path(params$input_dir, "core_genes_index.tsv"),
-  col_types = cols(index = "c", genome = "c")
-) %>% dplyr::rename(genome_name=genome,genome=index)
-
 dist_mat <- read_pymlst_distance(fs::path(params$input_dir, "pymlst/distance.tsv"))
-rownames(dist_mat) <- genomes$genome_name[match(rownames(dist_mat),genomes$genome)]
-colnames(dist_mat) <- genomes$genome_name[match(colnames(dist_mat),genomes$genome)]
 if (nrow(dist_mat) > 2) {
 	dist_mat <- dist_mat[hclust(as.dist(dist_mat), method = "ward.D2")$order,]
 	dist_mat <- dist_mat[,rownames(dist_mat)]
@@ -50,8 +43,7 @@ if (nrow(dist_mat) > 2) {
 genes <- read_tsv(
   fs::path(params$input_dir, "core_genes.tsv"),
   col_types = cols(genome = "c", is_core_template = "l", .default = "c")
-) %>%
-  left_join(genomes)
+)
 ```
 
 # Summary
@@ -87,9 +79,8 @@ list(icon = "bullseye", color = "success", value = sum(genes$is_core_template))
 ```{r}
 #| title: "Genes of each genome"
 genes |>
-	group_by(Index=genome,Genome = genome_name) |>
+	group_by(Genome = genome) |>
 	summarise(Genes = n(), `Core template genes` = sum(is_core_template)) |>
-	arrange(as.integer(Index)) |>
 	knitr::kable()
 ```
 
@@ -100,7 +91,7 @@ genes |>
 - **Genes**: the genes of the clusters of reciprocal BLASTN hits (one gene per genome in each cluster).
 - **Core template genes**: one gene per core cluster, the template of the pyMLST database; counted in the genome of the
   gene.
-- The genomes are named in the pyMLST results by their index.
+- The genomes are named by their id.
 :::
 
 # Distances
@@ -155,24 +146,23 @@ visNetwork::visNetwork(mst_vis$nodes, mst_vis$edges, width = "100%") |>
 alleles <- read_tsv(fs::path(params$input_dir, "pymlst/mlst.tsv"), col_types = cols(.default = "c")) |>
 	rename(gene_uid = 1) |>
 	pivot_longer(-gene_uid, names_to = "genome", values_to = "allele") |>
-  left_join(genomes) |>
 	group_by(gene_uid) |>
 	mutate(rank = match(allele, names(sort(table(allele), decreasing = TRUE)))) |>    # NA for a missing gene
 	ungroup() %>%
   mutate(
     gene_uid = as_factor(gene_uid),
-    genome_name = fct_relevel(genome_name, rownames(dist_mat))
+    genome = fct_relevel(genome, rownames(dist_mat))
   )
 
 local({
   z_mat <- alleles %>%
-    pivot_wider(id_cols=genome_name,names_from = gene_uid,values_from = rank) %>%
-    column_to_rownames("genome_name") %>%
+    pivot_wider(id_cols=genome,names_from = gene_uid,values_from = rank) %>%
+    column_to_rownames("genome") %>%
     as.matrix()
   text_mat <- alleles %>%
-    mutate(text = sprintf("gene: %s<br>genome: %s<br>allele: %s", gene_uid, genome_name, replace_na(allele, "missing"))) %>%
-    pivot_wider(id_cols=genome_name,names_from = gene_uid,values_from = text) %>%
-    column_to_rownames("genome_name") %>%
+    mutate(text = sprintf("gene: %s<br>genome: %s<br>allele: %s", gene_uid, genome, replace_na(allele, "missing"))) %>%
+    pivot_wider(id_cols=genome,names_from = gene_uid,values_from = text) %>%
+    column_to_rownames("genome") %>%
     as.matrix()
   plot_ly(
   	x = colnames(z_mat), y = rownames(z_mat), z = z_mat, text = text_mat, hoverinfo = "text",
