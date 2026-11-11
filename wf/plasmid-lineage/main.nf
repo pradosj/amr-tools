@@ -62,11 +62,11 @@ workflow {
 		)
 		// the same reference for each plasmid
 		rotated_ch = ROTATE_GENOMES(
-			plasmids,
+			plasmids.map({ p -> record(meta: p.meta, path: p.fasta) }),
 			plasmids.combine(align_seq_ch).map({ p, a -> record(meta: p.meta, fasta: a.fasta, blast: null) }),
 			blastn_args
-		).rotated
-		lineage_input_ch = rotated_ch.map({ r -> record(meta: r.meta, fasta: r.fasta) })
+		).rotated_fasta
+		lineage_input_ch = rotated_ch.map({ r -> record(meta: r.meta, fasta: r.path) })
 	}
 
 	def dbs = DATABASES(params.db, (params.amr?.amrfinderplus?.skip ? [] : [Db.AMRFINDERPLUS]).toSet())    // no orgfinder in PLASMID_LINEAGE
@@ -85,7 +85,7 @@ output {
 		path { r -> r.dir >> "db/${r.name}" }    // databases built by this run: use --db=<output dir>/db in the next runs
 	}
 	rotated: Channel<Record> {
-		path { r -> r.fasta >> "${params.name}/rotated/${r.meta.sample_id}.fasta" }    // each rotated plasmid
+		path { r -> r.path >> "${params.name}/rotated/${r.meta.sample_id}.fasta" }    // each rotated plasmid
 	}
 	report: Channel<Record> {
 		path { r -> r.html >> "${r.meta.sample_id}/report.html" }
