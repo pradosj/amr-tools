@@ -9,7 +9,7 @@ record FastaMeta {
 // A FASTA file to concatenate, and its meta
 record IdFasta {
 	meta: FastaMeta?    // null: no prefix
-	fasta: Path
+	path: Path
 }
 
 // Concatenation of FASTA files (in the order of the list), each sequence name prefixed by the id of the meta of its
@@ -27,7 +27,7 @@ process FASTA_CAT {
     record(meta: Record?, fasta: List<IdFasta>)
 
     stage:
-    stageAs(fasta.collect({ f -> f.fasta }), 'in/?/*')    // files may share the same name
+    stageAs(fasta.collect({ f -> f.path }), 'in/?/*')    // files may share the same name
 
     output:
     fasta = record(meta: meta, path: file('cat.fasta'))
@@ -39,7 +39,7 @@ process FASTA_CAT {
         awk -v id='${f.meta?.id ?: ''}' \
             -v prefix='${f.meta?.id ? "${f.meta.id}${sep}" : ''}' \
             '/^>/ { old = substr(\$1, 2); sub(/^>/, ">" prefix); print id "\\t" old "\\t" prefix old >> "cat.tsv" } 1' \
-            '${f.fasta}'
+            '${f.path}'
     """}).join('\n')
     """
     printf 'meta_id\\told_seq_id\\tnew_seq_id\\n' > cat.tsv

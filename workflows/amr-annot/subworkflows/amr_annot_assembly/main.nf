@@ -119,7 +119,7 @@ workflow AMR_ANNOT_ASSEMBLY {
 	// PROKKA annotations (disabled unless skip is explicitly false)
 	def prokka_ch = channel.empty()
 	if (opts.prokka?.skip == false) {
-		prokka_ch = PROKKA(assemblies.map({ r -> record(fasta: record(meta: r.meta, path: r.fasta), args: opts.prokka?.args) }))
+		prokka_ch = PROKKA(assemblies.map({ r -> record(meta: r.meta, path: r.fasta, args: opts.prokka?.args) })).dir
 	}
 
 	// Speciator (disabled unless skip is explicitly false)
@@ -130,7 +130,7 @@ workflow AMR_ANNOT_ASSEMBLY {
 
 	def MLST_ch = channel.empty()
 	if (!opts.MLST?.skip) {
-		MLST_ch = MLST(assemblies.map({ r -> r + record(args: opts.MLST?.args) }))
+		MLST_ch = MLST(assemblies.map({ r -> record(meta: r.meta, path: r.fasta, args: opts.MLST?.args) }))
 	}
 
 	// Run orgfinder to auto detect organism
@@ -166,8 +166,8 @@ workflow AMR_ANNOT_ASSEMBLY {
 			.join(plasmidfinder_ch.map({ r -> record(meta: r.meta, plasmidfinder: r.dir) }), by: 'meta', remainder: true)
 			.join(cgemlst_ch.map({ r -> record(meta: r.meta, cgemlst: r.dir) }), by: 'meta', remainder: true)
 			.join(mobtyper_ch.map({ r -> record(meta: r.meta, mobtyper: r.tsv) }), by: 'meta', remainder: true)
-			.join(MLST_ch.map({ r -> record(meta: r.meta, MLST: r.txt) }), by: 'meta', remainder: true)
-			.join(prokka_ch.map({ r -> record(meta: r.meta, prokka: r.dir) }), by: 'meta', remainder: true),
+			.join(MLST_ch.map({ r -> record(meta: r.meta, MLST: r.path) }), by: 'meta', remainder: true)
+			.join(prokka_ch.map({ r -> record(meta: r.meta, prokka: r.path) }), by: 'meta', remainder: true),
 		file("${moduleDir}/assets")
 	)
 	def combined_ch = assemblies
@@ -182,8 +182,8 @@ workflow AMR_ANNOT_ASSEMBLY {
 	resfinder: Channel<Record>     = resfinder_ch       // records with fields meta, dir
 	mobtyper: Channel<Record>      = mobtyper_ch        // records with fields meta, tsv
 	plasmidfinder: Channel<Record> = plasmidfinder_ch   // records with fields meta, dir
-	prokka: Channel<Record>        = prokka_ch          // records with fields meta, dir
+	prokka: Channel<Record>        = prokka_ch          // records with fields meta, path (the prokka folder)
 	speciator: Channel<Record>     = speciator_ch       // records with fields meta, dir
 	cgemlst: Channel<Record>       = cgemlst_ch         // records with fields meta, dir
-	MLST: Channel<Record>          = MLST_ch            // records with fields meta, txt
+	MLST: Channel<Record>          = MLST_ch            // records with fields meta, path (MLST.txt)
 }

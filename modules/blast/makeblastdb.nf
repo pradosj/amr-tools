@@ -12,7 +12,7 @@ process MAKEBLASTDB {
     record(meta: Record?, path: Path, dbtype: String?, args: String?)    // dbtype: nucl or prot (nucl by default)
 
     output:
-    db: MetaPath = record(meta: meta, path: file('blastdb'))
+    db = record(meta: meta, path: file('blastdb'))
 
     script:
     """

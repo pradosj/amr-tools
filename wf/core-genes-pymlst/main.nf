@@ -45,7 +45,7 @@ workflow {
 
 output {
 	prokka: Channel<Record> {
-		path { r -> r.dir >> "core-genes-pymlst/prokka/${r.meta.id}" }    // prokka of each genome
+		path { r -> r.path >> "core-genes-pymlst/prokka/${r.meta.id}" }    // prokka of each genome
 	}
 	core_genes: Value<Record> {
 		path { r ->

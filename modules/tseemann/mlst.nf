@@ -10,7 +10,7 @@ process MLST {
     record(meta: Record?, path: Path, args: String?)
 
     output:
-    txt: record(meta: meta,path: file('MLST.txt'))
+    txt = record(meta: meta, path: file('MLST.txt'))
 
     script:
     """

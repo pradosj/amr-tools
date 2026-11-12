@@ -44,12 +44,12 @@ workflow ROTATE_GENOMES {
 	def genome_db_ch = MAKEBLASTDB(
 		input_ch
 			.join(ref_fasta_ch, by: 'meta')
-			.map({ r -> record(fasta: r.fasta, args: null) })
+			.map({ r -> r.fasta })
 	)
 	def blast_ch = BLASTN_REFERENCE(
 		ref_fasta_ch
 			.join(genome_db_ch.map({ d -> record(meta: d.meta, db: d) }), by: 'meta')
-			.map({ r -> record(query: record(meta: r.meta, path: r.path), subject_db: r.db, args: blastn_args) })
+			.map({ r -> record(meta: r.meta, path: r.path, subject_db: r.db, args: blastn_args) })
 	)
 	def hits_ch = input_ch
 		.filter({ r -> r.ref?.blast != null })
