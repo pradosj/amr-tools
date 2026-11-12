@@ -15,14 +15,14 @@ process BLASTN {
     time 2.h
 
     input:
-    record(query: MetaPath, subject_db: MetaPath, args: String?)
+    record(meta: Record?, path: Path, subject_db: MetaPath, args: String?)
 
     stage:
-    stageAs(query.path, 'query.fasta')
+    stageAs(path, 'query.fasta')
     stageAs(subject_db.path, 'subject_db')
 
     output:
-    blast6 = record(meta: query.meta, meta_subject: subject_db.meta, path: file('query_vs_subject.blastn'))
+    blast6 = record(meta: meta, meta_subject: subject_db.meta, path: file('query_vs_subject.blastn'))
 
     script:
     """

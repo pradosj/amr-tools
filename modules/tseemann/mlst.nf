@@ -7,17 +7,14 @@ process MLST {
     time 30.m
 
     input:
-    record(meta: Record, fasta: Path, args: String?)
+    record(meta: Record?, path: Path, args: String?)
 
     output:
-    record(
-        meta: meta,
-        txt: file('MLST.txt')
-    )
+    txt: record(meta: meta,path: file('MLST.txt'))
 
     script:
     """
-    mlst --threads=${task.cpus} ${args ?: ''} ${fasta} > MLST.txt
+    mlst --threads=${task.cpus} ${args ?: ''} ${path} > MLST.txt
     """
 
     stub:
