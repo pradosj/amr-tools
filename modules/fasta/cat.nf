@@ -1,14 +1,11 @@
 nextflow.enable.types = true
 
-// The meta of a FASTA file to concatenate: its id, when not null or empty, prefixes the names of its sequences (other fields
-// allowed)
 record FastaMeta {
 	id: String?
 }
 
-// A FASTA file to concatenate, and its meta
 record IdFasta {
-	meta: FastaMeta?    // null: no prefix
+	meta: FastaMeta?
 	path: Path
 }
 
