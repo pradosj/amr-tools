@@ -214,7 +214,7 @@ workflow {
 		.mix(DECOMPRESS_ASSEMBLY_FASTA(
 			given_ch
 				.filter({ r -> r.fasta.name.endsWith('.gz') })
-				.map({ r -> record(meta: r.meta, gz: r.fasta) })
+				.map({ r -> record(meta: r.meta, path: r.fasta) })
 		).map({ r -> record(meta: r.meta, fasta: r.file) }))
 
 	// Assemblies are identified by a meta record holding both sample_id and assembler_name

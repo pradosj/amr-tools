@@ -23,7 +23,7 @@ workflow {
 	log.info(paramsSummaryLog(workflow))
 
 	// the genomes: one per FASTA file, named by its sample_id (gzipped files are decompressed)
-	def genomes: Channel<IdPath> = INPUT_FASTA(params.fasta).map({ r -> record(meta: record(id: r.meta.sample_id), path: r.fasta) })
+	def genomes: Channel<IdPath> = INPUT_FASTA(params.fasta)
 	def core = CORE_GENES_PYMLST(genomes, params.n_core, params.prokka_args, params.blastn_args, params.pymlst_args)
 
 	// HTML report: distance and allele heatmaps, minimum spanning tree of the pyMLST results

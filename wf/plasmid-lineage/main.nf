@@ -38,7 +38,7 @@ workflow {
 
 	// the plasmids: one per FASTA file, named by its sample_id (gzipped files are decompressed), copied in the work
 	// directory (to be published when they are not rotated)
-	def plasmids: Channel<Genome> = COPY_FASTA(INPUT_FASTA(params.fasta).map({ r -> record(meta: r.meta, file1: r.fasta, file2: null) }))
+	def plasmids: Channel<Genome> = COPY_FASTA(INPUT_FASTA(params.fasta).map({ r -> record(meta: record(sample_id: r.meta.id), file1: r.path, file2: null) }))
 		.map({ r -> record(meta: r.meta, fasta: r.file1) })
 	// Rotate each plasmid to start on the longest region shared by most of them, on the strand of this region (unless
 	// --no_rotation)

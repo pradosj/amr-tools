@@ -9,18 +9,18 @@ process GZIP_DECOMPRESS {
     time 30.m
 
     input:
-    record(meta: Record, gz: Path)
+    record(meta: Record?, path: Path)
 
     output:
-    record(meta: meta, file: file(gz.baseName))
+    record(meta: meta, file: file(path.baseName))
 
     script:
     """
-    zcat '${gz}' > '${gz.baseName}'
+    zcat '${path}' > '${path.baseName}'
     """
 
     stub:
     """
-    touch '${gz.baseName}'
+    touch '${path.baseName}'
     """
 }

@@ -93,9 +93,9 @@ def patternList(patterns: String) -> List<String> {
 // A sequence of a FASTA file to split (its FASTA entry) written to its own FASTA file
 process SPLIT_MULTIFASTA {
 	input:
-	record(meta: Record, text: String)
+	record(meta: IdMeta, text: String)
 	output:
-	record(meta: meta, fasta: file('sequence.fasta'))
+	record(meta: meta, path: file('sequence.fasta'))
 	exec:    // native task: the file is written by Nextflow, without a shell script
 	task.workDir.resolve('sequence.fasta').text = text
 }
@@ -166,9 +166,9 @@ workflow INPUT_READS {
 }
 
 // FASTA files of a comma-separated list of paths, glob patterns and URLs: gzipped files are decompressed.
-// Genome records: meta is record(sample_id) (see fastaSampleId()), gff and info are not set.
+// IdPath records: meta is record(id), the id being the sample id of the file (see fastaSampleId()).
 // A pattern suffixed by `!` (e.g. `plasmids.fasta!`) gives files to split: each of their sequences is a genome, written
-// to its own FASTA file, with sample_id `<sample_id of the file>:<sequence id>`.
+// to its own FASTA file, with id `<sample id of the file>:<sequence id>`.
 workflow INPUT_FASTA {
 	take:
 	fasta: String?
@@ -180,23 +180,22 @@ workflow INPUT_FASTA {
 		def split_ch = SPLIT_MULTIFASTA(
 			channel.fromList(pathList(ps.findAll({ p -> p.endsWith('!') }).collect({ p -> p.substring(0, p.length() - 1) }).join(',')))
 				.flatMap({ f -> f.splitFasta(record: [id: true, text: true]).collect({ s ->     // .gz files are read decompressed
-					record(meta: record(sample_id: "${fastaSampleId(f.name)}:${s.id}"), text: s.text)
+					record(meta: record(id: "${fastaSampleId(f.name)}:${s.id}"), text: s.text)
 				}) })
 		)
-		def in_ch: Channel<Genome> = channel.fromList(pathList(ps.findAll({ p -> !p.endsWith('!') }).join(',')))
-			.map({ f -> record(meta: record(sample_id: fastaSampleId(f.name)), fasta: f) })
+		def in_ch: Channel<IdPath> = channel.fromList(pathList(ps.findAll({ p -> !p.endsWith('!') }).join(',')))
+			.map({ f -> record(meta: record(id: fastaSampleId(f.name)), path: f) })
 		fasta_ch = in_ch
-			.filter({ r -> !r.fasta.name.endsWith('.gz') })
+			.filter({ r -> !r.path.name.endsWith('.gz') })
 			.mix(GZIP_DECOMPRESS(
 				in_ch
-					.filter({ r -> r.fasta.name.endsWith('.gz') })
-					.map({ r -> record(meta: r.meta, gz: r.fasta) })
-			).map({ r -> record(meta: r.meta, fasta: r.file) }))
+					.filter({ r -> r.path.name.endsWith('.gz') })
+			).map({ r -> asIdPath(record(meta: r.meta, path: r.file)) }))
 			.mix(split_ch)
 	}
 
 	emit:
-	fasta_files: Channel<Genome> = fasta_ch
+	fasta_files: Channel<IdPath> = fasta_ch
 }
 
 // Assemblies FASTA files
@@ -205,7 +204,7 @@ workflow INPUT_ASSEMBLIES {
 	fasta: String?
 
 	main:
-	def asm_ch = INPUT_FASTA(fasta).map({ r -> record(meta: r.meta + record(assembler_name: 'none'), fasta: r.fasta) })
+	def asm_ch = INPUT_FASTA(fasta).map({ r -> record(meta: record(sample_id: r.meta.id, assembler_name: 'none'), fasta: r.path) })
 
 	emit:
 	assemblies: Channel<Genome> = asm_ch

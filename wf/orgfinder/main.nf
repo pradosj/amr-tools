@@ -30,14 +30,14 @@ workflow {
 	if (params.ref?.db != null) {
 		db = channel.value(record(dir: file(params.ref.db), fasta: files("${params.ref.db}/fna/*.fna").toSorted(), tsv: file("${params.ref.db}/db.tsv")))
 	} else if (params.ref?.fasta != null) {
-		db = INPUT_REF_FASTA(params.ref.fasta).map({ r -> r.fasta as Path }).collect().map({ fs -> record(fasta: fs.toList().toSorted({ f -> f.name })) })
+		db = INPUT_REF_FASTA(params.ref.fasta).map({ r -> r.path }).collect().map({ fs -> record(fasta: fs.toList().toSorted({ f -> f.name })) })
 	} else {
 		db = ORG_DB_BUILD()
 		db_dir_ch = channel.empty().mix(db.map({ d -> d.dir }))
 	}
 
 	// Genomes to identify
-	def query_ch = INPUT_QUERY_FASTA(params.query)    // gzipped files are decompressed
+	def query_ch = INPUT_QUERY_FASTA(params.query).map({ r -> record(meta: record(sample_id: r.meta.id), fasta: r.path) })    // gzipped files are decompressed
 
 	def orgfinder = ORGFINDER(db, query_ch, params.fastani_args)
 

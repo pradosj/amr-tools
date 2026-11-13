@@ -90,11 +90,11 @@ workflow {
 	// Reference and queries: gzipped files are decompressed
 	def ref: Value<Path> = channel.value(params.ref)
 	if (params.ref.name.endsWith('.gz')) {
-		ref = GZIP_DECOMPRESS(channel.value(record(meta: record(name: 'reference'), gz: params.ref))).map({ r -> r.file })
+		ref = GZIP_DECOMPRESS(channel.value(record(meta: record(name: 'reference'), path: params.ref))).map({ r -> r.file })
 	}
-	def query_ch = INPUT_FASTA(params.query)
+	def query_ch: Channel<Comparison> = INPUT_FASTA(params.query)
 		.combine(ref: ref)
-		.map({ r -> record(meta: r.meta, ref: r.ref, query: r.fasta) })
+		.map({ r -> record(meta: record(sample_id: r.meta.id), ref: r.ref, query: r.path) })
 
 	def rotated_query_ch = channel.empty()
 	if (!params.no_query_rotation) {
