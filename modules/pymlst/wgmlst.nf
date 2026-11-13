@@ -9,6 +9,11 @@ record IdFasta {
 	path: Path
 }
 
+record MetaPath {
+	meta: Record?
+	path: Path
+}
+
 process PYMLST_WGMLST {
     container 'docker.io/staphb/pymlst:2.2.2'
     memory 8.GB
@@ -16,10 +21,10 @@ process PYMLST_WGMLST {
     time 2.h
 
     input:
-    record(meta: Record?, template: Path, genomes: List<IdFasta>, args: String?)
+    record(meta: Record?, template: MetaPath, genomes: List<IdFasta>, args: String?)
 
     stage:
-    stageAs(template, 'template.fasta')
+    stageAs(template.path, 'template.fasta')
     stageAs(genomes.collect({ g -> g.path }), 'genomes/?/*')
 
     output:

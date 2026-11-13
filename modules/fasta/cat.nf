@@ -21,10 +21,10 @@ process FASTA_CAT {
     time 30.m
 
     input:
-    record(meta: Record?, fasta: List<IdFasta>)
+    record(meta: Record?, genomes: List<IdFasta>)
 
     stage:
-    stageAs(fasta.collect({ f -> f.path }), 'in/?/*')    // files may share the same name
+    stageAs(genomes.collect({ f -> f.path }), 'in/?/*')    // files may share the same name
 
     output:
     fasta = record(meta: meta, path: file('cat.fasta'))
@@ -32,7 +32,7 @@ process FASTA_CAT {
 
     script:
     def sep = ':'
-    def cmds = fasta.collect({ f -> """
+    def cmds = genomes.collect({ f -> """
         awk -v id='${f.meta?.id ?: ''}' \
             -v prefix='${f.meta?.id ? "${f.meta.id}${sep}" : ''}' \
             '/^>/ { old = substr(\$1, 2); sub(/^>/, ">" prefix); print id "\\t" old "\\t" prefix old >> "cat.tsv" } 1' \
