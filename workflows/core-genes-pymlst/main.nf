@@ -15,6 +15,11 @@ record IdFasta {
 	path: Path
 }
 
+record MetaPath {
+	meta: Record?
+	path: Path
+}
+
 // Core genes from the reciprocal BLASTN hits of the genes of all the genomes, and their sequences for pyMLST.
 // Each gene is identified by `<id of its genome>:<prokka id>` (gene_uid), the name of its sequence in genes.
 process CORE_GENES {
@@ -25,12 +30,12 @@ process CORE_GENES {
 	time 30.m
 
 	input:
-	record(meta: Record?, blast6: Path, fasta: Path, n_core: Integer)
+	record(meta: Record?, blast6: MetaPath, fasta: MetaPath, n_core: Integer)
 	assets: Path
 
 	stage:
-	stageAs(blast6, 'genes.self.blastn')
-	stageAs(fasta, 'genes.fasta')
+	stageAs(blast6.path, 'genes.self.blastn')
+	stageAs(fasta.path, 'genes.fasta')
 	stageAs(assets, 'assets')
 
 	output:
@@ -82,24 +87,24 @@ workflow CORE_GENES_PYMLST {
 		.map({ rs -> record(fasta: rs.toList().toSorted({ r -> r.meta.id })) })
 
 	// Concatenate them in a single FASTA
-	def all_genes_collection = FASTA_CAT(ffns).fasta
+	def genes = FASTA_CAT(ffns).fasta
 
 	// Build BLAST database of all genes
-	def db_ch = MAKEBLASTDB(all_genes_collection)
+	def db_ch = MAKEBLASTDB(genes)
 	
 	// Call BLASTN to find all vs all hits, keeping only one best subject hit
-	def blastn_ch = BLASTN(all_genes_collection.combine(subject_db: db_ch, args: blastn_args ?: '-subject_besthit'))
+	def blastn_ch = BLASTN(genes.combine(subject_db: db_ch, args: blastn_args ?: '-subject_besthit'))
 
 	// Core genes: clusters of the reciprocal hits, and their template sequences
 	def core_genes_ch = CORE_GENES(
-		blastn_ch.combine(genes: all_genes_collection).map({ r -> record(meta: r.meta, blast6: r.path, fasta: r.genes.path, n_core: n_core) }),
+		channel.value(record(n_core: n_core)).combine(blast6: blastn_ch, fasta: genes),
 		file("${moduleDir}/assets")
 	)
 
 	// pyMLST typing of the core genes: the strains are the ids of the genomes
 	def pymlst_ch = PYMLST_WGMLST(core_genes_ch.core_template.combine(genomes: ffns).map({ r -> record(
 		template: r.path,
-		genomes: r.genomes.fasta,
+		genomes: r.genomes.fasta.collect({ g -> record(meta: record(id: g.meta.id), path: g.path) }).toList(),
 		args: pymlst_args ?: '--coverage 0.85 --identity 0.85'
 	) }))
 
