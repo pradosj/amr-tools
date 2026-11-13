@@ -8,14 +8,14 @@ process FASTANI {
     time 15.m
 
     input:
-    record(meta: Record, query: List<Path>, refs: List<Path>, args: String?)
+    record(meta: Record?, query: List<Path>, refs: List<Path>, args: String?)
 
     stage:
     stageAs(query, 'query/*')
     stageAs(refs, 'ref/*')
 
     output:
-    record(meta: meta, tsv: file('fastani.tsv'))
+    tsv = record(meta: meta, path: file('fastani.tsv'))
 
     script:
     """

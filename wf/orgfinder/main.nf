@@ -37,8 +37,7 @@ workflow {
 	}
 
 	// Genomes to identify
-	def query_ch = INPUT_QUERY_FASTA(params.query).map({ r -> record(meta: record(sample_id: r.meta.id), fasta: r.path) })    // gzipped files are decompressed
-
+	def query_ch = INPUT_QUERY_FASTA(params.query)
 	def orgfinder = ORGFINDER(db, query_ch, params.fastani_args)
 
 	publish:
@@ -52,9 +51,9 @@ output {
 		path { x -> x >> "db/org_db" }
 	}
 	orgfinder_tsv: Channel<Record> {
-		path { r -> r.tsv >> "${r.meta.sample_id}.orgfinder" }
+		path { r -> r.tsv >> "${r.meta.id}.orgfinder" }
 	}
 	fastani_tsv: Channel<Record> {
-		path { r -> r.tsv >> "${r.meta.sample_id}.fastani" }
+		path { r -> r.path >> "${r.meta.id}.fastani" }
 	}
 }

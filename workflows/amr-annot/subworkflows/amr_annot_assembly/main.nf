@@ -137,7 +137,7 @@ workflow AMR_ANNOT_ASSEMBLY {
 	def orgfinder_ch = channel.empty()
 	if (!opts.orgfinder?.skip) {
 		def db: Value<OrgfinderDb> = org_db.map({ d -> record(dir: d, fasta: files("${d}/fna/*.fna").toSorted(), tsv: (d as Path).resolve('db.tsv')) })
-		orgfinder_ch = ORGFINDER(db, assemblies, opts.orgfinder?.args).orgfinder
+		orgfinder_ch = ORGFINDER(db, assemblies.map({ r -> record(meta: r.meta, path: r.fasta) }), opts.orgfinder?.args).orgfinder
 	}
 
 	// MLST typing on detected org_name, when there is a scheme for it

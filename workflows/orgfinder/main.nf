@@ -1,15 +1,8 @@
 nextflow.enable.types = true
 
 include { FASTANI } from './modules/fastani/main.nf'
+include { MetaPath } from './subworkflows/input/main.nf'
 
-
-// Genome to identify
-record Genome {
-	meta: Record
-	fasta: Path
-	gff: Path?
-	info: Path?
-}
 
 // Reference database: FASTA of the reference genomes, with the database folder and its description table (db.tsv)
 // when the database was built by ORG_DB_BUILD (dir and tsv are null for references given as FASTA files)
@@ -68,14 +61,14 @@ process FASTANI_TO_ORGFINDER {
 workflow ORGFINDER {
 	take:
 	db: Value<OrgfinderDb>
-	genomes: Channel<Genome>
+	genomes: Channel<MetaPath>    // the FASTA file of each genome to identify
 	fastani_args: String?
 
 	main:
 	// Compute ANI of the genomes against all reference genomes
 	def fastani_ch = FASTANI(
 		genomes
-			.map({ r -> record(meta: r.meta, query: [r.fasta]) })
+			.map({ r -> record(meta: r.meta, query: [r.path]) })
 			.combine(refs: db.map({ d -> d.fasta }))
 			.map({ r -> r + record(args: fastani_args) })
 	)
@@ -85,11 +78,11 @@ workflow ORGFINDER {
 		fastani_ch
 			.combine(db_dir: db.map({ d -> d.dir }))
 			.filter({ r -> r.db_dir != null })
-			.map({ r -> record(meta: r.meta, fastani: r.tsv, db_dir: r.db_dir) }),
+			.map({ r -> record(meta: r.meta, fastani: r.path, db_dir: r.db_dir) }),
 		file("${moduleDir}/assets")
 	)
 
 	emit:
-	fastani: Channel<Record>   = fastani_ch      // records with fields meta, tsv
+	fastani: Channel<MetaPath> = fastani_ch      // records with fields meta, path (fastani.tsv)
 	orgfinder: Channel<Record> = orgfinder_ch    // records with fields meta, dir, tsv, org_name, org_acc, ani
 }
