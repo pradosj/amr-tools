@@ -49,6 +49,31 @@ record Genome {
 	info: Path?
 }
 
+// A file and its meta (generic: e.g. the output of a module)
+record MetaPath {
+	meta: Record?
+	path: Path
+}
+
+// A meta holding the (non null) id of its file, other fields allowed
+record IdMeta {
+	id: String
+}
+
+// A file and its meta holding its id
+record IdPath {
+	meta: IdMeta
+	path: Path
+}
+
+// The record r ({ meta, path }, e.g. a module output, whose meta is typed Record) as an IdPath: its meta reduced to its
+// id (error when the meta or its id is null)
+def asIdPath(r: Record) -> IdPath {
+	if (r.meta?.id == null)
+		error("asIdPath: the meta of ${r.path} has no id")
+	return record(meta: record(id: r.meta.id as String), path: r.path as Path)
+}
+
 // Files of a comma-separated list of glob patterns and URLs, each pattern sorted (commas inside the braces of a glob do not separate).
 // Remote files are not listed: a URL must name a single file, without glob characters.
 def pathList(patterns: String) -> List<Path> {

@@ -3,11 +3,7 @@ nextflow.enable.types = true
 include { MAKEBLASTDB } from './modules/blast/makeblastdb'
 include { BLASTN as BLASTN_REFERENCE } from './modules/blast/blastn'
 include { FASTA_ROTATE } from './modules/fasta/rotate'
-
-record MetaPath {
-    meta: Record?
-    path: Path
-}
+include { MetaPath } from './subworkflows/input/main.nf'
 
 // The reference of a genome (same meta), one of: the reference dataset (FASTA file) to align on it, or the BLAST
 // result of this alignment

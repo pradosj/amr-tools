@@ -1,7 +1,7 @@
 nextflow.enable.types = true
 
-include { CORE_GENES_PYMLST; IdPath } from './workflows/core-genes-pymlst/main.nf'
-include { INPUT_FASTA } from './subworkflows/input/main.nf'
+include { CORE_GENES_PYMLST } from './workflows/core-genes-pymlst/main.nf'
+include { INPUT_FASTA; IdPath } from './subworkflows/input/main.nf'
 include { QUARTO_RENDER } from './modules/quarto/render'
 include { validateParameters; paramsSummaryLog } from 'plugin/nf-schema'
 

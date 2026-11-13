@@ -5,26 +5,7 @@ include { FASTA_CAT     } from './modules/fasta/cat'
 include { MAKEBLASTDB   } from './modules/blast/makeblastdb'
 include { BLASTN        } from './modules/blast/blastn'
 include { PYMLST_WGMLST } from './modules/pymlst/wgmlst'
-
-record IdMeta {
-	id: String
-}
-
-record IdPath {
-	meta: IdMeta
-	path: Path
-}
-
-record MetaPath {
-	meta: Record?
-	path: Path
-}
-
-def asIdPath(r: Record) -> IdPath {
-	if (r.meta?.id == null)
-		error("asIdPath: the meta of ${r.path} has no id")
-	return record(meta: record(id: r.meta.id as String), path: r.path as Path)
-}
+include { IdPath; MetaPath; asIdPath } from './subworkflows/input/main.nf'
 
 
 // Core genes from the reciprocal BLASTN hits of the genes of all the genomes, and their sequences for pyMLST.
