@@ -1,11 +1,11 @@
 nextflow.enable.types = true
 
 record FastaMeta {
-	id: String?
+	id: String
 }
 
 record IdFasta {
-	meta: FastaMeta?
+	meta: FastaMeta
 	path: Path
 }
 
