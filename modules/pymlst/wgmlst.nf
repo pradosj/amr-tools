@@ -1,11 +1,11 @@
 nextflow.enable.types = true
 
-record FastaMeta {
+record IdMeta {
 	id: String
 }
 
-record IdFasta {
-	meta: FastaMeta
+record IdPath {
+	meta: IdMeta
 	path: Path
 }
 
@@ -21,7 +21,7 @@ process PYMLST_WGMLST {
     time 2.h
 
     input:
-    record(meta: Record?, template: MetaPath, genomes: List<IdFasta>, args: String?)
+    record(meta: Record?, template: MetaPath, genomes: List<IdPath>, args: String?)
 
     stage:
     stageAs(template.path, 'template.fasta')

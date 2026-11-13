@@ -1,11 +1,11 @@
 nextflow.enable.types = true
 
-record FastaMeta {
+record IdMeta {
 	id: String?
 }
 
-record IdFasta {
-	meta: FastaMeta?
+record IdPath {
+	meta: IdMeta?
 	path: Path
 }
 
@@ -21,7 +21,7 @@ process FASTA_CAT {
     time 30.m
 
     input:
-    record(meta: Record?, genomes: List<IdFasta>)
+    record(meta: Record?, genomes: List<IdPath>)
 
     stage:
     stageAs(genomes.collect({ f -> f.path }), 'in/?/*')    // files may share the same name

@@ -6,12 +6,12 @@ include { MAKEBLASTDB   } from './modules/blast/makeblastdb'
 include { BLASTN        } from './modules/blast/blastn'
 include { PYMLST_WGMLST } from './modules/pymlst/wgmlst'
 
-record FastaMeta {
+record IdMeta {
 	id: String
 }
 
-record IdFasta {
-	meta: FastaMeta
+record IdPath {
+	meta: IdMeta
 	path: Path
 }
 
@@ -19,6 +19,13 @@ record MetaPath {
 	meta: Record?
 	path: Path
 }
+
+def asIdPath(r: Record) -> IdPath {
+	if (r.meta?.id == null)
+		error("asIdPath: the meta of ${r.path} has no id")
+	return record(meta: record(id: r.meta.id as String), path: r.path as Path)
+}
+
 
 // Core genes from the reciprocal BLASTN hits of the genes of all the genomes, and their sequences for pyMLST.
 // Each gene is identified by `<id of its genome>:<prokka id>` (gene_uid), the name of its sequence in genes.
@@ -71,7 +78,7 @@ process CORE_GENES {
 // The genomes are named by the id of their meta (unique), e.g. the genome column of core_genes and the pyMLST strains.
 workflow CORE_GENES_PYMLST {
 	take:
-	genomes: Channel<IdFasta>
+	genomes: Channel<IdPath>
 	n_core: Integer          // minimum number of genomes sharing a core gene
 	prokka_args: String?
 	blastn_args: String?     // alignment of the genes
@@ -103,8 +110,8 @@ workflow CORE_GENES_PYMLST {
 
 	// pyMLST typing of the core genes: the strains are the ids of the genomes
 	def pymlst_ch = PYMLST_WGMLST(channel.value(record(args: pymlst_args ?: '--coverage 0.85 --identity 0.85')).combine(
-  		template: core_genes_ch.core_template,
-  		genomes: ffns.map({ r -> r.genomes.collect({ g -> record(meta: record(id: g.meta.id), path: g.path) }).toList() })
+		template: core_genes_ch.core_template,
+		genomes: ffns.map({ r -> r.genomes.collect({ g -> asIdPath(g) }).toList() })
 	))
 
 	emit:

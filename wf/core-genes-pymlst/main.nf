@@ -1,6 +1,6 @@
 nextflow.enable.types = true
 
-include { CORE_GENES_PYMLST; IdFasta } from './workflows/core-genes-pymlst/main.nf'
+include { CORE_GENES_PYMLST; IdPath } from './workflows/core-genes-pymlst/main.nf'
 include { INPUT_FASTA } from './subworkflows/input/main.nf'
 include { QUARTO_RENDER } from './modules/quarto/render'
 include { validateParameters; paramsSummaryLog } from 'plugin/nf-schema'
@@ -23,7 +23,7 @@ workflow {
 	log.info(paramsSummaryLog(workflow))
 
 	// the genomes: one per FASTA file, named by its sample_id (gzipped files are decompressed)
-	def genomes: Channel<IdFasta> = INPUT_FASTA(params.fasta).map({ r -> record(meta: record(id: r.meta.sample_id), path: r.fasta) })
+	def genomes: Channel<IdPath> = INPUT_FASTA(params.fasta).map({ r -> record(meta: record(id: r.meta.sample_id), path: r.fasta) })
 	def core = CORE_GENES_PYMLST(genomes, params.n_core, params.prokka_args, params.blastn_args, params.pymlst_args)
 
 	// HTML report: distance and allele heatmaps, minimum spanning tree of the pyMLST results
