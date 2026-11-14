@@ -6,6 +6,7 @@ include { SAMTOOLS_STATS as SAMTOOLS_STATS_SHORT } from './modules/samtools/stat
 include { BWA_MEM            } from './modules/bwa/mem'
 include { BWA_INDEX          } from './modules/bwa/index'
 include { CHECKM2_PREDICT    } from './modules/checkm2/predict'
+include { MetaPath           } from './subworkflows/input/main.nf'
 
 
 // Options of CheckM2 (params.assemblies_qc.checkm2)
@@ -17,14 +18,6 @@ record Checkm2Params {
 // Options of ASSEMBLIES_QC (params.assemblies_qc)
 record AssembliesQcParams {
 	checkm2: Checkm2Params?
-}
-
-// Assembly to check. meta holds both id (sample id) and assembler_name.
-record Genome {
-	meta: Record
-	fasta: Path
-	gff: Path?
-	info: Path?
 }
 
 // Illumina reads of the sample of an assembly (same meta as the assembly): read2 is null for single-end reads
@@ -116,7 +109,7 @@ workflow ASSEMBLIES_QC {
 	take:
 	opts: AssembliesQcParams
 	checkm2_db: Value<Path?>          // CheckM2 database folder (null when checkm2 is skipped)
-	assemblies: Channel<Genome>
+	assemblies: Channel<MetaPath>     // the FASTA of each assembly, meta holding id (sample id) and assembler_name
 	short_reads: Channel<ShortReads>
 	long_reads: Channel<LongReads>
 
@@ -124,7 +117,7 @@ workflow ASSEMBLIES_QC {
 	def assets = file("${moduleDir}/assets")
 
 	// Short reads alignment on the BWA index of the assembly, and statistics
-	def index_ch = BWA_INDEX(assemblies.map({ r -> record(meta: r.meta, path: r.fasta) }))
+	def index_ch = BWA_INDEX(assemblies)
 		.map({ i -> record(meta: i.meta, ref: i) })
 	def short_bam_ch = BWA_MEM(short_reads.join(index_ch, by: 'meta'))
 	def short_stats_ch = SAMTOOLS_STATS_SHORT(short_bam_ch.bam)
@@ -133,14 +126,14 @@ workflow ASSEMBLIES_QC {
 	def long_bam_ch = MINIMAP2_ALIGN_ONT(
 		long_reads
 			.map({ r -> record(meta: r.meta, path: r.reads) })
-			.join(assemblies.map({ r -> record(meta: r.meta, ref: record(meta: r.meta, path: r.fasta)) }), by: 'meta')
+			.join(assemblies.map({ r -> record(meta: r.meta, ref: r) }), by: 'meta')
 	)
 	def long_stats_ch = SAMTOOLS_STATS_LONG(long_bam_ch.bam)
 
 	// Genome completeness
 	def checkm2_ch = channel.empty()
 	if (!opts.checkm2?.skip) {
-		checkm2_ch = CHECKM2_PREDICT(assemblies.combine(db: checkm2_db).map({ r -> r + record(args: opts.checkm2?.args) }))
+		checkm2_ch = CHECKM2_PREDICT(assemblies.combine(db: checkm2_db, args: opts.checkm2?.args))
 	}
 
 	//TODO: RUN VCF_LONG
@@ -149,9 +142,10 @@ workflow ASSEMBLIES_QC {
 	//TODO: CHARACTERIZE_UNMAPPED_READS
 	def qc_ch = COMBINE_QC_STATS(
 		assemblies
+			.map({ r -> record(meta: r.meta, fasta: r.path) })
 			.join(long_stats_ch.map({ r -> record(meta: r.meta, long_stats: r.path) }), by: 'meta', remainder: true)
 			.join(short_stats_ch.map({ r -> record(meta: r.meta, short_stats: r.path) }), by: 'meta', remainder: true)
-			.join(checkm2_ch.map({ r -> record(meta: r.meta, checkm2: r.report) }), by: 'meta', remainder: true),
+			.join(checkm2_ch.map({ r -> record(meta: r.meta, checkm2: r.path) }), by: 'meta', remainder: true),
 		assets
 	)
 
@@ -166,7 +160,7 @@ workflow ASSEMBLIES_QC {
 	short_alignments: Channel<Record> = short_bam_ch.outputs    // records with fields meta, meta_ref, bam, bai
 	assembly_qc: Channel<Record>      = qc_ch             // records with fields meta, rds
 	multiqc: Channel<Record>          = multiqc_ch        // records with fields txt, xlsx
-	checkm2: Channel<Record>          = checkm2_ch        // records with fields meta, report
+	checkm2: Channel<MetaPath>        = checkm2_ch        // records with fields meta, path (quality_report.tsv)
 }
 
 

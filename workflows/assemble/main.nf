@@ -6,6 +6,7 @@ include { HYBRID_FLYE_MEDAKA_PILON      } from './subworkflows/flye_medaka_pilon
 include { UNICYCLER                     } from './modules/unicycler'
 include { SPADES                        } from './modules/spades'
 include { HYBRACTER                     } from './modules/hybracter'
+include { MetaPath                      } from './subworkflows/input/main.nf'
 
 
 // Arguments given to each assembly tool. Fields are nullable: modules fall back to their own defaults.
@@ -45,12 +46,11 @@ record LongReads {
 	reads: Path
 }
 
-// Assembly of a sample: assembler output folder and assembly FASTA
-record Genome {
-	meta: Record
-	dir: Path
+// Outputs of an assembler: the assembly FASTA and the folder of the assembler outputs
+record AssemblyOutputs {
+	meta: Record?
 	fasta: Path
-	info: Path?
+	dir: Path
 }
 
 
@@ -70,37 +70,54 @@ workflow ASSEMBLE {
 		.join(long_reads.map({ r -> record(meta: r.meta, long_reads: r.reads) }), by: 'meta', remainder: true)
 		.map({ r -> record(meta: r.meta, short_read1: r.read1, short_read2: r.read2, long_reads: r.long_reads) })
 
-	def asm_ch: Channel<Genome> = channel.empty()
+	def fasta_ch: Channel<MetaPath> = channel.empty()
+	def outputs_ch: Channel<AssemblyOutputs> = channel.empty()
 	if (name == 'long_flye') {
-		def flye_ch = FLYE(long_input.map({ r -> record(meta: r.meta, path: r.long_reads, args: opts.args?.flye) }))
-		asm_ch = flye_ch.fasta
-			.map({ r -> record(meta: r.meta, fasta: r.path) })
-			.join(flye_ch.dir.map({ r -> record(meta: r.meta, dir: r.path) }), by: 'meta')
+		def asm = FLYE(long_input.map({ r -> record(meta: r.meta, path: r.long_reads, args: opts.args?.flye) }))
+		fasta_ch = asm.fasta
+		outputs_ch = asm.outputs
 	} else if (name == 'long_flye_medaka') {
-		asm_ch = LONG_FLYE_MEDAKA(long_input.map({ r -> r + record(args: opts.args) })).outputs
+		def asm = LONG_FLYE_MEDAKA(long_input.map({ r -> r + record(args: opts.args) }))
+		fasta_ch = asm.fasta
+		outputs_ch = asm.outputs
 	} else if (name == 'long_unicycler') {
-		asm_ch = UNICYCLER(long_input.map({ r -> r + record(args: opts.args?.unicycler) }))
+		def asm = UNICYCLER(long_input.map({ r -> r + record(args: opts.args?.unicycler) }))
+		fasta_ch = asm.fasta
+		outputs_ch = asm.outputs
 	} else if (name == 'long_hybracter') {
-		asm_ch = HYBRACTER(long_input.map({ r -> r + record(args: opts.args?.hybracter) }))
+		def asm = HYBRACTER(long_input.map({ r -> r + record(args: opts.args?.hybracter) }))
+		fasta_ch = asm.fasta
+		outputs_ch = asm.outputs
 	} else if (name == 'short_unicycler') {
-		asm_ch = UNICYCLER(short_input.map({ r -> r + record(args: opts.args?.unicycler) }))
+		def asm = UNICYCLER(short_input.map({ r -> r + record(args: opts.args?.unicycler) }))
+		fasta_ch = asm.fasta
+		outputs_ch = asm.outputs
 	} else if (name == 'short_spades') {
-		asm_ch = SPADES(short_input.map({ r -> r + record(args: opts.args?.spades) }))
+		def asm = SPADES(short_input.map({ r -> r + record(args: opts.args?.spades) }))
+		fasta_ch = asm.fasta
+		outputs_ch = asm.outputs
 	} else if (name == 'hybrid_unicycler') {
 		// samples with a single type of reads are assembled with it alone
-		asm_ch = UNICYCLER(hybrid_input.map({ r -> r + record(args: opts.args?.unicycler) }))
+		def asm = UNICYCLER(hybrid_input.map({ r -> r + record(args: opts.args?.unicycler) }))
+		fasta_ch = asm.fasta
+		outputs_ch = asm.outputs
 	} else if (name == 'hybrid_hybracter') {
 		// samples with long reads only are assembled with `hybracter long-single`,
 		// samples with short reads only are dropped (hybracter needs long reads)
-		asm_ch = HYBRACTER(hybrid_input.filter({ r -> r.long_reads != null }).map({ r -> r + record(args: opts.args?.hybracter) }))
+		def asm = HYBRACTER(hybrid_input.filter({ r -> r.long_reads != null }).map({ r -> r + record(args: opts.args?.hybracter) }))
+		fasta_ch = asm.fasta
+		outputs_ch = asm.outputs
 	} else if (name == 'hybrid_flye_medaka_pilon') {
 		// samples with short reads only are dropped (flye needs long reads)
-		asm_ch = HYBRID_FLYE_MEDAKA_PILON(hybrid_input.filter({ r -> r.long_reads != null }).map({ r -> r + record(args: opts.args) })).outputs
+		def asm = HYBRID_FLYE_MEDAKA_PILON(hybrid_input.filter({ r -> r.long_reads != null }).map({ r -> r + record(args: opts.args) }))
+		fasta_ch = asm.fasta
+		outputs_ch = asm.outputs
 	} else {
 		error("Unknown assembler name: ${name}")
 	}
 
 	emit:
-	assemblies: Channel<Genome> = asm_ch    // meta holds id (sample id) and assembler_name
-		.map({ r -> r + record(meta: r.meta + record(assembler_name: name)) })
+	// meta holds id (sample id) and assembler_name
+	fasta: Channel<MetaPath> = fasta_ch.map({ r -> record(meta: r.meta + record(assembler_name: name), path: r.path) })    // the assembly FASTA
+	outputs: Channel<AssemblyOutputs> = outputs_ch.map({ r -> r + record(meta: r.meta + record(assembler_name: name)) })    // records with fields meta, fasta, dir (assembler outputs)
 }

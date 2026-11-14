@@ -22,14 +22,14 @@ workflow {
 	def assemblies = ASSEMBLE(params.assembler, reads.short_reads, reads.long_reads.map({ r -> record(meta: r.meta, reads: r.path) }))
 
 	publish:
-	assemblies_fasta = assemblies
-	assemblies_dir = assemblies
+	assemblies_fasta = assemblies.fasta
+	assemblies_dir = assemblies.outputs
 }
 
 output {
 	assemblies_fasta: Channel<Record> {
 		mode "copy" //because link is problematic
-		path { r -> r.fasta >> "assemblies/${r.meta.id}__${r.meta.assembler_name}.fasta" }
+		path { r -> r.path >> "assemblies/${r.meta.id}__${r.meta.assembler_name}.fasta" }
 	}
 	assemblies_dir: Channel<Record> {
 		mode "copy" //because link is problematic

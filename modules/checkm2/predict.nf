@@ -9,18 +9,15 @@ process CHECKM2_PREDICT {
 
     input:
     // db: CheckM2 database folder, as created by CHECKM2_DB
-    record(meta: Record, fasta: Path, db: Path, args: String?)
+    record(meta: Record?, path: Path, db: Path, args: String?)
 
     output:
-    record(
-        meta: meta,
-        report: file('output/quality_report.tsv')
-    )
+    tsv = record(meta: meta, path: file('output/quality_report.tsv'))
 
     script:
     """
     checkm2 predict \\
-        --input '${fasta}' \\
+        --input '${path}' \\
         --output-directory 'output' \\
         --threads ${task.cpus} \\
         --database_path '${db}/CheckM2_database/uniref100.KO.1.dmnd' \\

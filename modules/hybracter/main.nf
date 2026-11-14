@@ -11,11 +11,8 @@ process HYBRACTER {
     record(meta: Record, short_read1: Path?, short_read2: Path?, long_reads: Path?, args: String?)
 
     output:
-    record(
-        meta: meta,
-        dir: file('hybracter'),
-        fasta: file('hybracter/FINAL_OUTPUT/complete/sample_final.fasta')
-    )
+    fasta = record(meta: meta, path: file('hybracter/FINAL_OUTPUT/complete/sample_final.fasta'))
+    outputs = record(meta: meta, dir: file('hybracter'), fasta: file('hybracter/FINAL_OUTPUT/complete/sample_final.fasta'))
 
     script:
     def cmd = short_read1 ? 'hybrid-single' : 'long-single'

@@ -7,7 +7,7 @@ include { ASSEMBLE; AssemblerParams                   } from './workflows/assemb
 include { ASSEMBLIES_QC; AssembliesQcParams           } from './workflows/assemblies-qc/main.nf'
 include { AMR_ANNOT; AmrParams                        } from './workflows/amr-annot/main.nf'
 include { DATABASES; DbParams; Db                     } from './subworkflows/db/main.nf'
-include { pathList; fastaSampleId                   } from './subworkflows/input/main.nf'
+include { pathList; fastaSampleId; MetaPath         } from './subworkflows/input/main.nf'
 include { GZIP_UNZ as DECOMPRESS_ASSEMBLY_FASTA } from './modules/gzip/unz'
 include { IDENTITY as COPY_ASSEMBLY_FASTA             } from './modules/identity/main.nf'
 include { IDENTITY as COPY_SHORT_READS                } from './modules/identity/main.nf'
@@ -62,12 +62,6 @@ record Sample {
 	reads_short_1: Path?
 	reads_short_2: Path?
 	assembly_fasta: Path?
-}
-
-// The FASTA file of an assembly, meta holding both id (sample id) and assembler_name
-record AssemblyFasta {
-	meta: Record
-	fasta: Path
 }
 
 def samplePart(id: String, reads_long: Path?, reads_short_1: Path?, reads_short_2: Path?, assembly_fasta: Path?) -> Sample {
@@ -217,11 +211,11 @@ workflow {
 				.map({ r -> record(meta: r.meta, path: r.fasta) })
 		).map({ r -> record(meta: r.meta, fasta: r.file) }))
 
-	// Assemblies are identified by a meta record holding both id (sample id) and assembler_name
-	def given_genome_ch: Channel<AssemblyFasta> = given_asm_ch.map({ r -> record(meta: r.meta + record(assembler_name: 'none'), fasta: r.fasta) })
+	// The FASTA of the assemblies (path), identified by a meta record holding both id (sample id) and assembler_name
+	def given_genome_ch: Channel<MetaPath> = given_asm_ch.map({ r -> record(meta: r.meta + record(assembler_name: 'none'), path: r.fasta) })
 	def asm_rec = given_genome_ch
-		.mix(assemblies.map({ r -> record(meta: r.meta, fasta: r.fasta) }))
-	def asm_dir_ch = assemblies.map({ r -> record(meta: r.meta, dir: r.dir) })
+		.mix(assemblies.fasta)
+	def asm_dir_ch = assemblies.outputs
 
 	// Reads of the sample of each assembly (a sample has a single assembly)
 	def asm_keys = asm_rec.map({ r -> record(meta: record(id: r.meta.id), asm_meta: r.meta) })
@@ -240,7 +234,7 @@ workflow {
 	def asm_qc_ch = ASSEMBLIES_QC(params.assemblies_qc, dbs.checkm2, asm_rec, asm_short_reads, asm_long_reads)
 
 	// Finally run AMR annotations
-	def amr_annot_ch = AMR_ANNOT(params.amr, dbs.org_db, dbs.amrfinderplus, asm_rec, sr_rec, lr_rec)
+	def amr_annot_ch = AMR_ANNOT(params.amr, dbs.org_db, dbs.amrfinderplus, asm_rec.map({ r -> record(meta: r.meta, fasta: r.path) }), sr_rec, lr_rec)
 
 	publish:
 	db = dbs.built
@@ -281,7 +275,7 @@ output {
 
 	assemblies_fasta: Channel<Record> {
 		mode "copy" //because link is problematic
-		path { r -> r.fasta >> "assemblies/${r.meta.id}__${r.meta.assembler_name}.fasta" }
+		path { r -> r.path >> "assemblies/${r.meta.id}__${r.meta.assembler_name}.fasta" }
 	}
 	assemblies_dir: Channel<Record> {
 		mode "copy" //because link is problematic
@@ -289,7 +283,7 @@ output {
 		path { r -> r.dir >> "assemblies/${r.meta.id}__${r.meta.assembler_name}.output" }
 	}
 	assemblies_checkm2: Channel<Record> {
-		path { r -> r.report >> "assemblies/${r.meta.id}__${r.meta.assembler_name}.qc/checkm2_quality.tsv" }
+		path { r -> r.path >> "assemblies/${r.meta.id}__${r.meta.assembler_name}.qc/checkm2_quality.tsv" }
 	}
 	assemblies_multiqc: Channel<Record> {
 		path { r ->

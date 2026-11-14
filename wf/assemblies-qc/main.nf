@@ -1,7 +1,7 @@
 nextflow.enable.types = true
 
-include { ASSEMBLIES_QC; AssembliesQcParams; Genome } from './workflows/assemblies-qc/main.nf'
-include { INPUT_READS; INPUT_ASSEMBLIES; ReadsParams; AssembliesParams    } from './subworkflows/input/main.nf'
+include { ASSEMBLIES_QC; AssembliesQcParams } from './workflows/assemblies-qc/main.nf'
+include { INPUT_READS; INPUT_ASSEMBLIES; ReadsParams; AssembliesParams; MetaPath } from './subworkflows/input/main.nf'
 include { DATABASES; DbParams; Db } from './subworkflows/db/main.nf'
 include { validateParameters; paramsSummaryLog } from 'plugin/nf-schema'
 
@@ -20,8 +20,8 @@ workflow {
 	validateParameters()
 	log.info(paramsSummaryLog(workflow))
 
-	def assemblies: Channel<Genome> = INPUT_ASSEMBLIES(params.assemblies?.fasta)
-		.map({ r -> record(meta: record(id: r.meta.id, assembler_name: 'none'), fasta: r.path) })
+	def assemblies: Channel<MetaPath> = INPUT_ASSEMBLIES(params.assemblies?.fasta)
+		.map({ r -> record(meta: record(id: r.meta.id, assembler_name: 'none'), path: r.path) })
 	def reads = INPUT_READS(params.reads?.ont, params.reads?.illumina)
 
 	// Reads of the sample of each assembly
@@ -43,7 +43,7 @@ output {
 		path { r -> r.dir >> "db/${r.name}" }    // databases built by this run: use --db=<output dir>/db in the next runs
 	}
 	assemblies_checkm2: Channel<Record> {
-		path { r -> r.report >> "assemblies/${r.meta.id}__${r.meta.assembler_name}.qc/checkm2_quality.tsv" }
+		path { r -> r.path >> "assemblies/${r.meta.id}__${r.meta.assembler_name}.qc/checkm2_quality.tsv" }
 	}
 	assemblies_multiqc: Channel<Record> {
 		path { r ->

@@ -78,8 +78,8 @@ workflow LONG_FLYE_MEDAKA {
 			.join(samples.map({ r -> record(meta: r.meta, reads: r.long_reads, args: r.args?.medaka) }), by: 'meta')
 	)
 	def folder_ch = ASSEMBLY_FOLDER(
-		flye_ch.dir.map({ r -> record(meta: r.meta, flye: r.path) })
-			.join(medaka_ch.map({ r -> record(meta: r.meta, medaka: r.dir) }), by: 'meta', remainder: true)
+		flye_ch.outputs.map({ r -> record(meta: r.meta, flye: r.dir) })
+			.join(medaka_ch.outputs.map({ r -> record(meta: r.meta, medaka: r.dir) }), by: 'meta', remainder: true)
 			.map({ r -> record(
 				meta: r.meta,
 				files: [record(name: '01_flye', path: r.flye)] +
@@ -88,9 +88,9 @@ workflow LONG_FLYE_MEDAKA {
 	)
 
 	emit:
-	fasta: Channel<MetaPath> = medaka_ch.map({ r -> record(meta: r.meta, path: r.fasta) })    // the assembly (Medaka consensus)
-	outputs = medaka_ch
-		.map({ r -> record(meta: r.meta, fasta: r.fasta) })
+	fasta: Channel<MetaPath> = medaka_ch.fasta    // the assembly (Medaka consensus)
+	outputs = medaka_ch.fasta
+		.map({ r -> record(meta: r.meta, fasta: r.path) })
 		.join(folder_ch, by: 'meta')    // records with fields meta, fasta, dir (assembly folder)
 }
 

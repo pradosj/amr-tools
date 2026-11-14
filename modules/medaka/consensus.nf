@@ -12,11 +12,8 @@ process MEDAKA_CONSENSUS {
     record(meta: Record, fasta: Path, reads: Path, args: String?)
 
     output:
-    record(
-        meta: meta,
-        dir: file('medaka'),
-        fasta: file('medaka/consensus.fasta')
-    )
+    fasta = record(meta: meta, path: file('medaka/consensus.fasta'))
+    outputs = record(meta: meta, dir: file('medaka'), fasta: file('medaka/consensus.fasta'))
 
     script:
     """
