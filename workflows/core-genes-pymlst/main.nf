@@ -10,7 +10,7 @@ include { IdPath; MetaPath; asIdPath } from './subworkflows/input/main.nf'
 
 // Core genes from the reciprocal BLASTN hits of the genes of all the genomes, and their sequences for pyMLST.
 // Each gene is identified by `<id of its genome>:<prokka id>` (gene_uid), the name of its sequence in genes.
-process CORE_GENES {
+process CORE_GENES_SCHEMA {
 	container 'registry.gitlab.unige.ch/amr-genomics/rscript:v3'
 	label 'rscript'
 	memory 8.GB
@@ -54,12 +54,6 @@ process CORE_GENES {
 
 
 
-
-
-// Core genes of genomes, typed with pyMLST: the prokka genes of all the genomes are concatenated (named by the id of
-// their genome) and aligned against themselves with a single BLASTN, the genes are clustered by their reciprocal hits
-// between distinct genomes, and the clusters with one gene in at least n_core genomes are the core genes.
-// The genomes are named by the id of their meta (unique), e.g. the genome column of core_genes and the pyMLST strains.
 workflow CORE_GENES_PYMLST {
 	take:
 	genomes: Channel<IdPath>
@@ -86,13 +80,13 @@ workflow CORE_GENES_PYMLST {
 	// Call BLASTN to find all vs all hits, keeping only one best subject hit
 	def blastn_ch = BLASTN(genes.combine(ref: db_ch, args: blastn_args ?: '-subject_besthit'))
 
-	// Core genes: clusters of the reciprocal hits, and their template sequences
-	def core_genes_ch = CORE_GENES(
+	// Core genes: find clusters in reciprocal graph spanning n_core genomes
+	def core_genes_ch = CORE_GENES_SCHEMA(
 		channel.value(record(n_core: n_core)).combine(blast6: blastn_ch, fasta: genes),
 		file("${moduleDir}/assets")
 	)
 
-	// pyMLST typing of the core genes, and its report: the strains are the ids of the genomes
+	// pyMLST typing of the core genes
 	def typing = PYMLST(
 		core_genes_ch.core_schema
 			.combine(genomes: ffns.map({ r -> r.genomes.collect({ g -> asIdPath(g) }).toList() }))
