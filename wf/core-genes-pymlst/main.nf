@@ -29,7 +29,6 @@ workflow {
 	prokka = core.prokka
 	core_genes = core.core_genes
 	pymlst = core.pymlst
-	report = core.report
 }
 
 
@@ -44,12 +43,10 @@ output {
 			r.core_schema	>> 'core-genes-pymlst/core_schema.fasta'
 		}
 	}
-	pymlst: Value<Record> {
+	pymlst: Channel<Record> {
 		path { r ->
 			r.dir >> 'core-genes-pymlst/pymlst'
+			r.html >> 'core-genes-pymlst/report.html'    // distance and allele heatmaps, minimum spanning tree
 		}
-	}
-	report: Value<Record> {
-		path { r -> r.html >> 'core-genes-pymlst/report.html' }    // distance and allele heatmaps, minimum spanning tree
 	}
 }

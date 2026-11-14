@@ -94,14 +94,13 @@ workflow CORE_GENES_PYMLST {
 
 	// pyMLST typing of the core genes, and its report: the strains are the ids of the genomes
 	def typing = PYMLST(
-		core_genes_ch.core_schema,
-		ffns.map({ r -> r.genomes.collect({ g -> asIdPath(g) }).toList() }),
-		pymlst_args
+		core_genes_ch.core_schema
+			.combine(genomes: ffns.map({ r -> r.genomes.collect({ g -> asIdPath(g) }).toList() }))
+			.flatMap({ r -> [record(schema: record(meta: r.meta, path: r.path), genomes: r.genomes, args: pymlst_args)] })    // a channel of a single set
 	)
 
 	emit:
 	prokka = prokka_ch.dir        // records with fields meta (of the genome), path (the prokka folder)
 	core_genes = core_genes_ch.outputs // records with fields meta, core_graph, core_genes, core_schema
-	pymlst = typing.pymlst        // records with fields meta (null), db, dir
-	report = typing.report        // records with fields meta (null), html (pyMLST report)
+	pymlst = typing                // records with fields meta (null), db, dir (pyMLST outputs), html (report)
 }

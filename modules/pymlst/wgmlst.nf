@@ -28,11 +28,7 @@ process PYMLST_WGMLST {
     stageAs(genomes.collect({ g -> g.path }), 'genomes/?/*')
 
     output:
-    record(
-        meta: meta,
-        db: file('pymlst.db'),
-        dir: file('pymlst')
-    )
+    record(meta: meta, db: file('pymlst.db'), dir: file('pymlst'))
 
     script:
     def adds = genomes.collect({ g -> "wgMLST add ${args ?: ''} --strain '${g.meta.id}' pymlst.db '${g.path}'" }).join('\n')
