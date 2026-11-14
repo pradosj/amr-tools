@@ -32,8 +32,8 @@ length of the alignments with `--min_len` (default 1000).
 
 Outputs, in the output folder (`results/` by default):
 
-- `wg-blastn-distance/distance.tsv`: the distance matrix of the genomes (a row and a column per genome, empty for the
-  genomes that do not align);
+- `wg-blastn-distance/report.html`: the HTML report, the minimum spanning tree of the distances (the genomes at distance
+  0 merged into a single node);
 - `wg-blastn-distance/distance_graph.rds`: the distance graph of the genomes (tbl_graph: an edge per pair of genomes
   aligning, with the number of mismatches, gap openings, fragments, aligned bp, errors and the distance (`weight`)).
 

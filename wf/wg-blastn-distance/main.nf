@@ -21,10 +21,11 @@ workflow {
 
 	// the genomes: one per FASTA file, named by its sample id (gzipped files are decompressed)
 	def genomes: Channel<IdPath> = INPUT_FASTA(params.fasta)
-	def distance_ch = WG_BLASTN_DISTANCE(genomes, params.blastn_args, params.min_len)
+	def wg = WG_BLASTN_DISTANCE(genomes, params.blastn_args, params.min_len)
 
 	publish:
-	distance = distance_ch
+	distance = wg.distance
+	report = wg.report
 }
 
 
@@ -32,6 +33,11 @@ output {
 	distance: Value<Record> {
 		path { r ->
 			r.graph    >> 'wg-blastn-distance/distance_graph.rds'
+		}
+	}
+	report: Value<Record> {
+		path { r ->
+			r.html     >> 'wg-blastn-distance/report.html'
 		}
 	}
 }

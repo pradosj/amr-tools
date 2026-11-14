@@ -1,0 +1,89 @@
+---
+title: "Whole genome BLASTN distances"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+format:
+  dashboard:
+    theme: cosmo
+    embed-resources: true
+    nav-buttons: []
+params:
+  graph: "../results/wg-blastn-distance/distance_graph.rds"
+---
+
+```{r setup}
+#| include: false
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+library(tidyverse)
+library(tidygraph)
+```
+
+
+```{r data}
+#| include: false
+g <- readRDS(params$graph)
+
+mst_simple <- g |>
+	convert(to_minimum_spanning_tree, weights = weight) |>
+	morph(to_subgraph, err == 0, subset_by = "edges") |>
+	mutate(group = group_components()) |>
+	unmorph() |>
+	convert(to_contracted, group, simplify = FALSE) |>
+	activate(edges) |>
+	filter(err != 0)
+```
+
+# Summary
+
+## Row {height=20%}
+
+```{r}
+#| content: valuebox
+#| title: "Genomes"
+list(icon = "collection", color = "primary", value = igraph::gorder(g))
+```
+
+```{r}
+#| content: valuebox
+#| title: "Groups of identical genomes"
+list(icon = "diagram-3", color = "info", value = igraph::gorder(mst_simple))
+```
+
+## Row
+
+::: {.card title="About"}
+`r igraph::gorder(g)` genomes, aligned against each other with BLASTN on their whole sequences.
+
+- **Distance**: number of errors (mismatches, plus one per extra fragment) per aligned bp, the worst of the two
+  directions; the unaligned parts of the genomes are not counted.
+- The genomes are named by their id.
+:::
+
+# MST
+
+```{r mst}
+#| title: "Minimum spanning tree of the BLASTN distances: the genomes aligned without error merged into a single node (hover a node for its genomes; edges labelled by the number of errors: mismatches, plus one per extra fragment)"
+nodes <- as_tibble(mst_simple, "nodes") |>
+	transmute(
+		id = row_number(),
+		n = map_int(.orig_data, nrow),
+		label = if_else(n == 1, map_chr(.orig_data, \(d) d$name[1]), str_c(n, " genomes")),
+		title = map_chr(.orig_data, \(d) str_c(
+			str_c(nrow(d), if_else(nrow(d) == 1, " genome", " genomes")),
+			split(d$name, ceiling(seq_along(d$name) / 4)) |> map_chr(\(x) str_c(x, collapse = ", ")) |> str_c(collapse = "<br>"),    # 4 names per line
+			sep = "<br>"
+		)),
+		size = 10 + 5 * sqrt(n)    # grows with the number of genomes
+	)
+edges <- as_tibble(mst_simple, "edges") |>
+	transmute(
+		from, to,
+		label = as.character(err),
+		title = str_c(nodes$label[from], " - ", nodes$label[to], ": ", err, " errors (distance ", signif(weight, 2), ")"),
+		length = 50 + 300 * err / max(err)
+	)
+visNetwork::visNetwork(nodes, edges, width = "100%") |>
+	visNetwork::visNodes(shape = "dot", color = "steelblue") |>
+	visNetwork::visEdges(color = "grey", font = list(align = "middle")) |>
+	visNetwork::visOptions(highlightNearest = TRUE) |>
+	visNetwork::visInteraction(navigationButtons = TRUE)
+```

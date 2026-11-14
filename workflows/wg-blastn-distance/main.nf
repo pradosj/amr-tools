@@ -3,6 +3,7 @@ nextflow.enable.types = true
 include { FASTA_CAT     } from './modules/fasta/cat'
 include { MAKEBLASTDB   } from './modules/blast/makeblastdb'
 include { BLASTN        } from './modules/blast/blastn'
+include { QUARTO_RENDER } from './modules/quarto/render'
 include { IdPath; MetaPath } from './subworkflows/input/main.nf'
 
 
@@ -36,7 +37,7 @@ process GENOME_DISTANCE {
 
 	stub:
 	"""
-	touch distance_graph.rds distance.tsv
+	touch distance_graph.rds
 	"""
 }
 
@@ -56,6 +57,15 @@ workflow WG_BLASTN_DISTANCE {
 		file("${moduleDir}/assets")
 	)
 
+	def report_ch = QUARTO_RENDER(distance_ch.map({ r -> record(
+		meta: r.meta,
+		template: file("${moduleDir}/assets/wg_blastn_distance_report.qmd"),
+		extra: null,
+		files: [r.graph],
+		args: "-P 'graph:distance_graph.rds'"
+	) }))
+
 	emit:
 	distance = distance_ch
+	report = report_ch
 }

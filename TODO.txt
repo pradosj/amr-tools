@@ -1,13 +1,8 @@
 
 
+- Faire le pipeline rotate_genome
+- Revoir le pipeline des plasmid pour utiliser pymlst et wg-blastn
 
-- dans pyMLST faire un BLASTN global, ou un par sample plutot que 1 par pair => 
-  => peut-etre essayer de faire un subworkflow qui fait cela et le reutiliser dans plasmid-lineage
-  
-
-- Adapter notre metric pour des genomes plutot que pour des plasmids ? 
-  mais dans ce cas les alignments risquent d'etre plus difficile a visualiser
-  
   
 
 - Ajouter des qc d'assemblage, et notemment la couverture en read par contig extraite des BAM
