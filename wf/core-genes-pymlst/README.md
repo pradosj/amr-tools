@@ -4,12 +4,10 @@
 (`CORE_GENES_PYMLST`, see [`core-genes-pymlst`](../../workflows/core-genes-pymlst)):
 
 1. the genes of each genome are annotated with prokka;
-2. the genes of all the genomes are concatenated in one FASTA file (named `<genome>:<prokka id>`, the genome being its sample_id) and
-   aligned against themselves with a single BLASTN, and their reciprocal hits between distinct genomes are kept;
-3. the genes are clustered by their reciprocal hits, with one gene per genome in each cluster: the clusters found in
-   at least `--n_core` genomes are the core genes;
-4. the core genes are typed with pyMLST (wgMLST): allele distances between the genomes, MLST table, alignment;
-5. an HTML report shows the distances, the alleles and the minimum spanning tree of the genomes.
+2. reciprocal hits of all the genes of all the genomes are searched with BLASTN
+3. the reciprocal-hits graph is clustered to identify those shared across `--n_core` genomes to extract a schema
+4. the genomes are typed with pyMLST (wgMLST) using the schema
+5. an HTML report is generated showing the distances, the alleles and the minimum spanning tree of the genomes.
 
 # Installation
 
@@ -27,8 +25,8 @@ nextflow run pradosj/amr-tools/wf/core-genes-pymlst --fasta='genomes/*.fasta' --
 
 Each FASTA file is a genome (a plasmid, a bacterial genome, ... with one or several sequences), named by its file name
 (without the FASTA extension). A path suffixed by `!` is a FASTA file to split: each of its sequences is a genome,
-named `<file name>:<sequence id>` (e.g. `--fasta='plasmids.fasta!'`). A gene is core when it is found in at least `--n_core` genomes (required). The options
-of the tools are given with `--prokka_args`, `--blastn_args` (e.g. `-task blastn` for divergent genes) and
+named `<file name>:<sequence id>` (e.g. `--fasta='plasmids.fasta!'`). A gene is core when it is found in at least `--n_core` genomes (required). 
+The options of the tools are given with `--prokka_args`, `--blastn_args` (e.g. `-task blastn` for divergent genes) and
 `--pymlst_args`.
 
 Outputs, in the output folder (`results/` by default):
