@@ -189,7 +189,7 @@ workflow {
 	if (!params.no_reads_qc) {
 		reads_multiqc_ch = FILTERED_READS_QC(
 			sr_rec,
-			lr_rec
+			lr_rec.map({ r -> record(meta: r.meta, path: r.reads) })
 		).multiqc
 	}
 

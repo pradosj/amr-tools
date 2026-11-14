@@ -3,6 +3,7 @@ nextflow.enable.types = true
 include { NANOPLOT                             } from './modules/nanoplot'
 include { FASTP                                } from './modules/fastp'
 include { MULTIQC                              } from './modules/multiqc'
+include { MetaPath } from './subworkflows/input/main.nf'
 
 
 // Illumina reads of a sample: read2 is null for single-end reads
@@ -10,12 +11,6 @@ record ShortReads {
 	meta: Record?
 	read1: Path
 	read2: Path?
-}
-
-// ONT reads of a sample: one FASTQ
-record LongReads {
-	meta: Record?
-	reads: Path
 }
 
 // A file to put in the MultiQC folder under the given name
@@ -47,7 +42,7 @@ process MULTIQC_FOLDER {
 workflow READS_QC {
 	take:
 	short_reads: Channel<ShortReads>
-	long_reads: Channel<LongReads>
+	long_reads: Channel<MetaPath>     // one FASTQ per sample
 
 	main:
 	def nanoplot_ch = NANOPLOT(long_reads)

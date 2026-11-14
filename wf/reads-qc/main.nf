@@ -17,7 +17,7 @@ workflow {
 	log.info(paramsSummaryLog(workflow))
 
 	def reads = INPUT_READS(params.reads?.ont, params.reads?.illumina)
-	def qc = READS_QC(reads.short_reads, reads.long_reads.map({ r -> record(meta: r.meta, reads: r.path) }))
+	def qc = READS_QC(reads.short_reads, reads.long_reads)
 
 	publish:
 	nanoplot = qc.nanoplot

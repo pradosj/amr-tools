@@ -7,7 +7,7 @@ process NANOPLOT {
     time 1.h
 
     input:
-    record(meta: Record, reads: Path, args: String?)
+    record(meta: Record?, path: Path, args: String?)
 
     output:
     record(
@@ -20,7 +20,7 @@ process NANOPLOT {
     """
     NanoPlot \\
         --threads ${task.cpus} \\
-        --fastq ${reads} \\
+        --fastq ${path} \\
         -o nanoplot \\
         ${args ?: ''}
     """
