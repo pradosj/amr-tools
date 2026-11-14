@@ -7,14 +7,12 @@ process PILON {
     time 4.h
 
     input:
-    record(meta: Record, fasta: Path, bam: Path, bai: Path, args: String?)
+    record(meta: Record?, fasta: Path, bam: Path, bai: Path, args: String?)
 
     output:
-    record(
-        meta: meta,
-        dir: file('pilon'),
-        fasta: file('pilon/pilon.fasta')
-    )
+    dir = record(meta: meta, path: file('pilon'))
+    fasta = record(meta: meta, path: file('pilon/pilon.fasta'))
+    outputs = record(meta: meta, dir: file('pilon'), fasta: file('pilon/pilon.fasta'))
 
     script:
     """
