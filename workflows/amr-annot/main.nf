@@ -56,7 +56,7 @@ record LongReads {
 
 // Aggregate the AMR results of all the assemblies and reads samples: summary tables, and an RDS file of the results (for the report)
 process AMR_MULTIQC {
-	container 'registry.gitlab.unige.ch/amr-genomics/rscript:main'
+	container 'registry.gitlab.unige.ch/amr-genomics/rscript:v3'
 	label 'rscript'
 	memory 8.GB
 	cpus 2

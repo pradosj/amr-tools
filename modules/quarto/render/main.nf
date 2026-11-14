@@ -2,7 +2,7 @@ nextflow.enable.types = true
 
 // Render a quarto template; `files` and `extra` are staged next to the template, `args` holds quarto options (e.g. -P name:value)
 process QUARTO_RENDER {
-    container "registry.gitlab.unige.ch/amr-genomics/rscript:v2"
+    container "registry.gitlab.unige.ch/amr-genomics/rscript:v3"
     label 'rscript'
     memory 8.GB
     cpus 2

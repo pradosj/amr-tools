@@ -26,7 +26,7 @@ record Comparison {
 
 
 process ROTATE_FASTA {
-	container "registry.gitlab.unige.ch/amr-genomics/rscript:v2"
+	container "registry.gitlab.unige.ch/amr-genomics/rscript:v3"
 	label 'rscript'
 	memory 8.GB
 	cpus 1

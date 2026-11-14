@@ -42,7 +42,7 @@ record Genome {
 
 // Gather the AMR results of an assembly into a folder (published as amr/assemblies/<id>__<assembler_name>.amr), read into an RDS file
 process AMR_COMBINE_ASSEMBLY {
-	container 'registry.gitlab.unige.ch/amr-genomics/rscript:main'
+	container 'registry.gitlab.unige.ch/amr-genomics/rscript:v3'
 	label 'rscript'
 	memory 8.GB
 	cpus 2

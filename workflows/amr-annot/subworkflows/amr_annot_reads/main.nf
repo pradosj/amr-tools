@@ -35,7 +35,7 @@ record LongReads {
 
 // Gather the AMR results of the reads of a sample into a folder (published as amr/reads/<id>.reads_amr), read into an RDS file
 process AMR_COMBINE_READS {
-	container 'registry.gitlab.unige.ch/amr-genomics/rscript:main'
+	container 'registry.gitlab.unige.ch/amr-genomics/rscript:v3'
 	label 'rscript'
 	memory 8.GB
 	cpus 2

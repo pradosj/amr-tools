@@ -112,7 +112,7 @@ plot_ly(
 ) |>
 	layout(
 		xaxis = list(title = "", tickangle = 90),
-		yaxis = list(title = "", autorange = "reversed", scaleanchor = "x")    # square cells
+		yaxis = list(title = "", autorange = "reversed")
 	)
 ```
 
