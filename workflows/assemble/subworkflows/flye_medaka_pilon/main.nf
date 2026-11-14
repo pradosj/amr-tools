@@ -71,7 +71,7 @@ workflow LONG_FLYE_MEDAKA {
 	samples: Channel<AssemblyInput>    // with long_reads
 
 	main:
-	def flye_ch = FLYE(samples.map({ r -> record(meta: r.meta, path: r.long_reads, args: r.args?.flye) }))
+	def flye_ch = FLYE(samples.map({ r -> record(meta: r.meta, long_reads: r.long_reads, args: r.args?.flye) }))
 	def medaka_ch = MEDAKA_CONSENSUS(
 		flye_ch.fasta
 			.map({ r -> record(meta: r.meta, fasta: r.path) })
