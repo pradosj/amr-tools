@@ -51,6 +51,20 @@ remove_common_prefix <- function(names) {
 names_axis <- function(names, ...) {
 	list(tickvals = names, ticktext = str_trunc(names, 25, side = "left"), ...)
 }
+
+#' Interactive display of a minimum spanning tree, the edges labelled by their distance, their length growing with it
+#'
+#' @param nodes the nodes (visNetwork): id, label, title (shown on hover), size
+#' @param edges the edges (visNetwork): from, to, weight (the distance), title (shown on hover)
+#' @return a visNetwork widget
+mst_network <- function(nodes, edges) {
+	edges <- edges |> mutate(label = as.character(weight), length = 50 + 300 * weight / max(1, weight))
+	visNetwork::visNetwork(nodes, edges, width = "100%") |>
+		visNetwork::visNodes(shape = "dot", color = "steelblue") |>
+		visNetwork::visEdges(color = "grey", font = list(align = "middle")) |>
+		visNetwork::visOptions(highlightNearest = TRUE) |>
+		visNetwork::visInteraction(navigationButtons = TRUE)
+}
 ```
 
 
@@ -121,6 +135,8 @@ genes |>
 
 ## Row
 
+### Column
+
 ```{r distance_heatmap}
 #| title: "Distance matrix: number of core genes with different alleles (genomes ordered by a Ward clustering)"
 plot_ly(
@@ -139,8 +155,10 @@ plot_ly(
 	)
 ```
 
+### Column {.tabset}
+
 ```{r mst}
-#| title: "Minimum spanning tree of the pyMLST distances (edges labelled by the distance)"
+#| title: "Minimum spanning tree (edges labelled by the distance)"
 # a distance of 0 (identical genomes) would be no edge in the adjacency graph: add a tiny weight to all the edges
 g <- igraph::graph_from_adjacency_matrix(dist_mat+1, mode = "undirected", weighted = TRUE, diag = TRUE) %>%
   as_tbl_graph() %>%
@@ -152,14 +170,42 @@ mst_g <- g %>%
 
 # interactive display
 mst_vis <- visNetwork::toVisNetworkData(mst_g)
-mst_vis$nodes <- mst_vis$nodes |> mutate(title = label)
-mst_vis$edges <- mst_vis$edges |>
-	mutate(label = as.character(weight), title = str_c(from, " - ", to, ": ", weight), length = 50 + 300 * weight / max(1, weight))
-visNetwork::visNetwork(mst_vis$nodes, mst_vis$edges, width = "100%") |>
-	visNetwork::visNodes(shape = "dot", size = 15, color = "steelblue") |>
-	visNetwork::visEdges(color = "grey", font = list(align = "middle")) |>
-	visNetwork::visOptions(highlightNearest = TRUE) |>
-	visNetwork::visInteraction(navigationButtons = TRUE)
+mst_network(
+	mst_vis$nodes |> mutate(title = label, size = 15),
+	mst_vis$edges |> mutate(title = str_c(from, " - ", to, ": ", weight))
+)
+```
+
+```{r mst_simplified}
+#| title: "Simplified: the genomes at distance 0 merged (hover a node for its genomes)"
+# the groups of genomes linked by edges of distance 0 contracted into a single node (the edges of distance 0 become
+# loops, removed)
+mst_simple <- mst_g |>
+	morph(to_subgraph, weight == 0, subset_by = "edges") |>
+	mutate(group = group_components()) |>
+	unmorph() |>
+	convert(to_contracted, group, simplify = FALSE) |>
+	activate(edges) |>
+	filter(weight != 0)
+
+nodes <- as_tibble(mst_simple, "nodes") |>
+	transmute(
+		id = row_number(),
+		n = map_int(.orig_data, nrow),
+		label = if_else(n == 1, map_chr(.orig_data, \(d) d$name[1]), str_c(n, " genomes")),
+		title = map_chr(.orig_data, \(d) str_c(
+			str_c(nrow(d), if_else(nrow(d) == 1, " genome", " genomes")),
+			split(d$name, ceiling(seq_along(d$name) / 4)) |> map_chr(\(x) str_c(x, collapse = ", ")) |> str_c(collapse = "<br>"),    # 4 names per line
+			sep = "<br>"
+		)),
+		size = 10 + 5 * sqrt(n)    # grows with the number of genomes
+	)
+edges <- as_tibble(mst_simple, "edges") |>
+	transmute(
+		from, to, weight,
+		title = str_c(nodes$label[from], " - ", nodes$label[to], ": ", weight)
+	)
+mst_network(nodes, edges)
 ```
 
 # Alleles
