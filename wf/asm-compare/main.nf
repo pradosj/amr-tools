@@ -5,7 +5,7 @@ include { MINIMAP2_ALIGN_ASM5 as ROTATION_ALIGNMENT } from './modules/minimap2/a
 include { BCFTOOLS_ASM5_MPILEUP                     } from './modules/bcftools/asm5_mpileup'
 include { QUARTO_RENDER                             } from './modules/quarto/render'
 include { INPUT_FASTA                               } from './subworkflows/input/main.nf'
-include { GZIP_DECOMPRESS                           } from './modules/gzip'
+include { GZIP_UNZ                                  } from './modules/gzip/unz'
 include { validateParameters; paramsSummaryLog      } from 'plugin/nf-schema'
 
 params {
@@ -90,7 +90,7 @@ workflow {
 	// Reference and queries: gzipped files are decompressed
 	def ref: Value<Path> = channel.value(params.ref)
 	if (params.ref.name.endsWith('.gz')) {
-		ref = GZIP_DECOMPRESS(channel.value(record(meta: record(name: 'reference'), path: params.ref))).map({ r -> r.file })
+		ref = GZIP_UNZ(channel.value(record(meta: record(name: 'reference'), path: params.ref))).map({ r -> r.file })
 	}
 	def query_ch: Channel<Comparison> = INPUT_FASTA(params.query)
 		.combine(ref: ref)

@@ -2,7 +2,7 @@ nextflow.enable.types = true
 
 
 include { SAMTOOLS_FASTQ as ONT_BAM_TO_FASTQ } from './modules/samtools/fastq'
-include { GZIP_DECOMPRESS                    } from './modules/gzip'
+include { GZIP_UNZ                           } from './modules/gzip/unz'
 
 record ReadsParams {
 	ont: String?
@@ -166,7 +166,7 @@ workflow INPUT_FASTA {
 			.map({ f -> record(meta: record(id: fastaSampleId(f.name)), path: f) })
 		fasta_ch = in_ch
 			.filter({ r -> !r.path.name.endsWith('.gz') })
-			.mix(GZIP_DECOMPRESS(
+			.mix(GZIP_UNZ(
 				in_ch
 					.filter({ r -> r.path.name.endsWith('.gz') })
 			).map({ r -> asIdPath(record(meta: r.meta, path: r.file)) }))

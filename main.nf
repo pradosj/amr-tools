@@ -8,7 +8,7 @@ include { ASSEMBLIES_QC; AssembliesQcParams           } from './workflows/assemb
 include { AMR_ANNOT; AmrParams                        } from './workflows/amr-annot/main.nf'
 include { DATABASES; DbParams; Db                     } from './subworkflows/db/main.nf'
 include { pathList; fastaSampleId                   } from './subworkflows/input/main.nf'
-include { GZIP_DECOMPRESS as DECOMPRESS_ASSEMBLY_FASTA } from './modules/gzip/main.nf'
+include { GZIP_UNZ as DECOMPRESS_ASSEMBLY_FASTA } from './modules/gzip/unz'
 include { IDENTITY as COPY_ASSEMBLY_FASTA             } from './modules/identity/main.nf'
 include { IDENTITY as COPY_SHORT_READS                } from './modules/identity/main.nf'
 include { IDENTITY as COPY_LONG_READS                 } from './modules/identity/main.nf'

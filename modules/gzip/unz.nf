@@ -1,7 +1,7 @@
 nextflow.enable.types = true
 
 // Decompress a gzip file: X.fasta.gz -> X.fasta
-process GZIP_DECOMPRESS {
+process GZIP_UNZ {
     container 'docker.io/ubuntu:24.04'
     label 'local'
     memory 2.GB
