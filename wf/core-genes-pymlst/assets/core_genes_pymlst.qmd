@@ -29,6 +29,16 @@ read_pymlst_distance <- function(f) {
 	colnames(m) <- rownames(m)
 	m
 }
+
+#' Axis of categories (genome or gene names), the labels truncated on the left: long names (wider than the plot when it is drawn in a hidden
+#' dashboard page) make plotly fail with "Something went wrong with axis scaling", which also stops the next widgets
+#'
+#' @param names the names of the categories of the axis
+#' @param ... other properties of the axis
+#' @return a plotly axis definition
+names_axis <- function(names, ...) {
+	list(tickvals = names, ticktext = str_trunc(names, 25, side = "left"), ...)
+}
 ```
 
 
@@ -111,8 +121,8 @@ plot_ly(
 	texttemplate = "%{z}"    # the distance in each cell
 ) |>
 	layout(
-		xaxis = list(title = "", tickangle = 90),
-		yaxis = list(title = "", autorange = "reversed")
+		xaxis = names_axis(colnames(dist_mat), title = "", tickangle = 90),
+		yaxis = names_axis(rownames(dist_mat), title = "", autorange = "reversed")
 	)
 ```
 
@@ -169,8 +179,8 @@ local({
   	type = "heatmap", colorscale = "Viridis", colorbar = list(title = "Allele rank")
   ) |>
   	layout(
-  		xaxis = list(title = "Core gene", showticklabels = ncol(z_mat) <= 100),
-  		yaxis = list(title = "", autorange = "reversed")
+  		xaxis = names_axis(colnames(z_mat), title = "Core gene", showticklabels = ncol(z_mat) <= 100),
+  		yaxis = names_axis(rownames(z_mat), title = "", autorange = "reversed")
   	)
 })
 ```
