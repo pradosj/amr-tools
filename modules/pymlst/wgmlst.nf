@@ -21,10 +21,10 @@ process PYMLST_WGMLST {
     time 2.h
 
     input:
-    record(meta: Record?, template: MetaPath, genomes: List<IdPath>, args: String?)
+    record(meta: Record?, schema: MetaPath, genomes: List<IdPath>, args: String?)
 
     stage:
-    stageAs(template.path, 'template.fasta')
+    stageAs(schema.path, 'schema.fasta')
     stageAs(genomes.collect({ g -> g.path }), 'genomes/?/*')
 
     output:
@@ -37,7 +37,7 @@ process PYMLST_WGMLST {
     script:
     def adds = genomes.collect({ g -> "wgMLST add ${args ?: ''} --strain '${g.meta.id}' pymlst.db '${g.path}'" }).join('\n')
     """
-    wgMLST create --force pymlst.db template.fasta
+    wgMLST create --force pymlst.db schema.fasta
     ${adds}
     mkdir pymlst
     wgMLST distance --output pymlst/distance.tsv pymlst.db

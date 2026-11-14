@@ -31,9 +31,9 @@ process CORE_GENES {
 		meta: meta,
 		core_graph: file('core_graph.rds'),
 		core_genes: file('core_genes.tsv'),
-		core_template: file('core_template.fasta')
+		core_schema: file('core_schema.fasta')
 	)
-	core_template = record(meta: meta, path: file('core_template.fasta'))
+	core_schema = record(meta: meta, path: file('core_schema.fasta'))
 
 	script:
 	"""
@@ -43,12 +43,12 @@ process CORE_GENES {
 	saveRDS(g, 'core_graph.rds')
 	nodes <- as_tibble(g, 'nodes')
 	write_tsv(nodes, 'core_genes.tsv')
-	Biostrings::writeXStringSet(read_fasta("genes.fasta")[filter(nodes, is_core_template)\$gene_uid], 'core_template.fasta')
+	Biostrings::writeXStringSet(read_fasta("genes.fasta")[filter(nodes, is_core_template)\$gene_uid], 'core_schema.fasta')
 	"""
 
 	stub:
 	"""
-	touch core_genes.tsv core_graph.rds core_template.fasta
+	touch core_genes.tsv core_graph.rds core_schema.fasta
 	"""
 }
 
@@ -91,12 +91,12 @@ workflow CORE_GENES_PYMLST {
 
 	// pyMLST typing of the core genes: the strains are the ids of the genomes
 	def pymlst_ch = PYMLST_WGMLST(channel.value(record(args: pymlst_args ?: '--coverage 0.85 --identity 0.85')).combine(
-		template: core_genes_ch.core_template,
+		schema: core_genes_ch.core_schema,
 		genomes: ffns.map({ r -> r.genomes.collect({ g -> asIdPath(g) }).toList() })
 	))
 
 	emit:
 	prokka = prokka_ch.dir        // records with fields meta (of the genome), path (the prokka folder)
-	core_genes = core_genes_ch.files    // records with fields meta, core_graph, core_genes, core_template
+	core_genes = core_genes_ch.files    // records with fields meta, core_graph, core_genes, core_schema
 	pymlst = pymlst_ch            // records with fields meta (null), db, dir
 }

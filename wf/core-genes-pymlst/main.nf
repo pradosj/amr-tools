@@ -51,7 +51,7 @@ output {
 		path { r ->
 			r.core_genes    >> 'core-genes-pymlst/core_genes.tsv'
 			r.core_graph    >> 'core-genes-pymlst/core_graph.rds'
-			r.core_template	>> 'core-genes-pymlst/core_template.fasta'
+			r.core_schema	>> 'core-genes-pymlst/core_schema.fasta'
 		}
 	}
 	pymlst: Value<Record> {
