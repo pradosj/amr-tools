@@ -7,18 +7,17 @@ process SAMTOOLS_FASTQ {
     time 15.m
 
     input:
-    // bam: BAM or CRAM file
-    record(meta: Record, bam: Path, args: String?)
+    record(meta: Record?, path: Path, args: String?)
 
     output:
-    record(
+    fastq = record(
         meta: meta,
         reads: file('output.fastq.gz')
     )
 
     script:
     """
-    samtools fastq -@ ${task.cpus} ${args ?: '-n -T "*" -0 -'} ${bam} \\
+    samtools fastq -@ ${task.cpus} ${args ?: '-n -T "*" -0 -'} ${path} \\
     | bgzip -@ ${task.cpus} \\
     > output.fastq.gz
     """

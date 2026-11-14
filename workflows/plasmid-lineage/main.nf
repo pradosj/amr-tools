@@ -92,13 +92,13 @@ workflow PLASMID_LINEAGE {
 	opts: PlasmidLineageParams
 	amr_opts: AmrParams
 	amrfinderplus_db: Value<Path?>    // database of AMR_ANNOT (null when AMRFinderPlus is skipped)
-	name: String                      // name of the set of plasmids (meta of its results: record(sample_id: name))
+	name: String                      // name of the set of plasmids (meta of its results: record(id: name))
 	plasmids: Channel<Genome>         // the plasmids
 
 	main:
 	def assets = file("${moduleDir}/assets")
 	def blastn_args = opts.blastn_args ?: '-perc_identity 70 -evalue 1e-3 -subject_besthit'
-	def set_meta = record(sample_id: name)
+	def set_meta = record(id: name)
 
 	// Align the plasmids against each other (all their sequences in one FASTA)
 	def fasta_ch = CONCAT_FASTA(plasmids
@@ -140,7 +140,7 @@ workflow PLASMID_LINEAGE {
 		template: file("${moduleDir}/assets/plasmid_lineage.qmd"),
 		extra: assets,
 		files: [r.dir],
-		args: "-P 'name:${r.meta.sample_id}'"
+		args: "-P 'name:${r.meta.id}'"
 	) }))
 
 	emit:

@@ -7,21 +7,21 @@ process SAMTOOLS_STATS {
     time 30.m
 
     input:
-    record(meta: Record, bam: Path, args: String?)
+    record(meta: Record?, path: Path, args: String?)
 
     output:
-    record(
+    stats = record(
         meta: meta,
-        stats: file("${bam.name}.stats")
+        path: file("${path.name}.stats")
     )
 
     script:
     """
-    samtools stats -@ ${task.cpus} ${args ?: ''} ${bam} > ${bam.name}.stats
+    samtools stats -@ ${task.cpus} ${args ?: ''} ${path} > ${path.name}.stats
     """
 
     stub:
     """
-    touch ${bam.name}.stats
+    touch ${path.name}.stats
     """
 }

@@ -55,8 +55,8 @@ workflow READS_QC {
 
 	// MultiQC
 	def multiqc_files_ch = nanoplot_ch
-		.map({ r -> record(name: "${r.meta.sample_id}.nanostat", path: r.nanostat) })
-		.mix(fastp_ch.map({ r -> record(name: "${r.meta.sample_id}.fastp.json", path: r.json) }))
+		.map({ r -> record(name: "${r.meta.id}.nanostat", path: r.nanostat) })
+		.mix(fastp_ch.map({ r -> record(name: "${r.meta.id}.fastp.json", path: r.json) }))
 		.collect()
 		.flatMap({ fs -> fs.isEmpty() ? [] : [fs.toList()] })  // no MultiQC when there are no reads
 	def multiqc_ch = MULTIQC(

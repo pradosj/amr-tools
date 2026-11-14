@@ -32,7 +32,7 @@ record AmrParams {
 	prokka: ToolParams?
 }
 
-// Assembly to annotate. meta holds both sample_id and assembler_name.
+// Assembly to annotate. meta holds both id (sample id) and assembler_name.
 record Genome {
 	meta: Record
 	fasta: Path
@@ -103,9 +103,9 @@ workflow AMR_ANNOT {
 	opts: AmrParams
 	org_db: Value<Path?>              // orgfinder database folder (null when orgfinder is skipped)
 	amrfinderplus_db: Value<Path?>    // AMRFinderPlus database folder (null when AMRFinderPlus is skipped)
-	assemblies: Channel<Genome>       // meta: record(sample_id, assembler_name)
-	short_reads: Channel<ShortReads>    // meta: record(sample_id)
-	long_reads: Channel<LongReads>      // meta: record(sample_id)
+	assemblies: Channel<Genome>       // meta: record(id, assembler_name)
+	short_reads: Channel<ShortReads>    // meta: record(id)
+	long_reads: Channel<LongReads>      // meta: record(id)
 
 	main:
 	def assets = file("${moduleDir}/assets")

@@ -19,7 +19,7 @@ record AssembliesQcParams {
 	checkm2: Checkm2Params?
 }
 
-// Assembly to check. meta holds both sample_id and assembler_name.
+// Assembly to check. meta holds both id (sample id) and assembler_name.
 record Genome {
 	meta: Record
 	fasta: Path
@@ -61,14 +61,14 @@ process COMBINE_QC_STATS {
 	record(meta: meta, rds: file('qc.rds'))
 	script:
 	// meta is reported as [[sample_id], [assembler_name]]
-	def meta_json = new groovy.json.JsonBuilder([[sample_id: meta.sample_id], [assembler_name: meta.assembler_name]]).toString()
+	def meta_json = new groovy.json.JsonBuilder([[sample_id: meta.id], [assembler_name: meta.assembler_name]]).toString()
 	"""
 	#!/usr/bin/env Rscript
 	source("assets/lib_io.R")
 	source("assets/lib_assembly_stats.R")
 	stats <- read_assembly_stats("./stats")
 	stats[["meta"]] <- '${meta_json}'
-	stats[["sample_id"]] <- '${meta.sample_id}'
+	stats[["sample_id"]] <- '${meta.id}'
 	stats[["assembler_name"]] <- '${meta.assembler_name}'
 	saveRDS(stats,"qc.rds")
 	"""
@@ -125,11 +125,11 @@ workflow ASSEMBLIES_QC {
 
 	// Short reads alignment and statistics
 	def short_bam_ch = BWA_MEM(BWA_INDEX(assemblies).join(short_reads, by: 'meta'))
-	def short_stats_ch = SAMTOOLS_STATS_SHORT(short_bam_ch)
+	def short_stats_ch = SAMTOOLS_STATS_SHORT(short_bam_ch.map({ r -> record(meta: r.meta, path: r.bam, args: null) }))
 
 	// Long reads alignment and statistics
 	def long_bam_ch = MINIMAP2_ALIGN_ONT(assemblies.join(long_reads, by: 'meta'))
-	def long_stats_ch = SAMTOOLS_STATS_LONG(long_bam_ch)
+	def long_stats_ch = SAMTOOLS_STATS_LONG(long_bam_ch.map({ r -> record(meta: r.meta, path: r.bam, args: null) }))
 
 	// Genome completeness
 	def checkm2_ch = channel.empty()
@@ -143,8 +143,8 @@ workflow ASSEMBLIES_QC {
 	//TODO: CHARACTERIZE_UNMAPPED_READS
 	def qc_ch = COMBINE_QC_STATS(
 		assemblies
-			.join(long_stats_ch.map({ r -> record(meta: r.meta, long_stats: r.stats) }), by: 'meta', remainder: true)
-			.join(short_stats_ch.map({ r -> record(meta: r.meta, short_stats: r.stats) }), by: 'meta', remainder: true)
+			.join(long_stats_ch.map({ r -> record(meta: r.meta, long_stats: r.path) }), by: 'meta', remainder: true)
+			.join(short_stats_ch.map({ r -> record(meta: r.meta, short_stats: r.path) }), by: 'meta', remainder: true)
 			.join(checkm2_ch.map({ r -> record(meta: r.meta, checkm2: r.report) }), by: 'meta', remainder: true),
 		assets
 	)

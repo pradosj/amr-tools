@@ -94,7 +94,7 @@ workflow {
 	}
 	def query_ch: Channel<Comparison> = INPUT_FASTA(params.query)
 		.combine(ref: ref)
-		.map({ r -> record(meta: record(sample_id: r.meta.id), ref: r.ref, query: r.path) })
+		.map({ r -> record(meta: record(id: r.meta.id), ref: r.ref, query: r.path) })
 
 	def rotated_query_ch = channel.empty()
 	if (!params.no_query_rotation) {
@@ -132,22 +132,22 @@ workflow {
 
 output {
 	rotated_query_fa: Channel<Comparison> {
-		path { r -> r.query >> "${r.meta.sample_id}.rotated.fasta" }
+		path { r -> r.query >> "${r.meta.id}.rotated.fasta" }
 	}
 	alignment: Channel<Record> {
 		path { r ->
-			r.bam >> "${r.meta.sample_id}.bam"
-			r.bai >> "${r.meta.sample_id}.bai"
+			r.bam >> "${r.meta.id}.bam"
+			r.bai >> "${r.meta.id}.bai"
 		}
 	}
 	mutations: Channel<Record> {
 		path { r ->
-			r.vcf >> "${r.meta.sample_id}.vcf.gz"
-			r.csi >> "${r.meta.sample_id}.vcf.gz.csi"
-			r.txt >> "${r.meta.sample_id}.txt"
+			r.vcf >> "${r.meta.id}.vcf.gz"
+			r.csi >> "${r.meta.id}.vcf.gz.csi"
+			r.txt >> "${r.meta.id}.txt"
 		}
 	}
 	html: Channel<Record> {
-		path { r -> r.html >> "${r.meta.sample_id}.html" }
+		path { r -> r.html >> "${r.meta.id}.html" }
 	}
 }

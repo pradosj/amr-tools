@@ -1,12 +1,12 @@
 nextflow.enable.types = true
 
-include { AMR_ANNOT; AmrParams } from './workflows/amr-annot/main.nf'
+include { AMR_ANNOT; AmrParams; Genome } from './workflows/amr-annot/main.nf'
 include { INPUT_READS; INPUT_ASSEMBLIES; ReadsParams; AssembliesParams } from './subworkflows/input/main.nf'
 include { DATABASES; DbParams; Db } from './subworkflows/db/main.nf'
 include { validateParameters; paramsSummaryLog } from 'plugin/nf-schema'
 
 
-// Input assemblies and reads given as glob patterns (the sample_id is taken from the file names), and AMR_ANNOT options
+// Input assemblies and reads given as glob patterns (the sample id is taken from the file names), and AMR_ANNOT options
 params {
 	db: DbParams = record(basedir: 'results/db', checkm2: 'checkm2', org_db: 'org_db', amrfinderplus: 'amrfinderplus')    // databases folder (built when missing), or tar archive of it (path or URL)
 	assemblies: AssembliesParams = record(fasta: null)
@@ -30,10 +30,11 @@ workflow {
 	validateParameters()
 	log.info(paramsSummaryLog(workflow))
 
-	def assemblies = INPUT_ASSEMBLIES(params.assemblies?.fasta)
+	def assemblies: Channel<Genome> = INPUT_ASSEMBLIES(params.assemblies?.fasta)
+		.map({ r -> record(meta: record(id: r.meta.id, assembler_name: 'none'), fasta: r.path) })
 	def reads = INPUT_READS(params.reads?.ont, params.reads?.illumina)
 	def dbs = DATABASES(params.db, ((params.amr?.orgfinder?.skip ? [] : [Db.ORG_DB]) + (params.amr?.amrfinderplus?.skip ? [] : [Db.AMRFINDERPLUS])).toSet())
-	def amr_annot = AMR_ANNOT(params.amr, dbs.org_db, dbs.amrfinderplus, assemblies, reads.short_reads, reads.long_reads)
+	def amr_annot = AMR_ANNOT(params.amr, dbs.org_db, dbs.amrfinderplus, assemblies, reads.short_reads, reads.long_reads.map({ r -> record(meta: r.meta, reads: r.path) }))
 
 	publish:
 	amr_assemblies = amr_annot.assemblies_amr
@@ -49,14 +50,14 @@ output {
 	amr_assemblies: Channel<Record> {
 		mode "copy"    // the folder holds symlinks to the task outputs
 		path { r ->
-			r.fasta >> "amr/assemblies/${r.meta.sample_id}__${r.meta.assembler_name}.fasta"
-			r.fai >> "amr/assemblies/${r.meta.sample_id}__${r.meta.assembler_name}.fasta.fai"
-			r.dir >> "amr/assemblies/${r.meta.sample_id}__${r.meta.assembler_name}.amr"    // results of the AMR tools on the assembly
+			r.fasta >> "amr/assemblies/${r.meta.id}__${r.meta.assembler_name}.fasta"
+			r.fai >> "amr/assemblies/${r.meta.id}__${r.meta.assembler_name}.fasta.fai"
+			r.dir >> "amr/assemblies/${r.meta.id}__${r.meta.assembler_name}.amr"    // results of the AMR tools on the assembly
 		}
 	}
 	amr_reads: Channel<Record> {
 		mode "copy"    // the folder holds symlinks to the task outputs
-		path { r -> r.dir >> "amr/reads/${r.meta.sample_id}.reads_amr" }    // results of the AMR tools on the reads of the sample
+		path { r -> r.dir >> "amr/reads/${r.meta.id}.reads_amr" }    // results of the AMR tools on the reads of the sample
 	}
 	amr_multiqc: Channel<Record> {
 		path { r ->

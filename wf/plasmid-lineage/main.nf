@@ -36,9 +36,9 @@ workflow {
 	validateParameters()
 	log.info(paramsSummaryLog(workflow))
 
-	// the plasmids: one per FASTA file, named by its sample_id (gzipped files are decompressed), copied in the work
+	// the plasmids: one per FASTA file, named by its sample id (gzipped files are decompressed), copied in the work
 	// directory (to be published when they are not rotated)
-	def plasmids: Channel<Genome> = COPY_FASTA(INPUT_FASTA(params.fasta).map({ r -> record(meta: record(sample_id: r.meta.id), file1: r.path, file2: null) }))
+	def plasmids: Channel<Genome> = COPY_FASTA(INPUT_FASTA(params.fasta).map({ r -> record(meta: record(id: r.meta.id), file1: r.path, file2: null) }))
 		.map({ r -> record(meta: r.meta, fasta: r.file1) })
 	// Rotate each plasmid to start on the longest region shared by most of them, on the strand of this region (unless
 	// --no_rotation)
@@ -49,7 +49,7 @@ workflow {
 		def fasta_ch = CONCAT_FASTA(plasmids
 			.map({ r -> r.fasta })
 			.collect()
-			.flatMap({ fs -> fs.isEmpty() ? [] : [record(meta: record(sample_id: params.name), fasta: fs.toList().toSorted())] })
+			.flatMap({ fs -> fs.isEmpty() ? [] : [record(meta: record(id: params.name), fasta: fs.toList().toSorted())] })
 		)
 		def self_ch = BLASTN_SELF(
 			fasta_ch
@@ -85,17 +85,17 @@ output {
 		path { r -> r.dir >> "db/${r.name}" }    // databases built by this run: use --db=<output dir>/db in the next runs
 	}
 	rotated: Channel<Record> {
-		path { r -> r.path >> "${params.name}/rotated/${r.meta.sample_id}.fasta" }    // each rotated plasmid
+		path { r -> r.path >> "${params.name}/rotated/${r.meta.id}.fasta" }    // each rotated plasmid
 	}
 	report: Channel<Record> {
-		path { r -> r.html >> "${r.meta.sample_id}/report.html" }
+		path { r -> r.html >> "${r.meta.id}/report.html" }
 	}
 	amr_assemblies: Channel<Record> {
 		mode "copy"    // the folder holds symlinks to the task outputs
 		path { r ->
-			r.fasta >> "amr/assemblies/${r.meta.sample_id}__${r.meta.assembler_name}.fasta"
-			r.fai >> "amr/assemblies/${r.meta.sample_id}__${r.meta.assembler_name}.fasta.fai"
-			r.dir >> "amr/assemblies/${r.meta.sample_id}__${r.meta.assembler_name}.amr"    // results of the AMR tools on the assembly
+			r.fasta >> "amr/assemblies/${r.meta.id}__${r.meta.assembler_name}.fasta"
+			r.fai >> "amr/assemblies/${r.meta.id}__${r.meta.assembler_name}.fasta.fai"
+			r.dir >> "amr/assemblies/${r.meta.id}__${r.meta.assembler_name}.amr"    // results of the AMR tools on the assembly
 		}
 	}
 	amr_multiqc: Channel<Record> {

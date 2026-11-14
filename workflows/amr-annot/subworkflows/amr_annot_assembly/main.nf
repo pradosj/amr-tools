@@ -31,7 +31,7 @@ record AmrAssemblyParams {
 	prokka: ToolParams?
 }
 
-// Assembly to annotate. meta holds both sample_id and assembler_name.
+// Assembly to annotate. meta holds both id (sample id) and assembler_name.
 record Genome {
 	meta: Record
 	fasta: Path
@@ -40,7 +40,7 @@ record Genome {
 }
 
 
-// Gather the AMR results of an assembly into a folder (published as amr/assemblies/<sample_id>__<assembler_name>.amr), read into an RDS file
+// Gather the AMR results of an assembly into a folder (published as amr/assemblies/<id>__<assembler_name>.amr), read into an RDS file
 process AMR_COMBINE_ASSEMBLY {
 	container 'registry.gitlab.unige.ch/amr-genomics/rscript:main'
 	label 'rscript'
@@ -70,7 +70,7 @@ process AMR_COMBINE_ASSEMBLY {
 	source("assets/lib_typing.R")
 	fs::dir_create("amr")
 	${org_name != null ? "writeLines('${org_name}','amr/org_name.txt')" : ''}
-	read_assemblies_amr("amr","assembly.fasta",'${meta.sample_id}','${meta.assembler_name}') |> saveRDS("amr.rds")
+	read_assemblies_amr("amr","assembly.fasta",'${meta.id}','${meta.assembler_name}') |> saveRDS("amr.rds")
 	"""
 	stub:
 	"""
@@ -157,7 +157,7 @@ workflow AMR_ANNOT_ASSEMBLY {
 	}
 
 	// Gather the results of each assembly into a folder and an RDS file
-	def fai_ch = SAMTOOLS_FAIDX(assemblies)
+	def fai_ch = SAMTOOLS_FAIDX(assemblies.map({ r -> record(meta: r.meta, path: r.fasta, args: null) }))
 	def combine_ch = AMR_COMBINE_ASSEMBLY(
 		assemblies
 			.join(orgfinder_ch.map({ r -> record(meta: r.meta, org_name: r.org_name, orgfinder: r.dir) }), by: 'meta', remainder: true)
@@ -172,7 +172,7 @@ workflow AMR_ANNOT_ASSEMBLY {
 	)
 	def combined_ch = assemblies
 		.map({ r -> record(meta: r.meta, fasta: r.fasta) })
-		.join(fai_ch.map({ r -> record(meta: r.meta, fai: r.fai) }), by: 'meta')
+		.join(fai_ch.map({ r -> record(meta: r.meta, fai: r.path) }), by: 'meta')
 		.join(combine_ch, by: 'meta')
 
 	emit:

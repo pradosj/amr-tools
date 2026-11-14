@@ -48,7 +48,7 @@ workflow {
 	def assets = file("${projectDir}/assets")
 	def gtf_ch = channel.fromPath(params.gtf).map({ f ->
 		def id = f.name.replaceAll(/\.gtf(\.gz)?$/, '')
-		record(meta: record(sample_id: id), gtf: f, assets: assets)
+		record(meta: record(id: id), gtf: f, assets: assets)
 	})
 
 	def gff_ch = GTF2GFF(gtf_ch)
@@ -59,6 +59,6 @@ workflow {
 
 output {
 	gff: Channel<Record> {
-		path { r -> r.gff >> "${r.meta.sample_id}.gff" }
+		path { r -> r.gff >> "${r.meta.id}.gff" }
 	}
 }

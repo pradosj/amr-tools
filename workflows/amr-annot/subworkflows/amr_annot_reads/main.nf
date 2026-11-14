@@ -33,7 +33,7 @@ record LongReads {
 }
 
 
-// Gather the AMR results of the reads of a sample into a folder (published as amr/reads/<sample_id>.reads_amr), read into an RDS file
+// Gather the AMR results of the reads of a sample into a folder (published as amr/reads/<id>.reads_amr), read into an RDS file
 process AMR_COMBINE_READS {
 	container 'registry.gitlab.unige.ch/amr-genomics/rscript:main'
 	label 'rscript'
@@ -56,7 +56,7 @@ process AMR_COMBINE_READS {
 	#!/usr/bin/env Rscript
 	source("assets/lib_io.R")
 	source("assets/lib_typing.R")
-	read_reads_amr("reads_amr",'${meta.sample_id}') |> saveRDS("reads_amr.rds")
+	read_reads_amr("reads_amr",'${meta.id}') |> saveRDS("reads_amr.rds")
 	"""
 	stub:
 	"""

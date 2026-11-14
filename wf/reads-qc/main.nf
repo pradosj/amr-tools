@@ -5,7 +5,7 @@ include { INPUT_READS; ReadsParams                          } from './subworkflo
 include { validateParameters; paramsSummaryLog } from 'plugin/nf-schema'
 
 
-// Input reads given as glob patterns, the sample_id is taken from the file names
+// Input reads given as glob patterns, the sample id is taken from the file names
 params {
 	reads: ReadsParams = record(ont: null, illumina: null)
 }
@@ -17,7 +17,7 @@ workflow {
 	log.info(paramsSummaryLog(workflow))
 
 	def reads = INPUT_READS(params.reads?.ont, params.reads?.illumina)
-	def qc = READS_QC(reads.short_reads, reads.long_reads)
+	def qc = READS_QC(reads.short_reads, reads.long_reads.map({ r -> record(meta: r.meta, reads: r.path) }))
 
 	publish:
 	nanoplot = qc.nanoplot
@@ -27,12 +27,12 @@ workflow {
 
 output {
 	nanoplot: Channel<Record> {
-		path { r -> r.nanoplot >> "${r.meta.sample_id}/nanoplot" }
+		path { r -> r.nanoplot >> "${r.meta.id}/nanoplot" }
 	}
 	fastp: Channel<Record> {
 		path { r ->
-			r.json >> "${r.meta.sample_id}/fastp.json"
-			r.html >> "${r.meta.sample_id}/fastp.html"
+			r.json >> "${r.meta.id}/fastp.json"
+			r.html >> "${r.meta.id}/fastp.html"
 		}
 	}
 	multiqc: Channel<Record> {

@@ -98,6 +98,6 @@ workflow ASSEMBLE {
 	}
 
 	emit:
-	assemblies: Channel<Genome> = asm_ch    // meta holds sample_id and assembler_name
+	assemblies: Channel<Genome> = asm_ch    // meta holds id (sample id) and assembler_name
 		.map({ r -> r + record(meta: r.meta + record(assembler_name: name)) })
 }

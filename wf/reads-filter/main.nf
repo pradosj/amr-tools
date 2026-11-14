@@ -5,7 +5,7 @@ include { INPUT_READS; ReadsParams                        } from './subworkflows
 include { validateParameters; paramsSummaryLog } from 'plugin/nf-schema'
 
 
-// Input reads given as glob patterns (the sample_id is taken from the file names), and READS_FILTER options
+// Input reads given as glob patterns (the sample id is taken from the file names), and READS_FILTER options
 params {
 	reads: ReadsParams = record(ont: null, illumina: null)
 	reads_filter: ReadsFilterParams = record(long_limit: 1_000_000_000, short_limit: 1_000_000_000, chopper_args: '--quality 15 --minlength 200')
@@ -18,7 +18,7 @@ workflow {
 	log.info(paramsSummaryLog(workflow))
 
 	def reads = INPUT_READS(params.reads?.ont, params.reads?.illumina)
-	def filtered = READS_FILTER(params.reads_filter, reads.short_reads, reads.long_reads)
+	def filtered = READS_FILTER(params.reads_filter, reads.short_reads, reads.long_reads.map({ r -> record(meta: r.meta, reads: r.path) }))
 
 	publish:
 	reads_long_filtered = filtered.long_filtered
@@ -27,12 +27,12 @@ workflow {
 
 output {
 	reads_long_filtered: Channel<Record> {
-		path { r -> r.reads >> "reads/filtered_long/${r.meta.sample_id}.fastq.gz" }
+		path { r -> r.reads >> "reads/filtered_long/${r.meta.id}.fastq.gz" }
 	}
 	reads_short_filtered: Channel<Record> {
 		path { r ->
-			r.read1 >> "reads/filtered_short/${r.meta.sample_id}_R1.fastq.gz"
-			r.read2 >> "reads/filtered_short/${r.meta.sample_id}_R2.fastq.gz"
+			r.read1 >> "reads/filtered_short/${r.meta.id}_R1.fastq.gz"
+			r.read2 >> "reads/filtered_short/${r.meta.id}_R2.fastq.gz"
 		}
 	}
 }

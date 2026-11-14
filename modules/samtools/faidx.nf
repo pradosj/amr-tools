@@ -7,21 +7,21 @@ process SAMTOOLS_FAIDX {
     time 15.m
 
     input:
-    record(meta: Record, fasta: Path, args: String?)
+    record(meta: Record?, path: Path, args: String?)
 
     output:
-    record(
+    fai = record(
         meta: meta,
-        fai: file("${fasta.name}.fai")
+        path: file("${path.name}.fai")
     )
 
     script:
     """
-    samtools faidx ${args ?: ''} '${fasta}'
+    samtools faidx ${args ?: ''} '${path}'
     """
 
     stub:
     """
-    touch '${fasta.name}.fai'
+    touch '${path.name}.fai'
     """
 }

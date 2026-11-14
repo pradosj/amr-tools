@@ -18,13 +18,13 @@ include { IDENTITY as COPY_LONG_READS                 } from './modules/identity
 // ------------------------------------------------------------------
 include { validateParameters; paramsSummaryLog; samplesheetToList } from 'plugin/nf-schema'
 
-// Input reads given as glob patterns, the sample_id is taken from the file names
+// Input reads given as glob patterns, the sample id is taken from the file names
 record ReadsParams {
 	ont: String?
 	illumina: String?
 }
 
-// Input assemblies given as glob patterns, the sample_id is taken from the file names
+// Input assemblies given as glob patterns, the sample id is taken from the file names
 record AssembliesParams {
 	fasta: String?
 	info: String?
@@ -57,21 +57,21 @@ params {
 
 // Input files of a sample
 record Sample {
-	sample_id: String
+	id: String
 	reads_long: Path?
 	reads_short_1: Path?
 	reads_short_2: Path?
 	assembly_fasta: Path?
 }
 
-// The FASTA file of an assembly, meta holding both sample_id and assembler_name
+// The FASTA file of an assembly, meta holding both id (sample id) and assembler_name
 record AssemblyFasta {
 	meta: Record
 	fasta: Path
 }
 
 def samplePart(id: String, reads_long: Path?, reads_short_1: Path?, reads_short_2: Path?, assembly_fasta: Path?) -> Sample {
-	return record(sample_id: id, reads_long: reads_long, reads_short_1: reads_short_1, reads_short_2: reads_short_2, assembly_fasta: assembly_fasta)
+	return record(id: id, reads_long: reads_long, reads_short_1: reads_short_1, reads_short_2: reads_short_2, assembly_fasta: assembly_fasta)
 }
 
 // The file given for a field of a sample: each input file must be given only once
@@ -87,7 +87,7 @@ def uniqueFile(id: String, field: String, files: List<Path>) -> Path? {
 // Merge the parts of a sample found in the different input glob patterns
 def mergeSample(id: String, parts: Bag<Sample>) -> Sample {
 	return record(
-		sample_id: id,
+		id: id,
 		reads_long: uniqueFile(id, 'reads_long', parts.collect({ p -> p.reads_long }).findAll({ f -> f }).toList()),
 		reads_short_1: uniqueFile(id, 'reads_short_1', parts.collect({ p -> p.reads_short_1 }).findAll({ f -> f }).toList()),
 		reads_short_2: uniqueFile(id, 'reads_short_2', parts.collect({ p -> p.reads_short_2 }).findAll({ f -> f }).toList()),
@@ -138,7 +138,7 @@ workflow SAMPLES {
 				.map({ f -> samplePart(fastaSampleId(f.name), null, null, null, f) }))
 		}
 		samples_ch = parts_ch
-			.map({ s -> tuple(s.sample_id, s) })
+			.map({ s -> tuple(s.id, s) })
 			.groupBy()
 			.map({ id, parts -> mergeSample(id, parts) })
 	}
@@ -160,12 +160,12 @@ workflow {
 	def sr_rec = COPY_SHORT_READS(
 		samples
 			.filter({ s -> s.reads_short_1 })
-			.map({ s -> record(meta: record(sample_id: s.sample_id), file1: s.reads_short_1, file2: s.reads_short_2) })
+			.map({ s -> record(meta: record(id: s.id), file1: s.reads_short_1, file2: s.reads_short_2) })
 	).map({ r -> record(meta: r.meta, read1: r.file1, read2: r.file2) })
 	def lr_copy = COPY_LONG_READS(
 		samples
 			.filter({ s -> s.reads_long })
-			.map({ s -> record(meta: record(sample_id: s.sample_id), file1: s.reads_long, file2: null) })
+			.map({ s -> record(meta: record(id: s.id), file1: s.reads_long, file2: null) })
 	)
 
 	// Convert long reads given in BAM/CRAM format into FASTQ format
@@ -176,7 +176,7 @@ workflow {
 		.mix(CONVERT_LONG_BAM_TO_FASTQ(
 			lr_copy
 				.filter({ r -> r.file1.name ==~ bam_re })
-				.map({ r -> record(meta: r.meta, bam: r.file1) })
+				.map({ r -> record(meta: r.meta, path: r.file1, args: null) })
 		))
 
 	// Filter reads
@@ -196,7 +196,7 @@ workflow {
 	// De novo assembly of the samples given without assembly
 	def todo_ch = samples
 		.filter({ s -> !s.assembly_fasta })
-		.map({ s -> record(meta: record(sample_id: s.sample_id)) })
+		.map({ s -> record(meta: record(id: s.id)) })
 	def assemblies = ASSEMBLE(
 		params.assembler,
 		sr_rec.join(todo_ch, by: 'meta'),
@@ -205,7 +205,7 @@ workflow {
 	// Given assemblies: copied in the work directory (to be published), or decompressed when gzipped
 	def given_ch = samples
 		.filter({ s -> s.assembly_fasta })
-		.map({ s -> record(meta: record(sample_id: s.sample_id), fasta: s.assembly_fasta) })
+		.map({ s -> record(meta: record(id: s.id), fasta: s.assembly_fasta) })
 	def given_asm_ch = COPY_ASSEMBLY_FASTA(
 		given_ch
 			.filter({ r -> !r.fasta.name.endsWith('.gz') })
@@ -217,14 +217,14 @@ workflow {
 				.map({ r -> record(meta: r.meta, path: r.fasta) })
 		).map({ r -> record(meta: r.meta, fasta: r.file) }))
 
-	// Assemblies are identified by a meta record holding both sample_id and assembler_name
+	// Assemblies are identified by a meta record holding both id (sample id) and assembler_name
 	def given_genome_ch: Channel<AssemblyFasta> = given_asm_ch.map({ r -> record(meta: r.meta + record(assembler_name: 'none'), fasta: r.fasta) })
 	def asm_rec = given_genome_ch
 		.mix(assemblies.map({ r -> record(meta: r.meta, fasta: r.fasta) }))
 	def asm_dir_ch = assemblies.map({ r -> record(meta: r.meta, dir: r.dir) })
 
 	// Reads of the sample of each assembly (a sample has a single assembly)
-	def asm_keys = asm_rec.map({ r -> record(meta: record(sample_id: r.meta.sample_id), asm_meta: r.meta) })
+	def asm_keys = asm_rec.map({ r -> record(meta: record(id: r.meta.id), asm_meta: r.meta) })
 	def asm_short_reads = asm_keys.join(sr_rec, by: 'meta').map({ r -> record(meta: r.asm_meta, read1: r.read1, read2: r.read2) })
 	def asm_long_reads = asm_keys.join(lr_rec, by: 'meta').map({ r -> record(meta: r.asm_meta, reads: r.reads) })
 
@@ -266,12 +266,12 @@ output {
 	}
 
 	reads_long_filtered: Channel<Record> {
-		path { r -> r.reads >> "reads/filtered_long/${r.meta.sample_id}.fastq.gz" }
+		path { r -> r.reads >> "reads/filtered_long/${r.meta.id}.fastq.gz" }
 	}
 	reads_short_filtered: Channel<Record> {
 		path { r ->
-			r.read1 >> "reads/filtered_short/${r.meta.sample_id}_R1.fastq.gz"
-			r.read2 >> "reads/filtered_short/${r.meta.sample_id}_R2.fastq.gz"
+			r.read1 >> "reads/filtered_short/${r.meta.id}_R1.fastq.gz"
+			r.read2 >> "reads/filtered_short/${r.meta.id}_R2.fastq.gz"
 		}
 	}
 
@@ -281,15 +281,15 @@ output {
 
 	assemblies_fasta: Channel<Record> {
 		mode "copy" //because link is problematic
-		path { r -> r.fasta >> "assemblies/${r.meta.sample_id}__${r.meta.assembler_name}.fasta" }
+		path { r -> r.fasta >> "assemblies/${r.meta.id}__${r.meta.assembler_name}.fasta" }
 	}
 	assemblies_dir: Channel<Record> {
 		mode "copy" //because link is problematic
 		enabled params.verbose
-		path { r -> r.dir >> "assemblies/${r.meta.sample_id}__${r.meta.assembler_name}.output" }
+		path { r -> r.dir >> "assemblies/${r.meta.id}__${r.meta.assembler_name}.output" }
 	}
 	assemblies_checkm2: Channel<Record> {
-		path { r -> r.report >> "assemblies/${r.meta.sample_id}__${r.meta.assembler_name}.qc/checkm2_quality.tsv" }
+		path { r -> r.report >> "assemblies/${r.meta.id}__${r.meta.assembler_name}.qc/checkm2_quality.tsv" }
 	}
 	assemblies_multiqc: Channel<Record> {
 		path { r ->
@@ -301,14 +301,14 @@ output {
 	amr_assemblies: Channel<Record> {
 		mode "copy"    // the folder holds symlinks to the task outputs
 		path { r ->
-			r.fasta >> "amr/assemblies/${r.meta.sample_id}__${r.meta.assembler_name}.fasta"
-			r.fai >> "amr/assemblies/${r.meta.sample_id}__${r.meta.assembler_name}.fasta.fai"
-			r.dir >> "amr/assemblies/${r.meta.sample_id}__${r.meta.assembler_name}.amr"    // results of the AMR tools on the assembly
+			r.fasta >> "amr/assemblies/${r.meta.id}__${r.meta.assembler_name}.fasta"
+			r.fai >> "amr/assemblies/${r.meta.id}__${r.meta.assembler_name}.fasta.fai"
+			r.dir >> "amr/assemblies/${r.meta.id}__${r.meta.assembler_name}.amr"    // results of the AMR tools on the assembly
 		}
 	}
 	amr_reads: Channel<Record> {
 		mode "copy"    // the folder holds symlinks to the task outputs
-		path { r -> r.dir >> "amr/reads/${r.meta.sample_id}.reads_amr" }    // results of the AMR tools on the reads of the sample
+		path { r -> r.dir >> "amr/reads/${r.meta.id}.reads_amr" }    // results of the AMR tools on the reads of the sample
 	}
 	amr_multiqc: Channel<Record> {
 		path { r ->

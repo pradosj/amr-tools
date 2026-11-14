@@ -1,53 +1,18 @@
 nextflow.enable.types = true
 
-// ---------------------------------------
-//  Input reads and assemblies of the standalone pipelines, given as comma-separated lists of glob
-//  patterns and URLs: the sample_id is taken from the file names
-// ---------------------------------------
 
 include { SAMTOOLS_FASTQ as ONT_BAM_TO_FASTQ } from './modules/samtools/fastq'
 include { GZIP_DECOMPRESS                    } from './modules/gzip'
 
-// ---------------------------------------
-
-// Input reads given as comma-separated lists of glob patterns and URLs (params.reads)
 record ReadsParams {
 	ont: String?
 	illumina: String?
 }
 
-// Input assemblies given as a comma-separated list of glob patterns and URLs (params.assemblies)
 record AssembliesParams {
 	fasta: String?
 }
 
-// Illumina reads of a sample: read2 is null for single-end reads
-record ShortReads {
-	meta: Record?
-	read1: Path
-	read2: Path?
-}
-
-// ONT reads of a sample: one FASTQ
-record LongReads {
-	meta: Record?
-	reads: Path
-}
-
-// Sequencing reads of a sample: high quality ONT reads and/or Illumina reads
-record SeqReads {
-	meta: Record?
-	ont_hq: LongReads?
-	illumina: ShortReads?
-}
-
-// Assembly given as input: meta holds sample_id, and assembler_name 'none'
-record Genome {
-	meta: Record
-	fasta: Path
-	gff: Path?
-	info: Path?
-}
 
 // A file and its meta (generic: e.g. the output of a module)
 record MetaPath {
@@ -65,6 +30,20 @@ record IdPath {
 	meta: IdMeta
 	path: Path
 }
+
+record ShortReads {
+	meta: Record?
+	read1: Path
+	read2: Path?
+}
+
+// Sequencing reads of a sample: high quality ONT reads and/or Illumina reads
+record SeqReads {
+	meta: Record?
+	ont_hq: MetaPath?
+	illumina: ShortReads?
+}
+
 
 // The record r ({ meta, path }, e.g. a module output, whose meta is typed Record) as an IdPath: its meta reduced to its
 // id (error when the meta or its id is null)
@@ -118,7 +97,7 @@ def shortReads(id: String, files: Bag<Path>) -> ShortReads {
 		log.error(msg)    // errors raised in operators are only reported in .nextflow.log
 		error(msg)
 	}
-	return record(meta: record(sample_id: id), read1: fs[0], read2: fs.size() == 2 ? fs[1] : null)
+	return record(meta: record(id: id), read1: fs[0], read2: fs.size() == 2 ? fs[1] : null)
 }
 
 // ONT (one FASTQ, BAM or CRAM per sample, BAM/CRAM converted to FASTQ) and Illumina reads (single-end, or paired-end R1/R2):
@@ -131,17 +110,17 @@ workflow INPUT_READS {
 	main:
 	def long_ch = channel.empty()
 	if (ont) {
-		def ont_ch: Channel<LongReads> = channel.fromList(pathList(ont)).map({ f ->
-			record(meta: record(sample_id: f.name.replaceAll(/\.(fastq\.gz|fq\.gz|bam|cram)$/, '')), reads: f)
+		def ont_ch: Channel<MetaPath> = channel.fromList(pathList(ont)).map({ f ->
+			record(meta: record(id: f.name.replaceAll(/\.(fastq\.gz|fq\.gz|bam|cram)$/, '')), path: f)
 		})
 		def bam_re = '.*\\.(bam|cram)$'
 		long_ch = ont_ch
-			.filter({ r -> !(r.reads.name ==~ bam_re) })
+			.filter({ r -> !(r.path.name ==~ bam_re) })
 			.mix(ONT_BAM_TO_FASTQ(
 				ont_ch
-					.filter({ r -> r.reads.name ==~ bam_re })
-					.map({ r -> record(meta: r.meta, bam: r.reads) })
-			))
+					.filter({ r -> r.path.name ==~ bam_re })
+					.map({ r -> r + record(args: null) })
+			).map({ r -> record(meta: r.meta, path: r.reads) }))
 	}
 	def short_ch = channel.empty()
 	if (illumina) {
@@ -156,13 +135,13 @@ workflow INPUT_READS {
 
 	def seq_ch = short_ch
 		.map({ r -> record(meta: r.meta, illumina: record(read1: r.read1, read2: r.read2)) })
-		.join(long_ch.map({ r -> record(meta: r.meta, ont_hq: record(reads: r.reads)) }), by: 'meta', remainder: true)
+		.join(long_ch.map({ r -> record(meta: r.meta, ont_hq: r) }), by: 'meta', remainder: true)
 		.map({ r -> record(meta: r.meta, ont_hq: r.ont_hq, illumina: r.illumina) })
 
 	emit:
 	seq_reads: Channel<SeqReads>     = seq_ch
 	short_reads: Channel<ShortReads> = short_ch
-	long_reads: Channel<LongReads>   = long_ch
+	long_reads: Channel<MetaPath>   = long_ch
 }
 
 // FASTA files of a comma-separated list of paths, glob patterns and URLs: gzipped files are decompressed.
@@ -198,14 +177,14 @@ workflow INPUT_FASTA {
 	fasta_files: Channel<IdPath> = fasta_ch
 }
 
-// Assemblies FASTA files
+
 workflow INPUT_ASSEMBLIES {
 	take:
 	fasta: String?
 
 	main:
-	def asm_ch = INPUT_FASTA(fasta).map({ r -> record(meta: record(sample_id: r.meta.id, assembler_name: 'none'), fasta: r.path) })
+	def asm_ch = INPUT_FASTA(fasta)
 
 	emit:
-	assemblies: Channel<Genome> = asm_ch
+	assemblies: Channel<IdPath> = asm_ch
 }
