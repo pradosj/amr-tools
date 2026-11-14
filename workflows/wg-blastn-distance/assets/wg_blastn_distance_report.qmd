@@ -15,12 +15,26 @@ params:
 knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
 library(tidyverse)
 library(tidygraph)
+
+#' Remove the prefix common to all the names, cut after its last separator (`:`, `.`, `_`, `-`, `/` or space) so that
+#' no name is cut inside a word
+#'
+#' @param names a character vector
+#' @return the names without their common prefix (unchanged when they have none, or when there is a single name)
+remove_common_prefix <- function(names) {
+	if (n_distinct(names) < 2) return(names)
+	prefix <- str_extract(Biobase::lcPrefix(unique(names)), "^.*[:._/ -]")
+	if (is.na(prefix)) return(names)
+	str_sub(names, str_length(prefix) + 1)
+}
+
 ```
 
 
 ```{r data}
 #| include: false
-g <- readRDS(params$graph)
+g <- readRDS(params$graph) |>
+	mutate(name = remove_common_prefix(name))    # the genome names without their common prefix
 
 mst_simple <- g |>
 	convert(to_minimum_spanning_tree, weights = weight) |>
@@ -66,7 +80,7 @@ nodes <- as_tibble(mst_simple, "nodes") |>
 	transmute(
 		id = row_number(),
 		n = map_int(.orig_data, nrow),
-		label = if_else(n == 1, map_chr(.orig_data, \(d) d$name[1]), str_c(n, " genomes")),
+		label = if_else(n == 1, str_trunc(map_chr(.orig_data, \(d) d$name[1]), 25, side = "left"), str_c(n, " genomes")),
 		title = map_chr(.orig_data, \(d) str_c(
 			str_c(nrow(d), if_else(nrow(d) == 1, " genome", " genomes")),
 			split(d$name, ceiling(seq_along(d$name) / 4)) |> map_chr(\(x) str_c(x, collapse = ", ")) |> str_c(collapse = "<br>"),    # 4 names per line
