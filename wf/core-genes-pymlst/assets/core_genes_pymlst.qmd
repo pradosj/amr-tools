@@ -8,7 +8,7 @@ format:
     nav-buttons: []
 params:
   n_core: null
-  input_dir: "../results/core-genes-pymlst"    # folder of the pipeline outputs: core_genes.tsv, pymlst/
+  input_dir: "../results/core-genes-pymlst/pymlst"    # the folder of the outputs of PYMLST_WGMLST (distance.tsv, mlst.tsv)
 ---
 
 ```{r setup}
@@ -57,19 +57,14 @@ names_axis <- function(names, ...) {
 
 ```{r data}
 #| include: false
-dist_mat <- read_pymlst_distance(fs::path(params$input_dir, "pymlst/distance.tsv"))
+dist_mat <- read_pymlst_distance(fs::path(params$input_dir, "distance.tsv"))
 if (nrow(dist_mat) > 2) {
 	dist_mat <- dist_mat[hclust(as.dist(dist_mat), method = "ward.D2")$order,]
 	dist_mat <- dist_mat[,rownames(dist_mat)]
 }
 dimnames(dist_mat) <- map(dimnames(dist_mat), remove_common_prefix)    # the same genomes in rows and columns
 
-genes <- read_tsv(
-  fs::path(params$input_dir, "core_genes.tsv"),
-  col_types = cols(genome = "c", is_core_template = "l", .default = "c")
-)
-
-alleles <- read_tsv(fs::path(params$input_dir, "pymlst/mlst.tsv"), col_types = cols(.default = "c")) |>
+alleles <- read_tsv(fs::path(params$input_dir, "mlst.tsv"), col_types = cols(.default = "c")) |>
 	rename(gene_uid = 1) |>
 	pivot_longer(-gene_uid, names_to = "genome", values_to = "allele") |>
 	group_by(gene_uid) |>
@@ -88,44 +83,22 @@ alleles <- read_tsv(fs::path(params$input_dir, "pymlst/mlst.tsv"), col_types = c
 ```{r}
 #| content: valuebox
 #| title: "Genomes"
-list(icon = "collection", color = "primary", value = n_distinct(genes$genome))
+list(icon = "collection", color = "primary", value = n_distinct(alleles$genome))
 ```
 
 ```{r}
 #| content: valuebox
 #| title: "Genes"
-list(icon = "list-ul", color = "info", value = nrow(genes))
-```
-
-```{r}
-#| content: valuebox
-#| title: "Gene clusters"
-list(icon = "diagram-3", color = "secondary", value = n_distinct(genes$cluster_id))
-```
-
-```{r}
-#| content: valuebox
-#| title: "Core template genes"
-list(icon = "bullseye", color = "success", value = sum(genes$is_core_template))
+list(icon = "list-ul", color = "info", value = n_distinct(alleles$gene_uid))
 ```
 
 ## Row
-
-```{r}
-#| title: "Genes of each genome"
-genes |>
-	group_by(Genome = genome) |>
-	summarise(Genes = n(), `Core template genes` = sum(is_core_template)) |>
-	knitr::kable()
-```
 
 ::: {.card title="About"}
 `r nrow(dist_mat)` genomes, typed with pyMLST (wgMLST) on their core genes: the clusters of genes found in at least
 `r params$n_core` genomes.
 
-- **Genes**: the genes of the clusters of reciprocal BLASTN hits (one gene per genome in each cluster).
-- **Core template genes**: one gene per core cluster, the template of the pyMLST database; counted in the genome of the
-  gene.
+- **Genes**: the core genes of the pyMLST schema, typed in each genome.
 - The genomes are named by their id.
 :::
 

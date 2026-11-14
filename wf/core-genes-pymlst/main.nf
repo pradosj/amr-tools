@@ -27,12 +27,12 @@ workflow {
 	def core = CORE_GENES_PYMLST(genomes, params.n_core, params.prokka_args, params.blastn_args, params.pymlst_args)
 
 	// HTML report: distance and allele heatmaps, minimum spanning tree of the pyMLST results
-	def report_ch = QUARTO_RENDER(core.pymlst.combine(genes: core.core_genes.map({ r -> r.core_genes })).map({ r -> record(
+	def report_ch = QUARTO_RENDER(core.pymlst.map({ r -> record(
 		meta: r.meta,
 		template: file("${projectDir}/assets/core_genes_pymlst.qmd"),
 		extra: null,
-		files: [r.dir, r.genes],    // pymlst/ (distance.tsv, mlst.tsv), core_genes.tsv
-		args: "-P 'n_core:${params.n_core}' -P 'input_dir:./'"    // the files are staged next to the template
+		files: [r.dir],    // pymlst/ (distance.tsv, mlst.tsv)
+		args: "-P 'n_core:${params.n_core}' -P 'input_dir:pymlst'"    // the files are staged next to the template
 	) }))
 
 	publish:
