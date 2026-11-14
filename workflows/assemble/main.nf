@@ -70,15 +70,14 @@ workflow ASSEMBLE {
 		.join(long_reads.map({ r -> record(meta: r.meta, long_reads: r.reads) }), by: 'meta', remainder: true)
 		.map({ r -> record(meta: r.meta, short_read1: r.read1, short_read2: r.read2, long_reads: r.long_reads) })
 
-	def asm_ch = channel.empty()
+	def asm_ch: Channel<Genome> = channel.empty()
 	if (name == 'long_flye') {
 		def flye_ch = FLYE(long_input.map({ r -> record(meta: r.meta, path: r.long_reads, args: opts.args?.flye) }))
 		asm_ch = flye_ch.fasta
 			.map({ r -> record(meta: r.meta, fasta: r.path) })
 			.join(flye_ch.dir.map({ r -> record(meta: r.meta, dir: r.path) }), by: 'meta')
 	} else if (name == 'long_flye_medaka') {
-		asm_ch = LONG_FLYE_MEDAKA(long_input.map({ r -> r + record(args: opts.args) }))
-			.map({ r -> record(meta: r.meta, dir: r.dir, fasta: r.path, info: r.info) })
+		asm_ch = LONG_FLYE_MEDAKA(long_input.map({ r -> r + record(args: opts.args) })).outputs
 	} else if (name == 'long_unicycler') {
 		asm_ch = UNICYCLER(long_input.map({ r -> r + record(args: opts.args?.unicycler) }))
 	} else if (name == 'long_hybracter') {
@@ -96,8 +95,7 @@ workflow ASSEMBLE {
 		asm_ch = HYBRACTER(hybrid_input.filter({ r -> r.long_reads != null }).map({ r -> r + record(args: opts.args?.hybracter) }))
 	} else if (name == 'hybrid_flye_medaka_pilon') {
 		// samples with short reads only are dropped (flye needs long reads)
-		asm_ch = HYBRID_FLYE_MEDAKA_PILON(hybrid_input.filter({ r -> r.long_reads != null }).map({ r -> r + record(args: opts.args) }))
-			.map({ r -> record(meta: r.meta, dir: r.dir, fasta: r.path, info: r.info) })
+		asm_ch = HYBRID_FLYE_MEDAKA_PILON(hybrid_input.filter({ r -> r.long_reads != null }).map({ r -> r + record(args: opts.args) })).outputs
 	} else {
 		error("Unknown assembler name: ${name}")
 	}

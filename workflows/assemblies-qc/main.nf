@@ -123,13 +123,19 @@ workflow ASSEMBLIES_QC {
 	main:
 	def assets = file("${moduleDir}/assets")
 
-	// Short reads alignment and statistics
-	def short_bam_ch = BWA_MEM(BWA_INDEX(assemblies).join(short_reads, by: 'meta'))
-	def short_stats_ch = SAMTOOLS_STATS_SHORT(short_bam_ch.map({ r -> record(meta: r.meta, path: r.bam, args: null) }))
+	// Short reads alignment on the BWA index of the assembly, and statistics
+	def index_ch = BWA_INDEX(assemblies.map({ r -> record(meta: r.meta, path: r.fasta) }))
+		.map({ i -> record(meta: i.meta, ref: i) })
+	def short_bam_ch = BWA_MEM(short_reads.join(index_ch, by: 'meta'))
+	def short_stats_ch = SAMTOOLS_STATS_SHORT(short_bam_ch.bam)
 
-	// Long reads alignment and statistics
-	def long_bam_ch = MINIMAP2_ALIGN_ONT(assemblies.join(long_reads, by: 'meta'))
-	def long_stats_ch = SAMTOOLS_STATS_LONG(long_bam_ch.map({ r -> record(meta: r.meta, path: r.bam, args: null) }))
+	// Long reads alignment on the assembly, and statistics
+	def long_bam_ch = MINIMAP2_ALIGN_ONT(
+		long_reads
+			.map({ r -> record(meta: r.meta, path: r.reads) })
+			.join(assemblies.map({ r -> record(meta: r.meta, ref: record(meta: r.meta, path: r.fasta)) }), by: 'meta')
+	)
+	def long_stats_ch = SAMTOOLS_STATS_LONG(long_bam_ch.bam)
 
 	// Genome completeness
 	def checkm2_ch = channel.empty()
@@ -156,8 +162,8 @@ workflow ASSEMBLIES_QC {
 	)
 
 	emit:
-	long_alignments: Channel<Record>  = long_bam_ch       // records with fields meta, bam, bai
-	short_alignments: Channel<Record> = short_bam_ch      // records with fields meta, bam, bai
+	long_alignments: Channel<Record>  = long_bam_ch.outputs     // records with fields meta, meta_ref, bam, bai
+	short_alignments: Channel<Record> = short_bam_ch.outputs    // records with fields meta, meta_ref, bam, bai
 	assembly_qc: Channel<Record>      = qc_ch             // records with fields meta, rds
 	multiqc: Channel<Record>          = multiqc_ch        // records with fields txt, xlsx
 	checkm2: Channel<Record>          = checkm2_ch        // records with fields meta, report

@@ -32,11 +32,11 @@ record AssemblyInput {
 	args: AssemblerArgs?
 }
 
-// Assembly of a sample: assembler output folder and assembly FASTA
-record Genome {
-	meta: Record
-	dir: Path
-	fasta: Path
+// An assembly: path is its FASTA, dir the folder of the assembler outputs, info its info file
+record MetaPath {
+	meta: Record?
+	path: Path
+	dir: Path?
 	info: Path?
 }
 
@@ -51,7 +51,7 @@ record NamedFile {
 process ASSEMBLY_FOLDER {
     label 'local'
     input:
-    record(meta: Record, files: List<NamedFile>)
+    record(meta: Record?, files: List<NamedFile>)
     stage:
     stageAs(files.collect({ f -> f.path }), 'in/?/*')
     output:
@@ -65,31 +65,20 @@ process ASSEMBLY_FOLDER {
 }
 
 
-workflow LONG_FLYE {
-	take:
-	samples: Channel<AssemblyInput>    // with long_reads
-
-	main:
-	def flye_ch = FLYE(samples.map({ r -> record(meta: r.meta, reads: r.long_reads, args: r.args?.flye) }))
-
-	emit:
-	assemblies: Channel<Genome> = flye_ch
-}
-
 
 workflow LONG_FLYE_MEDAKA {
 	take:
 	samples: Channel<AssemblyInput>    // with long_reads
 
 	main:
-	def flye_ch = LONG_FLYE(samples)
+	def flye_ch = FLYE(samples.map({ r -> record(meta: r.meta, path: r.long_reads, args: r.args?.flye) }))
 	def medaka_ch = MEDAKA_CONSENSUS(
-		flye_ch
-			.map({ r -> record(meta: r.meta, fasta: r.fasta) })
+		flye_ch.fasta
+			.map({ r -> record(meta: r.meta, fasta: r.path) })
 			.join(samples.map({ r -> record(meta: r.meta, reads: r.long_reads, args: r.args?.medaka) }), by: 'meta')
 	)
 	def folder_ch = ASSEMBLY_FOLDER(
-		flye_ch.map({ r -> record(meta: r.meta, flye: r.dir) })
+		flye_ch.dir.map({ r -> record(meta: r.meta, flye: r.path) })
 			.join(medaka_ch.map({ r -> record(meta: r.meta, medaka: r.dir) }), by: 'meta', remainder: true)
 			.map({ r -> record(
 				meta: r.meta,
@@ -99,9 +88,10 @@ workflow LONG_FLYE_MEDAKA {
 	)
 
 	emit:
-	assemblies: Channel<Genome> = medaka_ch
+	fasta: Channel<MetaPath> = medaka_ch.map({ r -> record(meta: r.meta, path: r.fasta) })    // the assembly (Medaka consensus)
+	outputs = medaka_ch
 		.map({ r -> record(meta: r.meta, fasta: r.fasta) })
-		.join(folder_ch, by: 'meta')
+		.join(folder_ch, by: 'meta')    // records with fields meta, fasta, dir (assembly folder)
 }
 
 
@@ -114,15 +104,15 @@ workflow HYBRID_FLYE_MEDAKA_PILON {
 		.filter({ r -> r.short_read1 })
 		.map({ r -> record(meta: r.meta, read1: r.short_read1, read2: r.short_read2) })
 	def medaka_ch = LONG_FLYE_MEDAKA(samples)
-	def pilon1_ch = PILON_POLISH_ROUND1(medaka_ch, short_reads)
-	def pilon2_ch = PILON_POLISH_ROUND2(pilon1_ch, short_reads)
-	def pilon3_ch = PILON_POLISH_ROUND3(pilon2_ch, short_reads)
+	def pilon1_ch = PILON_POLISH_ROUND1(medaka_ch.fasta, short_reads)
+	def pilon2_ch = PILON_POLISH_ROUND2(pilon1_ch.fasta, short_reads)
+	def pilon3_ch = PILON_POLISH_ROUND3(pilon2_ch.fasta, short_reads)
 
 	def folder_ch = ASSEMBLY_FOLDER(
-		medaka_ch.map({ r -> record(meta: r.meta, dir0: r.dir) })
-			.join(pilon1_ch.map({ r -> record(meta: r.meta, dir1: r.dir) }), by: 'meta', remainder: true)
-			.join(pilon2_ch.map({ r -> record(meta: r.meta, dir2: r.dir) }), by: 'meta', remainder: true)
-			.join(pilon3_ch.map({ r -> record(meta: r.meta, dir3: r.dir) }), by: 'meta', remainder: true)
+		medaka_ch.outputs.map({ r -> record(meta: r.meta, dir0: r.dir) })
+			.join(pilon1_ch.dir.map({ r -> record(meta: r.meta, dir1: r.path) }), by: 'meta', remainder: true)
+			.join(pilon2_ch.dir.map({ r -> record(meta: r.meta, dir2: r.path) }), by: 'meta', remainder: true)
+			.join(pilon3_ch.dir.map({ r -> record(meta: r.meta, dir3: r.path) }), by: 'meta', remainder: true)
 			.map({ r -> record(
 				meta: r.meta,
 				files: [record(name: '01_flye_medaka', path: r.dir0)] +
@@ -133,10 +123,13 @@ workflow HYBRID_FLYE_MEDAKA_PILON {
 	)
 
 	// last Pilon round, or Flye+Medaka assembly when polishing failed
-	def fasta_ch = medaka_ch.map({ r -> record(meta: r.meta, fasta0: r.fasta) })
-		.join(pilon3_ch.map({ r -> record(meta: r.meta, fasta3: r.fasta) }), by: 'meta', remainder: true)
-		.map({ r -> record(meta: r.meta, fasta: r.fasta3 ?: r.fasta0) })
+	def fasta_ch = medaka_ch.fasta.map({ r -> record(meta: r.meta, fasta0: r.path) })
+		.join(pilon3_ch.fasta.map({ r -> record(meta: r.meta, fasta3: r.path) }), by: 'meta', remainder: true)
+		.map({ r -> record(meta: r.meta, path: r.fasta3 ?: r.fasta0) })
 
 	emit:
-	assemblies: Channel<Genome> = fasta_ch.join(folder_ch, by: 'meta')
+	fasta: Channel<MetaPath> = fasta_ch    // the assembly (last Pilon round)
+	outputs = fasta_ch
+		.map({ r -> record(meta: r.meta, fasta: r.path) })
+		.join(folder_ch, by: 'meta')    // records with fields meta, fasta, dir (assembly folder)
 }
