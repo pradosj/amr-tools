@@ -4,7 +4,7 @@ include { PROKKA        } from './modules/tseemann/prokka'
 include { FASTA_CAT     } from './modules/fasta/cat'
 include { MAKEBLASTDB   } from './modules/blast/makeblastdb'
 include { BLASTN        } from './modules/blast/blastn'
-include { PYMLST_WGMLST } from './modules/pymlst/wgmlst'
+include { PYMLST        } from './subworkflows/pymlst/main.nf'
 include { IdPath; MetaPath; asIdPath } from './subworkflows/input/main.nf'
 
 
@@ -27,7 +27,7 @@ process CORE_GENES {
 	stageAs(assets, 'assets')
 
 	output:
-	files = record(
+	outputs = record(
 		meta: meta,
 		core_graph: file('core_graph.rds'),
 		core_genes: file('core_genes.tsv'),
@@ -51,6 +51,9 @@ process CORE_GENES {
 	touch core_genes.tsv core_graph.rds core_schema.fasta
 	"""
 }
+
+
+
 
 
 // Core genes of genomes, typed with pyMLST: the prokka genes of all the genomes are concatenated (named by the id of
@@ -89,14 +92,16 @@ workflow CORE_GENES_PYMLST {
 		file("${moduleDir}/assets")
 	)
 
-	// pyMLST typing of the core genes: the strains are the ids of the genomes
-	def pymlst_ch = PYMLST_WGMLST(channel.value(record(args: pymlst_args ?: '--coverage 0.85 --identity 0.85')).combine(
-		schema: core_genes_ch.core_schema,
-		genomes: ffns.map({ r -> r.genomes.collect({ g -> asIdPath(g) }).toList() })
-	))
+	// pyMLST typing of the core genes, and its report: the strains are the ids of the genomes
+	def typing = PYMLST(
+		core_genes_ch.core_schema,
+		ffns.map({ r -> r.genomes.collect({ g -> asIdPath(g) }).toList() }),
+		pymlst_args
+	)
 
 	emit:
 	prokka = prokka_ch.dir        // records with fields meta (of the genome), path (the prokka folder)
-	core_genes = core_genes_ch.files    // records with fields meta, core_graph, core_genes, core_schema
-	pymlst = pymlst_ch            // records with fields meta (null), db, dir
+	core_genes = core_genes_ch.outputs // records with fields meta, core_graph, core_genes, core_schema
+	pymlst = typing.pymlst        // records with fields meta (null), db, dir
+	report = typing.report        // records with fields meta (null), html (pyMLST report)
 }

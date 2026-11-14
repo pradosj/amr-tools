@@ -2,7 +2,6 @@ nextflow.enable.types = true
 
 include { CORE_GENES_PYMLST } from './workflows/core-genes-pymlst/main.nf'
 include { INPUT_FASTA; IdPath } from './subworkflows/input/main.nf'
-include { QUARTO_RENDER } from './modules/quarto/render'
 include { validateParameters; paramsSummaryLog } from 'plugin/nf-schema'
 
 
@@ -26,20 +25,11 @@ workflow {
 	def genomes: Channel<IdPath> = INPUT_FASTA(params.fasta)
 	def core = CORE_GENES_PYMLST(genomes, params.n_core, params.prokka_args, params.blastn_args, params.pymlst_args)
 
-	// HTML report: distance and allele heatmaps, minimum spanning tree of the pyMLST results
-	def report_ch = QUARTO_RENDER(core.pymlst.map({ r -> record(
-		meta: r.meta,
-		template: file("${projectDir}/assets/core_genes_pymlst.qmd"),
-		extra: null,
-		files: [r.dir],    // pymlst/ (distance.tsv, mlst.tsv)
-		args: "-P 'n_core:${params.n_core}' -P 'input_dir:pymlst'"    // the files are staged next to the template
-	) }))
-
 	publish:
 	prokka = core.prokka
 	core_genes = core.core_genes
 	pymlst = core.pymlst
-	report = report_ch
+	report = core.report
 }
 
 

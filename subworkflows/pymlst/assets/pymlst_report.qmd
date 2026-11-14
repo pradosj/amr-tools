@@ -1,5 +1,5 @@
 ---
-title: "Core genes: pyMLST typing"
+title: "pyMLST typing"
 date: "`r format(Sys.time(), '%d %B, %Y')`"
 format:
   dashboard:
@@ -7,7 +7,6 @@ format:
     embed-resources: true
     nav-buttons: []
 params:
-  n_core: null
   input_dir: "../results/core-genes-pymlst/pymlst"    # the folder of the outputs of PYMLST_WGMLST (distance.tsv, mlst.tsv)
 ---
 
@@ -95,10 +94,9 @@ list(icon = "list-ul", color = "info", value = n_distinct(alleles$gene_uid))
 ## Row
 
 ::: {.card title="About"}
-`r nrow(dist_mat)` genomes, typed with pyMLST (wgMLST) on their core genes: the clusters of genes found in at least
-`r params$n_core` genomes.
+`r nrow(dist_mat)` genomes, typed with pyMLST (wgMLST) on the genes of its schema.
 
-- **Genes**: the core genes of the pyMLST schema, typed in each genome.
+- **Genes**: the genes of the pyMLST schema, typed in each genome.
 - The genomes are named by their id.
 :::
 
@@ -107,7 +105,7 @@ list(icon = "list-ul", color = "info", value = n_distinct(alleles$gene_uid))
 ## Row
 
 ```{r distance_heatmap}
-#| title: "Distance matrix: number of core genes with different alleles (genomes ordered by a Ward clustering)"
+#| title: "Distance matrix: number of genes of the schema with different alleles (genomes ordered by a Ward clustering)"
 plot_ly(
 	x = colnames(dist_mat), y = rownames(dist_mat), z = dist_mat, type = "heatmap",
 	colorscale = "YlOrRd", reversescale = TRUE, colorbar = list(title = "Distance"),
@@ -175,7 +173,7 @@ visNetwork::visNetwork(nodes, edges, width = "100%") |>
 # Alleles
 
 ```{r allele_heatmap}
-#| title: "Allele of each core gene in each genome: alleles numbered by decreasing frequency in each gene (1: the most frequent), white for a missing gene; hover a cell for its pyMLST allele id"
+#| title: "Allele of each gene of the schema in each genome: alleles numbered by decreasing frequency in each gene (1: the most frequent), white for a missing gene; hover a cell for its pyMLST allele id"
 
 local({
   z_mat <- alleles %>%
@@ -192,7 +190,7 @@ local({
   	type = "heatmap", colorscale = "Viridis", colorbar = list(title = "Allele rank")
   ) |>
   	layout(
-  		xaxis = names_axis(colnames(z_mat), title = "Core gene", showticklabels = ncol(z_mat) <= 100),
+  		xaxis = names_axis(colnames(z_mat), title = "Gene", showticklabels = ncol(z_mat) <= 100),
   		yaxis = names_axis(rownames(z_mat), title = "", autorange = "reversed")
   	)
 })
