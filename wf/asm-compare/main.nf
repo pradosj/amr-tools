@@ -65,11 +65,11 @@ workflow ROTATE_QUERIES {
 	minimap2_args: String?
 
 	main:
-	def aln_ch = ROTATION_ALIGNMENT(queries.map({ r -> r + record(args: minimap2_args) }))
+	def aln_ch = ROTATION_ALIGNMENT(queries.map({ r -> record(meta: r.meta, path: r.query, ref: record(meta: null, path: r.ref), args: minimap2_args) })).bam
 	def rotated_ch = ROTATE_FASTA(
 		queries
 			.join(aln_ch, by: 'meta')
-			.map({ r -> record(meta: r.meta, query: r.query, bam: r.bam) }),
+			.map({ r -> record(meta: r.meta, query: r.query, bam: r.path) }),
 		file("${projectDir}/assets")
 	)
 	def out_ch = queries
@@ -103,7 +103,9 @@ workflow {
 	}
 
 	// Map (rotated) queries to REF
-	def aln_ch = MINIMAP2_ALIGN_ASM5(query_ch.map({ r -> r + record(args: params.minimap2_args) }))
+	def aln_ch = MINIMAP2_ALIGN_ASM5(
+		query_ch.map({ r -> record(meta: r.meta, path: r.query, ref: record(meta: null, path: r.ref), args: params.minimap2_args) })
+	).outputs
 
 	// Call mutations
 	def mut_ch = BCFTOOLS_ASM5_MPILEUP(

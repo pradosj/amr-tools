@@ -54,7 +54,7 @@ workflow {
 		def self_ch = BLASTN_SELF(
 			fasta_ch
 				.join(MAKEBLASTDB(fasta_ch.map({ r -> record(meta: r.meta, path: r.fasta) })).map({ d -> record(meta: d.meta, db: d) }), by: 'meta')
-				.map({ r -> record(meta: r.meta, path: r.fasta, subject_db: r.db, args: blastn_args) })
+				.map({ r -> record(meta: r.meta, path: r.fasta, ref: r.db, args: blastn_args) })
 		)
 		def align_seq_ch = FIND_ALIGN_SEQ(
 			fasta_ch.join(self_ch, by: 'meta').map({ r -> record(meta: r.meta, fasta: r.fasta, blast: r.path) }),

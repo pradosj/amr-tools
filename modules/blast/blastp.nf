@@ -5,7 +5,7 @@ record MetaPath {
     path: Path
 }
 
-// BLASTP of the query sequences against the database subject_db (for a self alignment, give the database of the query).
+// BLASTP of the query sequences against the BLAST database ref (for a self alignment, give the database of the query).
 // Output: tabular format with the query and subject lengths (-outfmt "6 std qlen slen"), query_vs_subject.blastp
 // (empty when the query is empty).
 process BLASTP {
@@ -15,14 +15,14 @@ process BLASTP {
     time 2.h
 
     input:
-    record(meta: Record?, path: Path, subject_db: MetaPath, args: String?)
+    record(meta: Record?, path: Path, ref: MetaPath, args: String?)
 
     stage:
     stageAs(path, 'query.fasta')
-    stageAs(subject_db.path, 'subject_db')
+    stageAs(ref.path, 'subject_db')
 
     output:
-    blast6 = record(meta: meta, meta_subject: subject_db.meta, path: file('query_vs_subject.blastp'))
+    blast6 = record(meta: meta, meta_ref: ref.meta, path: file('query_vs_subject.blastp'))
 
     script:
     """

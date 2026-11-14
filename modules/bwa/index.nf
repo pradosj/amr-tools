@@ -7,17 +7,14 @@ process BWA_INDEX {
     time 1.h
 
     input:
-    record(meta: Record, fasta: Path, args: String?)
+    record(meta: Record?, path: Path, args: String?)
 
     output:
-    record(
-        meta: meta,
-        index: file('index')
-    )
+    bwa_index = record(meta: meta, path: file('index'))
 
     script:
     """
-    mkdir -p "index" && bwa index ${args ?: ''} -p "index/index" ${fasta}
+    mkdir -p "index" && bwa index ${args ?: ''} -p "index/index" ${path}
     """
 
     stub:

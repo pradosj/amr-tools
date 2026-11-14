@@ -1,6 +1,6 @@
 nextflow.enable.types = true
 
-// BLAST database of the sequences of a FASTA file (dbtype: nucl, the default, or prot), for BLASTN/BLASTP `subject_db`
+// BLAST database of the sequences of a FASTA file (dbtype: nucl, the default, or prot), for BLASTN/BLASTP `ref`
 // Output: the folder of the database files, blastdb/db.*
 process MAKEBLASTDB {
     container 'docker.io/ncbi/blast:2.13.0'

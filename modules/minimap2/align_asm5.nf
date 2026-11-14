@@ -1,5 +1,11 @@
 nextflow.enable.types = true
 
+record MetaPath {
+    meta: Record?
+    path: Path
+}
+
+
 // Align an assembly (query) to a reference assembly
 process MINIMAP2_ALIGN_ASM5 {
     container 'community.wave.seqera.io/library/minimap2_samtools:33bb43c18d22e29c'
@@ -8,14 +14,16 @@ process MINIMAP2_ALIGN_ASM5 {
     time 1.h
 
     input:
-    record(meta: Record, ref: Path, query: Path, args: String?)
+    record(meta: Record?, path: Path, ref: MetaPath, args: String?)
 
     stage:
-    stageAs(ref, 'ref.fasta')
-    stageAs(query, 'asm.fasta')
+    stageAs(ref.path, 'ref.fasta')
+    stageAs(path, 'asm.fasta')
 
     output:
-    record(meta: meta, bam: file('out.bam'), bai: file('out.bam.bai'))
+    bam = record(meta: meta, meta_ref: ref.meta, path: file('out.bam'))
+    bai = record(meta: meta, meta_ref: ref.meta, path: file('out.bam.bai'))
+    outputs = record(meta: meta, meta_ref: ref.meta, bam: file('out.bam'), bai: file('out.bam.bai'))
 
     script:
     """

@@ -81,7 +81,7 @@ workflow CORE_GENES_PYMLST {
 	def db_ch = MAKEBLASTDB(genes)
 	
 	// Call BLASTN to find all vs all hits, keeping only one best subject hit
-	def blastn_ch = BLASTN(genes.combine(subject_db: db_ch, args: blastn_args ?: '-subject_besthit'))
+	def blastn_ch = BLASTN(genes.combine(ref: db_ch, args: blastn_args ?: '-subject_besthit'))
 
 	// Core genes: clusters of the reciprocal hits, and their template sequences
 	def core_genes_ch = CORE_GENES(

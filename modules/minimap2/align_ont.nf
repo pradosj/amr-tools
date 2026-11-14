@@ -1,5 +1,11 @@
 nextflow.enable.types = true
 
+record MetaPath {
+    meta: Record?
+    path: Path
+}
+
+
 process MINIMAP2_ALIGN_ONT {
     container 'community.wave.seqera.io/library/minimap2_samtools:33bb43c18d22e29c'
     memory 10.GB
@@ -7,19 +13,19 @@ process MINIMAP2_ALIGN_ONT {
     time 1.h
 
     input:
-    // align the long reads on the assembly
-    record(meta: Record, fasta: Path, reads: Path, args: String?)
+    record(meta: Record?, path: Path, ref: MetaPath, args: String?)
+
+    stage:
+    stageAs(ref.path, 'ref.fasta')
 
     output:
-    record(
-        meta: meta,
-        bam: file('out.bam'),
-        bai: file('out.bam.bai')
-    )
+    bam = record(meta: meta, meta_ref: ref.meta, path: file('out.bam'))
+    bai = record(meta: meta, meta_ref: ref.meta, path: file('out.bam.bai'))
+    outputs = record(meta: meta, meta_ref: ref.meta, bam: file('out.bam'), bai: file('out.bam.bai'))
 
     script:
     """
-    minimap2 -x map-ont ${args ?: ''} -t ${task.cpus} ${fasta} ${reads} -a \\
+    minimap2 -x map-ont ${args ?: ''} -t ${task.cpus} ref.fasta ${path} -a \\
     | samtools sort -@ ${task.cpus} --write-index -O BAM -o out.bam##idx##out.bam.bai
     """
 
