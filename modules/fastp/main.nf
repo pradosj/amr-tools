@@ -7,14 +7,12 @@ process FASTP {
     time 30.m
 
     input:
-    record(meta: Record, read1: Path, read2: Path?, args: String?)    // ShortReads, plus args
+    record(meta: Record?, read1: Path, read2: Path?, args: String?)
 
     output:
-    record(
-        meta: meta,
-        json: file('output.fastp.json'),
-        html: file('output.fastp.html')
-    )
+    json = record(meta: meta, path: file('output.fastp.json'))
+    html = record(meta: meta, path: file('output.fastp.html'))
+    outputs = record(meta: meta, html: file('output.fastp.html'), json: file('output.fastp.json'))
 
     script:
     def in2 = read2 ? "--in2 ${read2}" : ''

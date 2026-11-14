@@ -49,9 +49,9 @@ workflow READS_QC {
 	def fastp_ch = FASTP(short_reads)
 
 	// MultiQC
-	def multiqc_files_ch = nanoplot_ch
-		.map({ r -> record(name: "${r.meta.id}.nanostat", path: r.nanostat) })
-		.mix(fastp_ch.map({ r -> record(name: "${r.meta.id}.fastp.json", path: r.json) }))
+	def multiqc_files_ch = channel.empty()
+		.mix(nanoplot_ch.map({ r -> record(name: "${r.meta.id}.nanostat", path: r.nanostat) })
+		.mix(fastp_ch.json.map({ r -> record(name: "${r.meta.id}.fastp.json", path: r.path) }))
 		.collect()
 		.flatMap({ fs -> fs.isEmpty() ? [] : [fs.toList()] })  // no MultiQC when there are no reads
 	def multiqc_ch = MULTIQC(
@@ -65,6 +65,6 @@ workflow READS_QC {
 
 	emit:
 	nanoplot: Channel<Record>    = nanoplot_ch
-	fastp: Channel<Record>       = fastp_ch
+	fastp: Channel<Record>       = fastp_ch.outputs    // records with fields meta, html, json
 	multiqc: Channel<Record>     = multiqc_ch    // records with fields meta, html
 }
