@@ -61,8 +61,8 @@ genome_distance_graph <- function(blast, seq_genomes, min_len = 1000) {
     ) |>
     slice_max(weight, n = 1L, with_ties = FALSE) |>
     ungroup() |>
-    left_join(select(seq_genomes, eid1 = new_seq_id, genome1 = meta_id), by="query_id") |> 
-    left_join(select(seq_genomes, eid2 = new_seq_id, genome2 = meta_id), by="subject_id") |>
+    left_join(select(seq_genomes, eid1 = new_seq_id, genome1 = meta_id), by = "eid1") |> 
+    left_join(select(seq_genomes, eid2 = new_seq_id, genome2 = meta_id), by = "eid2") |>
     select(eid1,eid2,genome1,genome2,num_mis,num_gapopen,n_frag,total_frag_len,err,weight)
 
   # keep the best inter genome reciprocal hit
@@ -70,11 +70,11 @@ genome_distance_graph <- function(blast, seq_genomes, min_len = 1000) {
     semi_join(
       by = c("eid1","eid2"),
       bind_rows(
-        select(seq2seq,eid1,eid2,seq=eid1,genome=genome2,total_frag_len),
-        select(seq2seq,eid1,eid2,seq=eid2,genome=genome1,total_frag_len)
+        mutate(seq2seq, seq = eid1, genome = genome2),
+        mutate(seq2seq, seq = eid2, genome = genome1)
       ) |>
       group_by(seq,genome) |>
-      slice_max(total_frag_len,n=1,with_ties = FALSE),
+      slice_max(total_frag_len,n=1,with_ties = FALSE)
     )
   
   # summarize per genome
@@ -84,11 +84,12 @@ genome_distance_graph <- function(blast, seq_genomes, min_len = 1000) {
       g2 = pmax(as.character(genome1), as.character(genome2))
     ) |>
     summarise(
-      num_mis = sum(num_mismatch),
+      num_mis = sum(num_mis),
       num_gapopen = sum(num_gapopen),
       n_frag = sum(n_frag),
       total_frag_len = sum(total_frag_len),
-      err = sum(err)
+      err = sum(err),
+      .groups = "drop"
     ) |>
     mutate(
       weight = err / total_frag_len
