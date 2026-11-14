@@ -73,7 +73,7 @@ workflow ASSEMBLE {
 	def fasta_ch: Channel<MetaPath> = channel.empty()
 	def outputs_ch: Channel<AssemblyOutputs> = channel.empty()
 	if (name == 'long_flye') {
-		def asm = FLYE(long_input.map({ r -> record(meta: r.meta, path: r.long_reads, args: opts.args?.flye) }))
+		def asm = FLYE(long_input.map({ r -> r + record(args: opts.args?.flye) }))
 		fasta_ch = asm.fasta
 		outputs_ch = asm.outputs
 	} else if (name == 'long_flye_medaka') {
