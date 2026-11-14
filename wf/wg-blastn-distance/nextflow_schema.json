@@ -1,0 +1,23 @@
+{
+	"$schema": "https://json-schema.org/draft/2020-12/schema",
+	"type": "object",
+	"required": ["fasta"],
+	"properties": {
+		"fasta": {
+			"type": "string",
+			"pattern": "^(((https?|ftp)://[^,\\s]+|\\S+(\\.(fasta|fa|fna)(\\.gz)?|\\})!?)(,\\s*|$))+$",
+			"description": "FASTA files of the genomes (optionally gzipped): comma-separated paths, glob patterns or URLs (one genome per file, named by its file name)"
+		},
+		"blastn_args": {
+			"type": "string",
+			"default": "-perc_identity 70 -evalue 1e-3 -subject_besthit -max_target_seqs 1000000",
+			"description": "Options of BLASTN for the alignment of the genomes (-max_target_seqs: keep all the sequences as subjects, 500 by default)"
+		},
+		"min_len": {
+			"type": "integer",
+			"minimum": 1,
+			"default": 1000,
+			"description": "Minimum length of the alignments"
+		}
+	}
+}

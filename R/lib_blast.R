@@ -78,40 +78,5 @@ blast_filter_inner_alignments <- function(aln) {
 	filter(aln, !seq(nrow(aln)) %in% S4Vectors::queryHits(w))
 }
 
-#' Distance graph of the sequences, from their BLASTN against themselves
-#'
-#' For each pair of sequences, the alignments of at least min_len bp that are not included in another one (see
-#' filter_inner_alignments()) give the errors: the mismatches, plus one per extra fragment (n_frag - 1). The weight of
-#' an edge is the number of errors per aligned bp, the worst of the two directions.
-#'
-#' @param aln Blast alignments, as read by read_blast6().
-#' @return An undirected tbl_graph: the sequences as nodes (name), and an edge per pair of sequences aligning (each
-#'   sequence with itself included), with num_mis, num_gapopen, n_frag, total_frag_len, err and weight.
-blast_distance_graph <- function(aln) {
-	g <- aln |>
-		group_by(query_id, subject_id) |>
-		summarise(
-			num_mis = sum(num_mismatch),
-			num_gapopen = sum(num_gapopen),
-			n_frag = n(),
-			total_frag_len = sum(align_len)
-		) |>
-		mutate(
-			err = (num_mis + (n_frag - 1)),
-			weight = err / total_frag_len
-		) |>
-		group_by(
-			qid = pmin(as.character(query_id), as.character(subject_id)),
-			sid = pmax(as.character(query_id), as.character(subject_id))
-		) |>
-		slice_max(weight, n = 1L, with_ties = FALSE)
-
-	tbl_graph(
-		nodes = tibble(name = unique(c(g$qid, g$sid))),
-		edges = g,
-		directed = FALSE
-	)
-}
-
 
 
