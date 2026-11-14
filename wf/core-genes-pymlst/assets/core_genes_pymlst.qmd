@@ -30,7 +30,19 @@ read_pymlst_distance <- function(f) {
 	m
 }
 
-#' Axis of categories (genome or gene names), the labels truncated on the left: long names (wider than the plot when it is drawn in a hidden
+#' Remove the prefix common to all the names, cut after its last separator (`:`, `.`, `_`, `-`, `/` or space) so that
+#' no name is cut inside a word
+#'
+#' @param names a character vector
+#' @return the names without their common prefix (unchanged when they have none, or when there is a single name)
+remove_common_prefix <- function(names) {
+	if (n_distinct(names) < 2) return(names)
+	prefix <- str_extract(Biobase::lcPrefix(unique(names)), "^.*[:._/ -]")
+	if (is.na(prefix)) return(names)
+	str_sub(names, str_length(prefix) + 1)
+}
+
+#' Axis of categories (genome or gene names, without their common prefix), the labels truncated on the left: long names (wider than the plot when it is drawn in a hidden
 #' dashboard page) make plotly fail with "Something went wrong with axis scaling", which also stops the next widgets
 #'
 #' @param names the names of the categories of the axis
@@ -49,6 +61,7 @@ if (nrow(dist_mat) > 2) {
 	dist_mat <- dist_mat[hclust(as.dist(dist_mat), method = "ward.D2")$order,]
 	dist_mat <- dist_mat[,rownames(dist_mat)]
 }
+dimnames(dist_mat) <- map(dimnames(dist_mat), remove_common_prefix)    # the same genomes in rows and columns
 
 genes <- read_tsv(
   fs::path(params$input_dir, "core_genes.tsv"),
@@ -122,7 +135,7 @@ plot_ly(
 ) |>
 	layout(
 		xaxis = names_axis(colnames(dist_mat), title = "", tickangle = 90),
-		yaxis = names_axis(rownames(dist_mat), title = "", autorange = "reversed")
+		yaxis = names_axis(rownames(dist_mat), title = "", autorange = "reversed", scaleanchor = "x")    # square cells
 	)
 ```
 
@@ -160,8 +173,8 @@ alleles <- read_tsv(fs::path(params$input_dir, "pymlst/mlst.tsv"), col_types = c
 	mutate(rank = match(allele, names(sort(table(allele), decreasing = TRUE)))) |>    # NA for a missing gene
 	ungroup() %>%
   mutate(
-    gene_uid = as_factor(gene_uid),
-    genome = fct_relevel(genome, rownames(dist_mat))
+    gene_uid = as_factor(remove_common_prefix(gene_uid)),
+    genome = fct_relevel(remove_common_prefix(genome), rownames(dist_mat))    # the genomes of dist_mat, the same prefix removed
   )
 
 local({
