@@ -8,14 +8,11 @@ process FLYE {
     time 4.h + 8.h * (task.attempt - 1)
 
     input:
-    record(meta: Record, reads: Path, args: String?)
+    record(meta: Record?, path: Path, args: String?)
 
     output:
-    record(
-        meta: meta,
-        dir: file('flye'),
-        fasta: file('flye/assembly.fasta')
-    )
+    fasta = record(meta: meta, path: file('flye/assembly.fasta'))
+    dir = record(meta: meta, path: file('flye'))
 
     script:
     """
@@ -23,7 +20,7 @@ process FLYE {
         ${args ?: ''} \\
         --threads ${task.cpus} \\
         --out-dir ./flye \\
-        --nano-hq ${reads}
+        --nano-hq ${path}
     """
 
     stub:

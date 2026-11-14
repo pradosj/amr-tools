@@ -1,6 +1,6 @@
 nextflow.enable.types = true
 
-include { LONG_FLYE                     } from './subworkflows/flye_medaka_pilon'
+include { FLYE                          } from './modules/flye'
 include { LONG_FLYE_MEDAKA              } from './subworkflows/flye_medaka_pilon'
 include { HYBRID_FLYE_MEDAKA_PILON      } from './subworkflows/flye_medaka_pilon'
 include { UNICYCLER                     } from './modules/unicycler'
@@ -72,9 +72,13 @@ workflow ASSEMBLE {
 
 	def asm_ch = channel.empty()
 	if (name == 'long_flye') {
-		asm_ch = LONG_FLYE(long_input.map({ r -> r + record(args: opts.args) }))
+		def flye_ch = FLYE(long_input.map({ r -> record(meta: r.meta, path: r.long_reads, args: opts.args?.flye) }))
+		asm_ch = flye_ch.fasta
+			.map({ r -> record(meta: r.meta, fasta: r.path) })
+			.join(flye_ch.dir.map({ r -> record(meta: r.meta, dir: r.path) }), by: 'meta')
 	} else if (name == 'long_flye_medaka') {
 		asm_ch = LONG_FLYE_MEDAKA(long_input.map({ r -> r + record(args: opts.args) }))
+			.map({ r -> record(meta: r.meta, dir: r.dir, fasta: r.path, info: r.info) })
 	} else if (name == 'long_unicycler') {
 		asm_ch = UNICYCLER(long_input.map({ r -> r + record(args: opts.args?.unicycler) }))
 	} else if (name == 'long_hybracter') {
@@ -93,6 +97,7 @@ workflow ASSEMBLE {
 	} else if (name == 'hybrid_flye_medaka_pilon') {
 		// samples with short reads only are dropped (flye needs long reads)
 		asm_ch = HYBRID_FLYE_MEDAKA_PILON(hybrid_input.filter({ r -> r.long_reads != null }).map({ r -> r + record(args: opts.args) }))
+			.map({ r -> record(meta: r.meta, dir: r.dir, fasta: r.path, info: r.info) })
 	} else {
 		error("Unknown assembler name: ${name}")
 	}
