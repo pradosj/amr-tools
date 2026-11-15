@@ -1,9 +1,9 @@
 nextflow.enable.types = true
 
 include { SAMTOOLS_FASTQ as CONVERT_LONG_BAM_TO_FASTQ } from './modules/samtools/fastq'
-include { READS_FILTER; ReadsFilterParams             } from './workflows/reads-filter/main.nf'
-include { READS_QC as FILTERED_READS_QC               } from './workflows/reads-qc/main.nf'
-include { ASSEMBLE; AssemblerParams                   } from './workflows/assemble/main.nf'
+include { READS_FILTER; ReadsFilterParams             } from './workflows/reads/filter/main.nf'
+include { READS_QC as FILTERED_READS_QC               } from './workflows/reads/qc/main.nf'
+include { READS_ASSEMBLE; AssemblerParams             } from './workflows/reads/assemble/main.nf'
 include { ASSEMBLIES_QC; AssembliesQcParams           } from './workflows/assemblies-qc/main.nf'
 include { AMR_ANNOT; AmrParams                        } from './workflows/amr-annot/main.nf'
 include { DATABASES; DbParams; Db                     } from './subworkflows/db/main.nf'
@@ -191,7 +191,7 @@ workflow {
 	def todo_ch = samples
 		.filter({ s -> !s.assembly_fasta })
 		.map({ s -> record(meta: record(id: s.id)) })
-	def assemblies = ASSEMBLE(
+	def assemblies = READS_ASSEMBLE(
 		params.assembler,
 		sr_rec.join(todo_ch, by: 'meta'),
 		lr_rec.join(todo_ch, by: 'meta')

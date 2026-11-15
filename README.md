@@ -126,9 +126,9 @@ e.g. `nextflow run pradosj/amr-tools/wf/amr-annot --assemblies.fasta='assemblies
 
 | Pipeline | Description |
 |:--|:--|
-| [`reads-qc`](wf/reads-qc) | Quality control of ONT and Illumina reads (NanoPlot, fastp, MultiQC) |
-| [`reads-filter`](wf/reads-filter) | Filtering and subsampling of the reads |
-| [`assemble`](wf/assemble) | De novo assembly from ONT and/or Illumina reads |
+| [`reads-qc`](wf/reads/qc) | Quality control of ONT and Illumina reads (NanoPlot, fastp, MultiQC) |
+| [`reads-filter`](wf/reads/filter) | Filtering and subsampling of the reads |
+| [`assemble`](wf/reads/assemble) | De novo assembly from ONT and/or Illumina reads |
 | [`assemblies-qc`](wf/assemblies-qc) | Quality control of assemblies (statistics, reads alignments, CheckM2) |
 | [`amr-annot`](wf/amr-annot) | AMR and plasmid annotation of assemblies and reads, with a multi-sample report |
 | [`orgfinder`](wf/orgfinder) | Organism detection of assemblies with FastANI |

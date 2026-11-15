@@ -6,7 +6,7 @@
 2. the plasmids are annotated with `AMR_ANNOT` (ResFinder, PlasmidFinder, AMRFinderPlus, MOB-typer, ... see [`amr-annot`](../amr-annot); without orgfinder, and so without cgemlst);
 3. an HTML report gathers the alignments and the annotations.
 
-The core genes of the plasmids, typed with pyMLST, are found by the [`core-genes-pymlst`](../core-genes-pymlst) pipeline.
+The core genes of the plasmids, typed with pyMLST, are found by the [`core-genes-pymlst`](../evo/core-genes-pymlst) pipeline.
 
 # Installation
 
