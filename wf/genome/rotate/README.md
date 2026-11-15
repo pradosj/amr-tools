@@ -1,7 +1,7 @@
 # genome-rotate
 
 `genome-rotate` a nextflow pipeline rotating the sequences of genomes (circular plasmids, chromosomes, ...) to start
-at their best hit on a reference dataset (`GENOME_ROTATE`, see [`genome/rotate`](../../../registry/workflows/genome/rotate)):
+at their best hit on a reference dataset (`GENOME_ROTATE`, see [`genome/rotate/blastn`](../../../registry/workflows/genome/rotate/blastn)):
 
 1. a BLAST database is built from the reference dataset (e.g. the genes of the origins of replication, a reference
    plasmid);
