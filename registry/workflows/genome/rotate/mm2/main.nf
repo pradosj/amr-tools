@@ -5,8 +5,7 @@ include { FASTA_ROTATE       } from './modules/fasta/rotate'
 include { MetaPath           } from './subworkflows/input/main.nf'
 
 
-// Convert minimap2 PAF hits to the BLAST tabular format of FASTA_ROTATE (-outfmt "6 std qlen slen"): the number of
-// matching bases as bit score, no e-value and gap opening (0), the mismatches being the aligned bases that do not match
+
 process PAF_TO_BLAST6 {
 	container 'docker.io/ubuntu:24.04'
 	label 'local'
@@ -38,9 +37,6 @@ process PAF_TO_BLAST6 {
 }
 
 
-// Rotate each sequence of FASTA files to start at its best hit (number of matching bases) on a reference dataset, on
-// the strand of the hit: minimap2 -x asm5 -c of the FASTA (query) on the reference FASTA (-c: base-level
-// alignment, giving the exact ends of the hits), then FASTA_ROTATE
 workflow GENOME_ROTATE_MM2 {
 	take:
 	inputs: Channel<MetaPath>
