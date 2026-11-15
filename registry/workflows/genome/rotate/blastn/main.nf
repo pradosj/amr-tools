@@ -1,9 +1,9 @@
 nextflow.enable.types = true
 
-include { MAKEBLASTDB  } from './modules/blast/makeblastdb'
-include { BLASTN       } from './modules/blast/blastn'
-include { FASTA_ROTATE } from './modules/fasta/rotate'
-include { MetaPath     } from './subworkflows/input/main.nf'
+include { MAKEBLASTDB        } from './modules/blast/makeblastdb'
+include { BLASTN             } from './modules/blast/blastn'
+include { FASTA_ROTATE_BLAST } from './modules/fasta/rotate'
+include { MetaPath           } from './subworkflows/input/main.nf'
 
 
 workflow GENOME_ROTATE_BLASTN {
@@ -22,7 +22,7 @@ workflow GENOME_ROTATE_BLASTN {
 
 	// One output per FASTA: the rotated FASTA, or the input FASTA when it has no hit
 	def fasta_hits_ch = fasta_ch.join(hits_ch.map({ h -> record(meta: h.meta, hits: h) }), by: 'meta')
-	def rotated_ch = FASTA_ROTATE(
+	def rotated_ch = FASTA_ROTATE_BLAST(
 		fasta_hits_ch
 			.filter({ r -> !(r.hits.path as Path).isEmpty() })
 			.map({ r -> record(fasta: r.fasta, blast6: r.hits) })
