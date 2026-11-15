@@ -1,9 +1,8 @@
 nextflow.enable.types = true
 
 include { PLASMID_LINEAGE; PlasmidLineageParams; Genome; CONCAT_FASTA; FIND_ALIGN_SEQ } from './workflows/plasmid-lineage/main.nf'
-include { GENOME_ROTATE } from './workflows/rotate/main.nf'
+include { GENOME_ROTATE_BLASTN } from './workflows/rotate/main.nf'
 include { MAKEBLASTDB } from './modules/blast/makeblastdb'
-include { MAKEBLASTDB as MAKEBLASTDB_ALIGN_SEQ } from './modules/blast/makeblastdb'
 include { BLASTN as BLASTN_SELF } from './modules/blast/blastn'
 include { IDENTITY as COPY_FASTA } from './modules/identity/main.nf'
 include { AmrParams } from './workflows/plasmid-lineage/workflows/amr-annot/main.nf'
@@ -62,10 +61,9 @@ workflow {
 			file("${projectDir}/workflows/plasmid-lineage/assets")
 		)
 		// the same reference for each plasmid
-		def align_seq_db_ch = MAKEBLASTDB_ALIGN_SEQ(align_seq_ch.map({ a -> record(meta: a.meta, path: a.fasta) }))
-		rotated_ch = GENOME_ROTATE(
-			plasmids.combine(align_seq_db_ch).map({ p, d -> record(fasta: record(meta: p.meta, path: p.fasta), ref: d) }),
-			blastn_args
+		rotated_ch = GENOME_ROTATE_BLASTN(
+			plasmids.map({ p -> record(meta: p.meta, path: p.fasta) }),
+			align_seq_ch.map({ a -> a.fasta }).collect().map({ fs -> fs.toList().first() })    // a single reference
 		).rotated_fasta
 		lineage_input_ch = rotated_ch.map({ r -> record(meta: r.meta, fasta: r.path) })
 	}

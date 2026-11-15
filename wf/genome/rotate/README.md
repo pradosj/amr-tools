@@ -1,7 +1,7 @@
 # genome-rotate
 
 `genome-rotate` a nextflow pipeline rotating the sequences of genomes (circular plasmids, chromosomes, ...) to start
-at their best hit on a reference dataset (`GENOME_ROTATE`, see [`genome/rotate/blastn`](../../../registry/workflows/genome/rotate/blastn)):
+at their best hit on a reference dataset (`GENOME_ROTATE_BLASTN`, see [`genome/rotate/blastn`](../../../registry/workflows/genome/rotate/blastn)):
 
 1. a BLAST database is built from the reference dataset (e.g. the genes of the origins of replication, a reference
    plasmid);
@@ -25,8 +25,8 @@ nextflow run pradosj/amr-tools/wf/genome/rotate --fasta='genomes/*.fasta' --ref=
 
 Each FASTA file is a genome, named by its file name (without the FASTA extension). A path suffixed by `!` is a FASTA
 file to split: each of its sequences is a genome, named `<file name>:<sequence id>` (e.g. `--fasta='plasmids.fasta!'`).
-`--ref` is the FASTA file of the reference dataset (path or URL, optionally gzipped). The options of BLASTN are given
-with `--blastn_args` (default `-perc_identity 70 -evalue 1e-3 -subject_besthit`).
+`--ref` is the FASTA file of the reference dataset (path or URL, optionally gzipped).
+
 
 Outputs, in the output folder (`results/` by default):
 

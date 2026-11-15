@@ -1,26 +1,24 @@
 nextflow.enable.types = true
 
+include { MAKEBLASTDB  } from './modules/blast/makeblastdb'
 include { BLASTN       } from './modules/blast/blastn'
 include { FASTA_ROTATE } from './modules/fasta/rotate'
 include { MetaPath     } from './subworkflows/input/main.nf'
 
-// A FASTA file to rotate on a reference dataset
-record RotateInput {
-	fasta: MetaPath    // the sequences to rotate (its meta, unique to each input, is the meta of the outputs)
-	ref: MetaPath      // BLAST database of the reference dataset (output of MAKEBLASTDB)
-}
 
-
-// Rotate each sequence of FASTA files to start at its best hit (bit score) on a reference dataset, on the strand of
-// the hit: BLASTN of the FASTA (query) against the reference database (subject), then FASTA_ROTATE
-workflow GENOME_ROTATE {
+workflow GENOME_ROTATE_BLASTN {
 	take:
-	inputs: Channel<RotateInput>
-	blastn_args: String?
+	inputs: Channel<MetaPath>
+	ref: Value<Path>    // FASTA of the reference dataset
 
 	main:
-	def fasta_ch = inputs.map({ r -> record(meta: r.fasta.meta, fasta: r.fasta) })
-	def hits_ch = BLASTN(inputs.map({ r -> record(meta: r.fasta.meta, path: r.fasta.path, ref: r.ref, args: blastn_args) }))
+	def fasta_ch = inputs.map({ r -> record(meta: r.meta, fasta: r) })
+	def db = MAKEBLASTDB(ref.map({ p -> record(meta: null, path: p) }))    // BLAST database of the reference
+	def hits_ch = BLASTN(
+		inputs
+			.combine(db: db)
+			.map({ r -> record(meta: r.meta, path: r.path, ref: record(meta: null, path: r.db.path), args: '-perc_identity 70 -evalue 1e-3 -subject_besthit') })
+	)
 
 	// One output per FASTA: the rotated FASTA, or the input FASTA when it has no hit
 	def fasta_hits_ch = fasta_ch.join(hits_ch.map({ h -> record(meta: h.meta, hits: h) }), by: 'meta')

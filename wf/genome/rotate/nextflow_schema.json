@@ -14,11 +14,6 @@
 			"exists": true,
 			"pattern": "^((https?|ftp)://\\S+|\\S+\\.(fasta|fa|fna)(\\.gz)?)$",
 			"description": "FASTA file of the reference dataset (optionally gzipped): path or URL"
-		},
-		"blastn_args": {
-			"type": "string",
-			"default": "-perc_identity 70 -evalue 1e-3 -subject_besthit",
-			"description": "Options of BLASTN for the alignment of the genomes (query) on the reference dataset (subject)"
 		}
 	}
 }

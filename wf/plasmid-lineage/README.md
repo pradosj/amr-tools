@@ -2,7 +2,7 @@
 
 `plasmid-lineage` a nextflow pipeline to study the lineage of a set of related plasmids:
 
-1. the plasmids are aligned against each other (BLASTN) and rotated to start at the longest region (≥1 kb) shared by at least 80% of them, on its strand (`GENOME_ROTATE`, see [`genome/rotate/blastn`](../../registry/workflows/genome/rotate/blastn)); the next steps run on the rotated plasmids (`--no_rotation`: on the given plasmids);
+1. the plasmids are aligned against each other (BLASTN) and rotated to start at the longest region (≥1 kb) shared by at least 80% of them, on its strand (`GENOME_ROTATE_BLASTN`, see [`genome/rotate/blastn`](../../registry/workflows/genome/rotate/blastn)); the next steps run on the rotated plasmids (`--no_rotation`: on the given plasmids);
 2. the plasmids are annotated with `AMR_ANNOT` (ResFinder, PlasmidFinder, AMRFinderPlus, MOB-typer, ... see [`amr-annot`](../amr-annot); without orgfinder, and so without cgemlst);
 3. an HTML report gathers the alignments and the annotations.
 

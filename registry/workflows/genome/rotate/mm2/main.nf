@@ -4,12 +4,6 @@ include { MINIMAP2_ALIGN_PAF } from './modules/minimap2/align_paf'
 include { FASTA_ROTATE       } from './modules/fasta/rotate'
 include { MetaPath           } from './subworkflows/input/main.nf'
 
-// A FASTA file to rotate on a reference dataset
-record RotateInput {
-	fasta: MetaPath    // the sequences to rotate (its meta, unique to each input, is the meta of the outputs)
-	ref: MetaPath      // FASTA of the reference dataset
-}
-
 
 // Convert minimap2 PAF hits to the BLAST tabular format of FASTA_ROTATE (-outfmt "6 std qlen slen"): the number of
 // matching bases as bit score, no e-value and gap opening (0), the mismatches being the aligned bases that do not match
@@ -45,17 +39,16 @@ process PAF_TO_BLAST6 {
 
 
 // Rotate each sequence of FASTA files to start at its best hit (number of matching bases) on a reference dataset, on
-// the strand of the hit: minimap2 of the FASTA (query) on the reference FASTA (default: -x asm5 -c, the base-level
-// alignment giving the exact ends of the hits), then
-// FASTA_ROTATE
+// the strand of the hit: minimap2 -x asm5 -c of the FASTA (query) on the reference FASTA (-c: base-level
+// alignment, giving the exact ends of the hits), then FASTA_ROTATE
 workflow GENOME_ROTATE_MM2 {
 	take:
-	inputs: Channel<RotateInput>
-	minimap2_args: String?
+	inputs: Channel<MetaPath>
+	ref: Value<Path>    // FASTA of the reference dataset
 
 	main:
-	def fasta_ch = inputs.map({ r -> record(meta: r.fasta.meta, fasta: r.fasta) })
-	def paf_ch = MINIMAP2_ALIGN_PAF(inputs.map({ r -> record(meta: r.fasta.meta, path: r.fasta.path, ref: r.ref, args: minimap2_args ?: '-x asm5 -c') }))
+	def fasta_ch = inputs.map({ r -> record(meta: r.meta, fasta: r) })
+	def paf_ch = MINIMAP2_ALIGN_PAF(inputs.combine(ref: ref).map({ r -> record(meta: r.meta, path: r.path, ref: record(meta: null, path: r.ref), args: '-x asm5 -c') }))
 	def hits_ch = PAF_TO_BLAST6(paf_ch)
 
 	// One output per FASTA: the rotated FASTA, or the input FASTA when it has no hit
