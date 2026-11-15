@@ -6,7 +6,6 @@ record MetaPath {
 }
 
 
-// Align an assembly (query) to a reference assembly
 process MINIMAP2_ALIGN_ASM5 {
     container 'community.wave.seqera.io/library/minimap2_samtools:33bb43c18d22e29c'
     memory 10.GB
