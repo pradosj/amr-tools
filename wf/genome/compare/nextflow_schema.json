@@ -34,7 +34,7 @@
 		"minimap2_args": {
 			"type": "string",
 			"description": "Extra arguments given to minimap2 (after -x asm5)",
-			"default": "-z1000000 -p 0.1 -Y --cs -a"
+			"default": "-z1000000 -p 0.1 -Y --cs"
 		},
 
 		"mpileup_args": {

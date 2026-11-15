@@ -1,7 +1,7 @@
 nextflow.enable.types = true
 
-include { MINIMAP2_ALIGN_ASM5                       } from './modules/minimap2/align_asm5'
-include { MINIMAP2_ALIGN_ASM5 as ROTATION_ALIGNMENT } from './modules/minimap2/align_asm5'
+include { MINIMAP2_ALIGN_BAM                        } from './modules/minimap2/align_bam'
+include { MINIMAP2_ALIGN_BAM as ROTATION_ALIGNMENT  } from './modules/minimap2/align_bam'
 include { BCFTOOLS_ASM5_MPILEUP                     } from './modules/bcftools/asm5_mpileup'
 include { QUARTO_RENDER                             } from './modules/quarto/render'
 
@@ -54,7 +54,7 @@ workflow ROTATE_QUERIES {
 	minimap2_args: String?
 
 	main:
-	def aln_ch = ROTATION_ALIGNMENT(queries.map({ r -> record(meta: r.meta, path: r.query, ref: record(meta: null, path: r.ref), args: minimap2_args) })).bam
+	def aln_ch = ROTATION_ALIGNMENT(queries.map({ r -> record(meta: r.meta, path: r.query, ref: record(meta: null, path: r.ref), args: "-x asm5 ${minimap2_args ?: ''}") })).bam
 	def rotated_ch = ROTATE_FASTA(
 		queries
 			.join(aln_ch, by: 'meta')
@@ -89,8 +89,8 @@ workflow GENOME_COMPARE {
 	}
 
 	// Map (rotated) queries to their reference
-	def aln_ch = MINIMAP2_ALIGN_ASM5(
-		query_ch.map({ r -> record(meta: r.meta, path: r.query, ref: record(meta: null, path: r.ref), args: minimap2_args) })
+	def aln_ch = MINIMAP2_ALIGN_BAM(
+		query_ch.map({ r -> record(meta: r.meta, path: r.query, ref: record(meta: null, path: r.ref), args: "-x asm5 ${minimap2_args ?: ''}") })
 	).outputs
 
 	// Call mutations

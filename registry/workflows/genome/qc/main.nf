@@ -1,6 +1,6 @@
 nextflow.enable.types = true
 
-include { MINIMAP2_ALIGN_ONT } from './modules/minimap2/align_ont'
+include { MINIMAP2_ALIGN_BAM } from './modules/minimap2/align_bam'
 include { SAMTOOLS_STATS as SAMTOOLS_STATS_LONG  } from './modules/samtools/stats'
 include { SAMTOOLS_STATS as SAMTOOLS_STATS_SHORT } from './modules/samtools/stats'
 include { BWA_MEM            } from './modules/bwa/mem'
@@ -123,10 +123,10 @@ workflow GENOME_QC {
 	def short_stats_ch = SAMTOOLS_STATS_SHORT(short_bam_ch.bam)
 
 	// Long reads alignment on the assembly, and statistics
-	def long_bam_ch = MINIMAP2_ALIGN_ONT(
+	def long_bam_ch = MINIMAP2_ALIGN_BAM(
 		long_reads
 			.map({ r -> record(meta: r.meta, path: r.reads) })
-			.join(assemblies.map({ r -> record(meta: r.meta, ref: r) }), by: 'meta')
+			.join(assemblies.map({ r -> record(meta: r.meta, ref: r, args: '-x map-ont') }), by: 'meta')
 	)
 	def long_stats_ch = SAMTOOLS_STATS_LONG(long_bam_ch.bam)
 

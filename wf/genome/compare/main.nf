@@ -10,7 +10,7 @@ params {
 	ref_gff: Path? = null
 	query: String
 	no_query_rotation: Boolean = false
-	minimap2_args: String? = '-z1000000 -p 0.1 -Y --cs -a'
+	minimap2_args: String? = '-z1000000 -p 0.1 -Y --cs'
 	mpileup_args: String? = '--no-BAQ --indel-size 1000 --ff=UNMAP --ambig-reads=drop --gap-frac=0 --min-ireads=0'
 }
 
