@@ -1,7 +1,8 @@
 nextflow.enable.types = true
 
-include { PLASMID_LINEAGE; PlasmidLineageParams; Genome; CONCAT_FASTA; FIND_ALIGN_SEQ } from './workflows/plasmid-lineage/main.nf'
+include { PLASMID_LINEAGE; PlasmidLineageParams; Genome; FIND_ALIGN_SEQ } from './workflows/plasmid-lineage/main.nf'
 include { GENOME_ROTATE_BLASTN } from './workflows/rotate/main.nf'
+include { FASTA_CAT } from './modules/fasta/cat'
 include { MAKEBLASTDB } from './modules/blast/makeblastdb'
 include { BLASTN as BLASTN_SELF } from './modules/blast/blastn'
 include { IDENTITY as COPY_FASTA } from './modules/identity/main.nf'
@@ -46,11 +47,11 @@ workflow {
 	def rotated_ch = channel.empty()
 	if (!params.no_rotation) {
 		def blastn_args = params.lineage?.blastn_args ?: '-perc_identity 70 -evalue 1e-3 -subject_besthit'
-		def fasta_ch = CONCAT_FASTA(plasmids
-			.map({ r -> r.fasta })
+		def fasta_ch = FASTA_CAT(plasmids
+			.map({ r -> record(meta: null, path: r.fasta) })    // no meta: the sequence names are kept
 			.collect()
-			.flatMap({ fs -> fs.isEmpty() ? [] : [record(meta: record(id: params.name), fasta: fs.toList().toSorted())] })
-		)
+			.flatMap({ rs -> rs.isEmpty() ? [] : [record(meta: record(id: params.name), genomes: rs.toList().toSorted({ r -> r.path }))] })
+		).fasta.map({ r -> record(meta: r.meta, fasta: r.path) })
 		def self_ch = BLASTN_SELF(
 			fasta_ch
 				.join(MAKEBLASTDB(fasta_ch.map({ r -> record(meta: r.meta, path: r.fasta) })).map({ d -> record(meta: d.meta, db: d) }), by: 'meta')

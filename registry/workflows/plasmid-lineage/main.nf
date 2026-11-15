@@ -1,6 +1,7 @@
 nextflow.enable.types = true
 
-include { MAKEBLASTDB } from './modules/blast/makeblastdb'
+include { FASTA_CAT             } from './modules/fasta/cat'
+include { MAKEBLASTDB           } from './modules/blast/makeblastdb'
 include { BLASTN as BLASTN_SELF } from './modules/blast/blastn'
 include { QUARTO_RENDER         } from './modules/quarto/render'
 include { AMR_ANNOT; AmrParams  } from './workflows/amr-annot/main.nf'
@@ -101,11 +102,11 @@ workflow PLASMID_LINEAGE {
 	def set_meta = record(id: name)
 
 	// Align the plasmids against each other (all their sequences in one FASTA)
-	def fasta_ch = CONCAT_FASTA(plasmids
-		.map({ r -> r.fasta })
+	def fasta_ch = FASTA_CAT(plasmids
+		.map({ r -> record(meta: null, path: r.fasta) })    // no meta: the sequence names are kept
 		.collect()
-		.flatMap({ fs -> fs.isEmpty() ? [] : [record(meta: set_meta, fasta: fs.toList().toSorted())] })
-	)
+		.flatMap({ rs -> rs.isEmpty() ? [] : [record(meta: set_meta, genomes: rs.toList().toSorted({ r -> r.path }))] })
+	).fasta.map({ r -> record(meta: r.meta, fasta: r.path) })
 	def self_ch = BLASTN_SELF(
 		fasta_ch
 			.join(MAKEBLASTDB(fasta_ch.map({ r -> record(meta: r.meta, path: r.fasta) })).map({ d -> record(meta: d.meta, db: d) }), by: 'meta')
