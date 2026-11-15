@@ -1,7 +1,7 @@
 nextflow.enable.types = true
 
-include { GENOME_COMPARE; Comparison           } from './workflows/compare/main.nf'
-include { INPUT_FASTA                          } from './subworkflows/input/main.nf'
+include { GENOME_COMPARE                       } from './workflows/compare/main.nf'
+include { INPUT_FASTA; MetaPath                } from './subworkflows/input/main.nf'
 include { GZIP_UNZ                             } from './modules/gzip/unz'
 include { validateParameters; paramsSummaryLog } from 'plugin/nf-schema'
 
@@ -26,11 +26,10 @@ workflow {
 	if (params.ref.name.endsWith('.gz')) {
 		ref = GZIP_UNZ(channel.value(record(meta: record(name: 'reference'), path: params.ref))).map({ r -> r.file })
 	}
-	def query_ch: Channel<Comparison> = INPUT_FASTA(params.query)
-		.combine(ref: ref)
-		.map({ r -> record(meta: record(id: r.meta.id), ref: r.ref, query: r.path) })
+	def query_ch: Channel<MetaPath> = INPUT_FASTA(params.query)
+		.map({ r -> record(meta: record(id: r.meta.id), path: r.path) })
 
-	def cmp = GENOME_COMPARE(query_ch, params.ref_gff, params.no_query_rotation, params.minimap2_args, params.mpileup_args)
+	def cmp = GENOME_COMPARE(query_ch, ref, params.ref_gff, params.no_query_rotation, params.minimap2_args, params.mpileup_args)
 
 	publish:
 	rotated_query_fa = cmp.rotated_queries
@@ -40,8 +39,8 @@ workflow {
 }
 
 output {
-	rotated_query_fa: Channel<Comparison> {
-		path { r -> r.query >> "${r.meta.id}.rotated.fasta" }
+	rotated_query_fa: Channel<MetaPath> {
+		path { r -> r.path >> "${r.meta.id}.rotated.fasta" }
 	}
 	alignment: Channel<Record> {
 		path { r ->
