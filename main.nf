@@ -1,17 +1,17 @@
 nextflow.enable.types = true
 
-include { SAMTOOLS_FASTQ as CONVERT_LONG_BAM_TO_FASTQ } from './modules/samtools/fastq'
-include { READS_FILTER; ReadsFilterParams             } from './workflows/reads/filter/main.nf'
-include { READS_QC as FILTERED_READS_QC               } from './workflows/reads/qc/main.nf'
-include { READS_ASSEMBLE; AssemblerParams             } from './workflows/reads/assemble/main.nf'
-include { GENOME_QC; AssembliesQcParams               } from './workflows/genome/qc/main.nf'
-include { AMR_ANNOT; AmrParams                        } from './workflows/amr-annot/main.nf'
-include { DATABASES; DbParams; Db                     } from './subworkflows/db/main.nf'
-include { pathList; fastaSampleId; MetaPath         } from './subworkflows/input/main.nf'
-include { GZIP_UNZ as DECOMPRESS_ASSEMBLY_FASTA } from './modules/gzip/unz'
-include { IDENTITY as COPY_ASSEMBLY_FASTA             } from './modules/identity/main.nf'
-include { IDENTITY as COPY_SHORT_READS                } from './modules/identity/main.nf'
-include { IDENTITY as COPY_LONG_READS                 } from './modules/identity/main.nf'
+include { SAMTOOLS_FASTQ as CONVERT_LONG_BAM_TO_FASTQ } from './registry/modules/samtools/fastq'
+include { READS_FILTER; ReadsFilterParams             } from './registry/workflows/reads/filter/main.nf'
+include { READS_QC as FILTERED_READS_QC               } from './registry/workflows/reads/qc/main.nf'
+include { READS_ASSEMBLE; AssemblerParams             } from './registry/workflows/reads/assemble/main.nf'
+include { GENOME_QC; AssembliesQcParams               } from './registry/workflows/genome/qc/main.nf'
+include { AMR_ANNOT; AmrParams                        } from './registry/workflows/amr-annot/main.nf'
+include { DATABASES; DbParams; Db                     } from './registry/subworkflows/db/main.nf'
+include { pathList; fastaSampleId; MetaPath         } from './registry/subworkflows/input/main.nf'
+include { GZIP_UNZ as DECOMPRESS_ASSEMBLY_FASTA } from './registry/modules/gzip/unz'
+include { IDENTITY as COPY_ASSEMBLY_FASTA             } from './registry/modules/identity/main.nf'
+include { IDENTITY as COPY_SHORT_READS                } from './registry/modules/identity/main.nf'
+include { IDENTITY as COPY_LONG_READS                 } from './registry/modules/identity/main.nf'
 
 // ------------------------------------------------------------------
 // Main entry point when running the pipeline from command line

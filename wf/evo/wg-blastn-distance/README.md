@@ -1,13 +1,13 @@
 # wg-blastn-distance
 
 `wg-blastn-distance` a nextflow pipeline computing the distances between whole genomes, without annotation
-(`WG_BLASTN_DISTANCE`, see [`wg-blastn-distance`](../../../workflows/evo/wg-blastn-distance)):
+(`WG_BLASTN_DISTANCE`, see [`wg-blastn-distance`](../../../registry/workflows/evo/wg-blastn-distance)):
 
 1. all the sequences of all the genomes are concatenated, named `<genome>:<sequence id>`;
 2. they are aligned against themselves with a single BLASTN;
 3. the alignments of at least `--min_len` bp, not included in another alignment, are pooled by pair of genomes: the
    distance of two genomes is their number of errors (mismatches, plus one per extra fragment) per aligned bp, the worst
-   of the two directions (`blast_distance_graph()` of `R/lib_blast.R`). The unaligned parts of the genomes are not
+   of the two directions (`blast_distance_graph()` of `registry/R/lib_blast.R`). The unaligned parts of the genomes are not
    counted.
 
 # Installation

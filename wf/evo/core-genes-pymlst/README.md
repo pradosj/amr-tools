@@ -1,7 +1,7 @@
 # core-genes-pymlst
 
 `core-genes-pymlst` a nextflow pipeline to find the core genes of a set of genomes and type them with pyMLST
-(`CORE_GENES_PYMLST`, see [`core-genes-pymlst`](../../../workflows/evo/core-genes-pymlst)):
+(`CORE_GENES_PYMLST`, see [`core-genes-pymlst`](../../../registry/workflows/evo/core-genes-pymlst)):
 
 1. the genes of each genome are annotated with prokka;
 2. reciprocal hits of all the genes of all the genomes are searched with BLASTN
