@@ -133,7 +133,7 @@ e.g. `nextflow run pradosj/amr-tools/wf/amr-annot --assemblies.fasta='assemblies
 | [`amr-annot`](wf/amr-annot) | AMR and plasmid annotation of assemblies and reads, with a multi-sample report |
 | [`orgfinder`](wf/orgfinder) | Organism detection of assemblies with FastANI |
 | [`plasmid-lineage`](wf/plasmid-lineage) | Lineage of a set of plasmids: rotation, alignment, AMR annotation, HTML report |
-| [`asm-compare`](wf/asm-compare) | Comparison of assemblies with a reference assembly |
+| [`asm-compare`](wf/genome/compare) | Comparison of assemblies with a reference assembly |
 | [`gtf2gff`](wf/gtf2gff) | Conversion of a NCBI GTF into a GFF for `bcftools csq` |
 | [`db`](wf/db) | Build the databases of the pipelines (CheckM2, orgfinder, AMRFinderPlus) and a tar archive of them |
 
