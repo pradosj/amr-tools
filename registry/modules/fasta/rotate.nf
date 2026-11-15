@@ -65,6 +65,7 @@ process FASTA_ROTATE_BAM {
     """
     #!/usr/bin/env Rscript
     source("assets/lib_io.R")
+    source("assets/lib_bam.R")
     source("assets/lib_fasta_rotate.R")
     fasta_rotate_bam("input.fasta", "hits.bam") |>
         writeXStringSet("rotated.fasta")

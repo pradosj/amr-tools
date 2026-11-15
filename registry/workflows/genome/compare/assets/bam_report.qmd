@@ -27,7 +27,7 @@ source("assets/lib_bam.R")
 ```{r}
 bedpe <- BamFile(params$bam_file) |>
 	readGAlignments(bam,use.names = TRUE) |>
-	gaCigarBedpe()
+	bam_cigar_to_bedpe()
 
 muts <- read_tsv(
   params$txt_file,
@@ -139,7 +139,7 @@ bedpe_meta <- tibble(
 	distinct()
 ggplot() + 
 	facet_grid(qry_seq~ref_seq,scales="free_x",space="free_x") +
-	geom_polygon(aes(x=value,y=source,group=bedpe_idx),fill="lightgrey",color="black",data=bedpePolygons(bedpe) |> left_join(bedpe_meta,by="aln_idx")) +
+	geom_polygon(aes(x=value,y=source,group=bedpe_idx),fill="lightgrey",color="black",data=bedpe_polygons(bedpe) |> left_join(bedpe_meta,by="aln_idx")) +
 	geom_segment(aes(x=1,xend=seqlengths,y="ref",yend="ref"),linewidth = 2,data = as_tibble(seqinfo(bedpe$ref),rownames="ref_seq")) +
 	geom_segment(aes(x=1,xend=seqlengths,y="qry",yend="qry"),linewidth = 2,data = as_tibble(seqinfo(bedpe$query),rownames="qry_seq")) +
 	geom_jitter(aes(y="ref",x=pos+1L),data = muts |> dplyr::rename(ref_seq=chrom),color="red",width=0,height=0.03) +

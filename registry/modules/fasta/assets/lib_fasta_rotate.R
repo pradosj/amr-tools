@@ -59,7 +59,7 @@ fasta_rotate_bam <- function(qry_fa,bam) {
     aln <- aln[!duplicated(names(aln))]
     
     # Use selected alignment to rotate queries
-    rotation_pos <- range(gaCigarBedpe(aln)$query) |> resize(width=0L)
+    rotation_pos <- range(bam_cigar_to_bedpe(aln)$query) |> resize(width=0L)
     
     fa <- read_fasta(qry_fa)
     seq_rotate(fa,rotation_pos)
