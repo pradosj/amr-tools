@@ -1,0 +1,24 @@
+{
+	"$schema": "https://json-schema.org/draft/2020-12/schema",
+	"type": "object",
+	"required": ["fasta", "ref"],
+	"properties": {
+		"fasta": {
+			"type": "string",
+			"pattern": "^(((https?|ftp)://[^,\\s]+|\\S+(\\.(fasta|fa|fna)(\\.gz)?|\\})!?)(,\\s*|$))+$",
+			"description": "FASTA files of the genomes to rotate (optionally gzipped): comma-separated paths, glob patterns or URLs (one genome per file, named by its file name)"
+		},
+		"ref": {
+			"type": "string",
+			"format": "file-path",
+			"exists": true,
+			"pattern": "^((https?|ftp)://\\S+|\\S+\\.(fasta|fa|fna)(\\.gz)?)$",
+			"description": "FASTA file of the reference dataset (optionally gzipped): path or URL"
+		},
+		"blastn_args": {
+			"type": "string",
+			"default": "-perc_identity 70 -evalue 1e-3 -subject_besthit",
+			"description": "Options of BLASTN for the alignment of the genomes (query) on the reference dataset (subject)"
+		}
+	}
+}
