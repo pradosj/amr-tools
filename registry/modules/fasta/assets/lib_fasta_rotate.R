@@ -6,6 +6,15 @@ suppressPackageStartupMessages({
 	library(tidyverse)
 })
 
+
+seq_rotate <- function(fa,rotation_pos) {
+  FA <- xscat(subseq(fa, start = start(rotation_pos)), subseq(fa, end = end(rotation_pos)))
+  minus <- as.logical(strand(rotation_pos) == "-")
+  FA[minus] <- reverseComplement(FA[minus])
+  names(FA) <- names(fa)
+  FA
+}
+
 #' Rotate the sequences to start at their best hit of the reference
 #'
 #' Each sequence starts at its best hit (highest bit score) of the reference, on the strand of the hit;
@@ -28,18 +37,13 @@ fasta_rotate_blast <- function(qry_fa, blast) {
 	rotation_pos <- rotation_pos[match(names(fa), as.character(seqnames(rotation_pos)))]
 	rotation_pos <- resize(rotation_pos, width = 0)
 
-	FA <- xscat(subseq(fa, start = start(rotation_pos)), subseq(fa, end = end(rotation_pos)))
-	minus <- as.logical(strand(rotation_pos) == "-")
-	FA[minus] <- reverseComplement(FA[minus])
-	names(FA) <- names(fa)
-	FA
+	seq_rotate(fa,rotation_pos)  
 }
 
 
 
-
-fasta_rotate_bam <- function(qry_fa,aln_bam) {
-    aln <- readGAlignments(aln_bam,use.names=TRUE)
+fasta_rotate_bam <- function(qry_fa,bam) {
+    aln <- readGAlignments(bam,use.names=TRUE)
     
     # For each query, determine the ref it cover most
     qry_map <- split(aln,names(aln)) |> 
@@ -55,13 +59,8 @@ fasta_rotate_bam <- function(qry_fa,aln_bam) {
     aln <- aln[!duplicated(names(aln))]
     
     # Use selected alignment to rotate queries
-    rot <- range(gaCigarBedpe(aln)$query) |> resize(width=0L)
-    fa <- readDNAStringSet(qry_fa)
-    names(fa) <- str_replace(names(fa)," .*","")
+    rotation_pos <- range(gaCigarBedpe(aln)$query) |> resize(width=0L)
     
-    FA <- fa
-    FA[seqnames(rot)] <- xscat(subseq(FA[seqnames(rot)],start=start(rot)),subseq(FA[seqnames(rot)],end=end(rot)))
-    FA[seqnames(rot)][strand(rot)=="-"] <- reverseComplement(FA[seqnames(rot)][strand(rot)=="-"])
-    #names(FA) <- paste0(names(fa),"_",start(rot),"_",strand(rot))
-    FA
+    fa <- read_fasta(qry_fa)
+    seq_rotate(fa,rotation_pos)
 }
