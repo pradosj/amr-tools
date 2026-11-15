@@ -4,7 +4,7 @@ include { SAMTOOLS_FASTQ as CONVERT_LONG_BAM_TO_FASTQ } from './modules/samtools
 include { READS_FILTER; ReadsFilterParams             } from './workflows/reads/filter/main.nf'
 include { READS_QC as FILTERED_READS_QC               } from './workflows/reads/qc/main.nf'
 include { READS_ASSEMBLE; AssemblerParams             } from './workflows/reads/assemble/main.nf'
-include { ASSEMBLIES_QC; AssembliesQcParams           } from './workflows/assemblies-qc/main.nf'
+include { GENOME_QC; AssembliesQcParams               } from './workflows/genome/qc/main.nf'
 include { AMR_ANNOT; AmrParams                        } from './workflows/amr-annot/main.nf'
 include { DATABASES; DbParams; Db                     } from './subworkflows/db/main.nf'
 include { pathList; fastaSampleId; MetaPath         } from './subworkflows/input/main.nf'
@@ -231,7 +231,7 @@ workflow {
 	def dbs = DATABASES(params.db, db_needs)
 
 	// Compute assemblies QC stats
-	def asm_qc_ch = ASSEMBLIES_QC(params.assemblies_qc, dbs.checkm2, asm_rec, asm_short_reads, asm_long_reads)
+	def asm_qc_ch = GENOME_QC(params.assemblies_qc, dbs.checkm2, asm_rec, asm_short_reads, asm_long_reads)
 
 	// Finally run AMR annotations
 	def amr_annot_ch = AMR_ANNOT(params.amr, dbs.org_db, dbs.amrfinderplus, asm_rec.map({ r -> record(meta: r.meta, fasta: r.path) }), sr_rec, lr_rec)

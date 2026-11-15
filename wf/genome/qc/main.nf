@@ -1,12 +1,12 @@
 nextflow.enable.types = true
 
-include { ASSEMBLIES_QC; AssembliesQcParams } from './workflows/assemblies-qc/main.nf'
+include { GENOME_QC; AssembliesQcParams } from './workflows/qc/main.nf'
 include { INPUT_READS; INPUT_ASSEMBLIES; ReadsParams; AssembliesParams; MetaPath } from './subworkflows/input/main.nf'
 include { DATABASES; DbParams; Db } from './subworkflows/db/main.nf'
 include { validateParameters; paramsSummaryLog } from 'plugin/nf-schema'
 
 
-// Input assemblies and reads given as glob patterns (the sample id is taken from the file names), and ASSEMBLIES_QC options
+// Input assemblies and reads given as glob patterns (the sample id is taken from the file names), and GENOME_QC options
 params {
 	db: DbParams = record(basedir: 'results/db', checkm2: 'checkm2', org_db: 'org_db', amrfinderplus: 'amrfinderplus')    // databases folder (built when missing), or tar archive of it (path or URL)
 	assemblies: AssembliesParams = record(fasta: null)
@@ -30,7 +30,7 @@ workflow {
 	def asm_long_reads = asm_keys.join(reads.long_reads, by: 'meta').map({ r -> record(meta: r.asm_meta, reads: r.path) })
 
 	def dbs = DATABASES(params.db, (params.assemblies_qc?.checkm2?.skip ? [] : [Db.CHECKM2]).toSet())
-	def qc = ASSEMBLIES_QC(params.assemblies_qc, dbs.checkm2, assemblies, asm_short_reads, asm_long_reads)
+	def qc = GENOME_QC(params.assemblies_qc, dbs.checkm2, assemblies, asm_short_reads, asm_long_reads)
 
 	publish:
 	db = dbs.built

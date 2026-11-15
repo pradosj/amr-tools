@@ -267,7 +267,7 @@ read_orgfinder_tsv <- function(tsv_file) {
 
 
 # ---------------------------------------
-#  Assembly QC tools (ASSEMBLIES_QC)
+#  Assembly QC tools (GENOME_QC)
 # ---------------------------------------
 
 #' samtools stats output

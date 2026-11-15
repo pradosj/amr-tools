@@ -15,7 +15,7 @@ record Checkm2Params {
 	args: String?
 }
 
-// Options of ASSEMBLIES_QC (params.assemblies_qc)
+// Options of GENOME_QC (params.assemblies_qc)
 record AssembliesQcParams {
 	checkm2: Checkm2Params?
 }
@@ -72,7 +72,7 @@ process COMBINE_QC_STATS {
 }
 
 // Aggregate the QC statistics of all the assemblies into a table
-process ASSEMBLIES_MULTIQC {
+process GENOME_MULTIQC {
 	container "registry.gitlab.unige.ch/amr-genomics/rscript:v3"
 	label 'rscript'
 	memory 8.GB
@@ -105,7 +105,7 @@ process ASSEMBLIES_MULTIQC {
 }
 
 
-workflow ASSEMBLIES_QC {
+workflow GENOME_QC {
 	take:
 	opts: AssembliesQcParams
 	checkm2_db: Value<Path?>          // CheckM2 database folder (null when checkm2 is skipped)
@@ -150,7 +150,7 @@ workflow ASSEMBLIES_QC {
 	)
 
 	// no table when there is no assembly
-	def multiqc_ch = ASSEMBLIES_MULTIQC(
+	def multiqc_ch = GENOME_MULTIQC(
 		qc_ch.map({ r -> r.rds }).collect().flatMap({ fs -> fs.isEmpty() ? [] : [fs.toList()] }),
 		assets
 	)

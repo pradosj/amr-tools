@@ -2,7 +2,7 @@
 
 `db` a nextflow pipeline to build the databases of the `amr-tools` pipelines in their databases folder (`results/db` by default):
 
-- `checkm2/`: CheckM2 database (assembly completeness, `ASSEMBLIES_QC`);
+- `checkm2/`: CheckM2 database (assembly completeness, `GENOME_QC`);
 - `org_db/`: orgfinder reference genomes, downloaded from NCBI (organism detection, `AMR_ANNOT`);
 - `amrfinderplus/`: AMRFinderPlus database (`AMR_ANNOT`).
 

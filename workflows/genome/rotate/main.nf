@@ -18,7 +18,7 @@ record RotationReference {
 // on the strand of the hit (sequences without hit are kept as they are). The hits come from the given BLAST
 // result, or from the BLASTN of the reference on the genome. One output per genome: a genome without reference
 // (same meta) or without hit is returned unchanged.
-workflow ROTATE_GENOMES {
+workflow GENOME_ROTATE {
 	take:
 	fasta: Channel<MetaPath>
 	references: Channel<RotationReference>
