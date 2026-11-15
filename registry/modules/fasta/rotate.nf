@@ -5,10 +5,8 @@ record MetaPath {
     path: Path
 }
 
-// Rotation of the sequences of a FASTA file: each sequence starts at its best hit (highest bit score) of the BLAST hits,
-// on the strand of the hit (sequences without hit are kept as they are). blast6: hits of reference sequences (query) on
-// the sequences to rotate (subject), -outfmt "6 std qlen slen" (see BLASTN).
-// Output: rotated.fasta, with the meta of the FASTA file. The R functions are in assets/lib_fasta_rotate.R.
+// Rotate every sequence of a genome in a FASTA file according to best hits (highest bit score) found in 
+// the given BLAST to a reference library.
 process FASTA_ROTATE {
     container 'registry.gitlab.unige.ch/amr-genomics/rscript:v3'
     label 'rscript'

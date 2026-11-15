@@ -1,70 +1,39 @@
 nextflow.enable.types = true
 
-include { MAKEBLASTDB } from './modules/blast/makeblastdb'
-include { BLASTN as BLASTN_REFERENCE } from './modules/blast/blastn'
+include { BLASTN       } from './modules/blast/blastn'
 include { FASTA_ROTATE } from './modules/fasta/rotate'
-include { MetaPath } from './subworkflows/input/main.nf'
+include { MetaPath     } from './subworkflows/input/main.nf'
 
-// The reference of a genome (same meta), one of: the reference dataset (FASTA file) to align on it, or the BLAST
-// result of this alignment
-record RotationReference {
-	meta: Record
-	fasta: Path?        // FASTA reference dataset, aligned with BLASTN on the genome
-	blast: Path?        // hits of the reference sequences (query) on the genome (subject), -outfmt "6 std qlen slen"
+// A FASTA file to rotate on a reference dataset
+record RotateInput {
+	fasta: MetaPath    // the sequences to rotate (its meta, unique to each input, is the meta of the outputs)
+	ref: MetaPath      // BLAST database of the reference dataset (output of MAKEBLASTDB)
 }
 
 
-// Rotate genomes on a reference dataset: each sequence of a genome starts at its best hit of the reference,
-// on the strand of the hit (sequences without hit are kept as they are). The hits come from the given BLAST
-// result, or from the BLASTN of the reference on the genome. One output per genome: a genome without reference
-// (same meta) or without hit is returned unchanged.
+// Rotate each sequence of FASTA files to start at its best hit (bit score) on a reference dataset, on the strand of
+// the hit: BLASTN of the FASTA (query) against the reference database (subject), then FASTA_ROTATE
 workflow GENOME_ROTATE {
 	take:
-	fasta: Channel<MetaPath>
-	references: Channel<RotationReference>
-	blastn_args: String?    // BLASTN of the reference on the FASTA
+	inputs: Channel<RotateInput>
+	blastn_args: String?
 
 	main:
-	// Each FASTA paired with its reference: record(meta, fasta, ref), ref null when there is none (references without
-	// FASTA are ignored)
-	def input_ch = fasta
-		.map({ f -> record(meta: f.meta, fasta: f) })
-		.join(references.map({ r -> record(meta: r.meta, ref: r) }), by: 'meta', remainder: true)
-		.filter({ r -> r.fasta != null })
+	def fasta_ch = inputs.map({ r -> record(meta: r.fasta.meta, fasta: r.fasta) })
+	def hits_ch = BLASTN(inputs.map({ r -> record(meta: r.fasta.meta, path: r.fasta.path, ref: r.ref, args: blastn_args) }))
 
-	// Hits of each FASTA, from the first given of: the BLAST result, the FASTA reference
-	def ref_fasta_ch = input_ch
-		.filter({ r -> r.ref?.blast == null && r.ref?.fasta != null })
-		.map({ r -> record(meta: r.meta, path: r.ref.fasta) })
-
-	def genome_db_ch = MAKEBLASTDB(
-		input_ch
-			.join(ref_fasta_ch, by: 'meta')
-			.map({ r -> r.fasta })
-	)
-	def blast_ch = BLASTN_REFERENCE(
-		ref_fasta_ch
-			.join(genome_db_ch.map({ d -> record(meta: d.meta, db: d) }), by: 'meta')
-			.map({ r -> record(meta: r.meta, path: r.path, ref: r.db, args: blastn_args) })
-	)
-	def hits_ch = input_ch
-		.filter({ r -> r.ref?.blast != null })
-		.map({ r -> record(meta: r.meta, path: r.ref.blast) })
-		.mix(blast_ch)
-
-	// One output per FASTA: the rotated FASTA, or the input FASTA when it has no reference or no hit
-	def genome_hits_ch = input_ch
-		.join(hits_ch.map({ r -> record(meta: r.meta, hits: r) }), by: 'meta', remainder: true)
+	// One output per FASTA: the rotated FASTA, or the input FASTA when it has no hit
+	def fasta_hits_ch = fasta_ch.join(hits_ch.map({ h -> record(meta: h.meta, hits: h) }), by: 'meta')
 	def rotated_ch = FASTA_ROTATE(
-		genome_hits_ch
-			.filter({ r -> r.hits != null && !(r.hits.path as Path).isEmpty() })
+		fasta_hits_ch
+			.filter({ r -> !(r.hits.path as Path).isEmpty() })
 			.map({ r -> record(fasta: r.fasta, blast6: r.hits) })
 	)
-		.mix(genome_hits_ch
-			.filter({ r -> r.hits == null || (r.hits.path as Path).isEmpty() })
+		.mix(fasta_hits_ch
+			.filter({ r -> (r.hits.path as Path).isEmpty() })
 			.map({ r -> r.fasta }))
 
 	emit:
 	rotated_fasta: Channel<MetaPath> = rotated_ch    // the rotated FASTA files (same meta)
-	hits: Channel<MetaPath>          = hits_ch    // the hits of each genome (path: -outfmt "6 std qlen slen")
+	hits = hits_ch    // the hits of each FASTA (meta, meta_ref, path: -outfmt "6 std qlen slen", the FASTA as query)
 }

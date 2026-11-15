@@ -12,17 +12,17 @@ suppressPackageStartupMessages({
 #' the sequences without hit are not rotated.
 #'
 #' @param fasta FASTA file of the sequences to rotate.
-#' @param blast Hits of the reference sequences (query) on the sequences to rotate (subject), as read by read_blast6().
+#' @param blast Hits of the sequences to rotate (query) on the reference (subject), as read by read_blast6().
 #' @param out FASTA file written with the rotated sequences.
 rotate_fasta <- function(fasta, blast, out) {
 	fa <- read_fasta(fasta)
 	hits <- read_blast6(blast) |>
-		group_by(subject_id) |>
+		group_by(query_id) |>
 		slice_max(bit_score, n = 1, with_ties = FALSE) |>    # ties: the first hit, as sorted by BLAST
 		ungroup()
 	rotation_pos <- GRanges(
-		hits$subject_id,
-		IRanges(pmin(hits$subject_start, hits$subject_end), pmax(hits$subject_start, hits$subject_end)),
+		hits$query_id,
+		IRanges(hits$query_start, hits$query_end),    # BLAST reports the query on its + strand
 		strand = ifelse(hits$subject_start > hits$subject_end, "-", "+")
 	)
 	rotation_pos <- c(rotation_pos, GRanges(names(fa), IRanges(1, width = 1), strand = "+"))
