@@ -30,7 +30,8 @@ process FASTA_ROTATE {
     #!/usr/bin/env Rscript
     source("assets/lib_io.R")
     source("assets/lib_fasta_rotate.R")
-    rotate_fasta("input.fasta", "hits.blast6", "rotated.fasta")
+    fasta_rotate_blast("input.fasta", "hits.blast6") |>
+        writeXStringSet("rotated.fasta")
     """
 
     stub:

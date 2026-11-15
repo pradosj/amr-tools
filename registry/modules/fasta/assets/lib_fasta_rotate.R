@@ -11,11 +11,10 @@ suppressPackageStartupMessages({
 #' Each sequence starts at its best hit (highest bit score) of the reference, on the strand of the hit;
 #' the sequences without hit are not rotated.
 #'
-#' @param fasta FASTA file of the sequences to rotate.
+#' @param qry_fa FASTA file of the sequences to rotate.
 #' @param blast Hits of the sequences to rotate (query) on the reference (subject), as read by read_blast6().
-#' @param out FASTA file written with the rotated sequences.
-rotate_fasta <- function(fasta, blast, out) {
-	fa <- read_fasta(fasta)
+fasta_rotate_blast <- function(qry_fa, blast) {
+	fa <- read_fasta(qry_fa)
 	hits <- read_blast6(blast) |>
 		group_by(query_id) |>
 		slice_max(bit_score, n = 1, with_ties = FALSE) |>    # ties: the first hit, as sorted by BLAST
@@ -33,5 +32,36 @@ rotate_fasta <- function(fasta, blast, out) {
 	minus <- as.logical(strand(rotation_pos) == "-")
 	FA[minus] <- reverseComplement(FA[minus])
 	names(FA) <- names(fa)
-	writeXStringSet(FA, out)
+	FA
+}
+
+
+
+
+fasta_rotate_bam <- function(qry_fa,aln_bam) {
+    aln <- readGAlignments(aln_bam,use.names=TRUE)
+    
+    # For each query, determine the ref it cover most
+    qry_map <- split(aln,names(aln)) |> 
+      lapply(\(e) sum(coverage(e)>0)) |>
+      enframe(name="query_id") |>
+      unnest_longer(value,indices_to="ref_id",values_to="coverage") |>
+      group_by(query_id) |>
+      slice_max(coverage,n=1,with_ties=FALSE)
+    
+    # Filter BAM to keep best contig pairs, and longest alignments
+    aln <- subset(aln,paste(names(aln),seqnames(aln)) %in% paste(qry_map$query_id,qry_map$ref_id))
+    aln <- aln[order(width(aln),decreasing=TRUE)]
+    aln <- aln[!duplicated(names(aln))]
+    
+    # Use selected alignment to rotate queries
+    rot <- range(gaCigarBedpe(aln)$query) |> resize(width=0L)
+    fa <- readDNAStringSet(qry_fa)
+    names(fa) <- str_replace(names(fa)," .*","")
+    
+    FA <- fa
+    FA[seqnames(rot)] <- xscat(subseq(FA[seqnames(rot)],start=start(rot)),subseq(FA[seqnames(rot)],end=end(rot)))
+    FA[seqnames(rot)][strand(rot)=="-"] <- reverseComplement(FA[seqnames(rot)][strand(rot)=="-"])
+    #names(FA) <- paste0(names(fa),"_",start(rot),"_",strand(rot))
+    FA
 }
