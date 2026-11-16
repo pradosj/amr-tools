@@ -1,13 +1,13 @@
 nextflow.enable.types = true
 
-include { GENOME_ROTATE_MM2     } from './workflows/rotate_mm2/main.nf'
+include { GENOME_ROTATE         } from './workflows/rotate/main.nf'
 include { MINIMAP2_ALIGN_BAM    } from './modules/minimap2/align_bam'
 include { BCFTOOLS_ASM5_MPILEUP } from './modules/bcftools/asm5_mpileup'
 include { QUARTO_RENDER         } from './modules/quarto/render'
 include { MetaPath              } from './subworkflows/input/main.nf'
 
 
-// Compare query assemblies with a reference assembly: rotation of the queries on the reference with GENOME_ROTATE_MM2
+// Compare query assemblies with a reference assembly: rotation of the queries on the reference with GENOME_ROTATE
 // (unless no_query_rotation), alignment (minimap2 -x asm5), mutations (bcftools mpileup) and HTML report
 workflow GENOME_COMPARE {
 	take:
@@ -22,7 +22,7 @@ workflow GENOME_COMPARE {
 	def query_ch: Channel<MetaPath> = queries
 	def rotated_query_ch: Channel<MetaPath> = channel.empty()
 	if (!no_query_rotation) {
-		query_ch = GENOME_ROTATE_MM2(queries, ref).rotated_fasta
+		query_ch = GENOME_ROTATE(queries.combine(ref: ref).map({ r -> record(fasta: record(meta: r.meta, path: r.path), origins: record(meta: null, path: r.ref)) })).rotated_fasta
 		rotated_query_ch = query_ch
 	}
 

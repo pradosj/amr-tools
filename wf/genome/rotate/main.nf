@@ -1,6 +1,6 @@
 nextflow.enable.types = true
 
-include { GENOME_ROTATE_BLASTN                 } from './workflows/rotate/main.nf'
+include { GENOME_ROTATE                        } from './workflows/rotate/main.nf'
 include { INPUT_FASTA; MetaPath                } from './subworkflows/input/main.nf'
 include { GZIP_UNZ                             } from './modules/gzip/unz'
 include { validateParameters; paramsSummaryLog } from 'plugin/nf-schema'
@@ -24,7 +24,7 @@ workflow {
 		ref = GZIP_UNZ(channel.value(record(meta: record(name: 'reference'), path: params.ref))).map({ r -> r.file })
 	}
 	def genomes: Channel<MetaPath> = INPUT_FASTA(params.fasta)
-	def rotated = GENOME_ROTATE_BLASTN(genomes, ref)
+	def rotated = GENOME_ROTATE(genomes.combine(ref: ref).map({ r -> record(fasta: record(meta: r.meta, path: r.path), origins: record(meta: record(id: 'reference'), path: r.ref)) }))
 
 	publish:
 	rotated_fasta = rotated.rotated_fasta
@@ -37,6 +37,6 @@ output {
 		path { r -> r.path >> "genome-rotate/${r.meta.id}.fasta" }
 	}
 	hits: Channel<Record> {
-		path { r -> r.path >> "genome-rotate/hits/${r.meta.id}.blastn" }
+		path { r -> r.path >> "genome-rotate/hits/${r.meta.id}.bam" }
 	}
 }

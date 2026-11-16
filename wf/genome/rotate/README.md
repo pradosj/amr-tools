@@ -1,13 +1,13 @@
 # genome-rotate
 
 `genome-rotate` a nextflow pipeline rotating the sequences of genomes (circular plasmids, chromosomes, ...) to start
-at their best hit on a reference dataset (`GENOME_ROTATE_BLASTN`, see [`genome/rotate/blastn`](../../../registry/workflows/genome/rotate/blastn)):
+at their alignment on a reference dataset (`GENOME_ROTATE`, see [`genome/rotate`](../../../registry/workflows/genome/rotate)):
 
-1. a BLAST database is built from the reference dataset (e.g. the genes of the origins of replication, a reference
-   plasmid);
-2. each genome is aligned on it with BLASTN (the genome as query);
-3. each sequence is rotated to start at its best hit (highest bit score), on the strand of the hit, and
-   reverse-complemented when the hit is on the minus strand. The sequences without hit are left unchanged.
+1. each genome is aligned with minimap2 (`-x asm5`) on the reference dataset (e.g. the genes of the origins of
+   replication, a reference plasmid);
+2. each sequence is rotated to start at its longest alignment on the reference sequence it covers most, on the strand
+   of the alignment, and reverse-complemented when it is on the minus strand. The sequences without alignment are
+   left unchanged.
 
 # Installation
 
@@ -31,8 +31,7 @@ file to split: each of its sequences is a genome, named `<file name>:<sequence i
 Outputs, in the output folder (`results/` by default):
 
 - `genome-rotate/<genome>.fasta`: the rotated genome;
-- `genome-rotate/hits/<genome>.blastn`: the BLASTN hits of the genome (query) on the reference dataset (subject),
-  `-outfmt "6 std qlen slen"`.
+- `genome-rotate/hits/<genome>.bam`: the minimap2 alignments of the genome (query) on the reference dataset.
 
 # Test the pipeline
 
