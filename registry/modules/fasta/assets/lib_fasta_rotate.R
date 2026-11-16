@@ -7,7 +7,16 @@ suppressPackageStartupMessages({
 })
 
 
-seq_rotate <- function(fa,rotation_pos) {
+#' Rotate each sequence to start at its hit, on the strand of the hit
+#'
+#' @param fa The sequences (DNAStringSet, named).
+#' @param hits The hit of each sequence to start at ideally one per sequence.
+#'  Sequences without hit are not rotated, if multiple hits on one sequence, the first is used.
+#' @return The rotated sequences, in the order of fa.
+seq_rotate <- function(fa, hits) {
+  rotation_pos <- c(hits, GRanges(names(fa), IRanges(1, width = 1), strand = "+"))    # default: no rotation
+  rotation_pos <- rotation_pos[match(names(fa), as.character(seqnames(rotation_pos)))] |>
+    resize(width = 0)
   FA <- xscat(subseq(fa, start = start(rotation_pos)), subseq(fa, end = end(rotation_pos)))
   minus <- as.logical(strand(rotation_pos) == "-")
   FA[minus] <- reverseComplement(FA[minus])
@@ -21,28 +30,27 @@ seq_rotate <- function(fa,rotation_pos) {
 #' the sequences without hit are not rotated.
 #'
 #' @param qry_fa FASTA file of the sequences to rotate.
-#' @param blast Hits of the sequences to rotate (query) on the reference (subject), as read by read_blast6().
-fasta_rotate_blast <- function(qry_fa, blast) {
-	fa <- read_fasta(qry_fa)
+#' @param blast Hits of a set of origin seq (query) to the sequences to rotate (subject) as read by read_blast6().
+fasta_rotate_blast <- function(ref_fa, blast) {
+	fa <- read_fasta(ref_fa)
 	hits <- read_blast6(blast) |>
 		group_by(query_id) |>
 		slice_max(bit_score, n = 1, with_ties = FALSE) |>    # ties: the first hit, as sorted by BLAST
 		ungroup()
 	rotation_pos <- GRanges(
-		hits$query_id,
-		IRanges(hits$query_start, hits$query_end),    # BLAST reports the query on its + strand
+		hits$subject_id,
+		IRanges(
+			if_else(hits$subject_start > hits$subject_end, hits$subject_end, hits$subject_start), 
+			if_else(hits$subject_start > hits$subject_end, hits$subject_start, hits$subject_end), 
+		),
 		strand = ifelse(hits$subject_start > hits$subject_end, "-", "+")
 	)
-	rotation_pos <- c(rotation_pos, GRanges(names(fa), IRanges(1, width = 1), strand = "+"))
-	rotation_pos <- rotation_pos[match(names(fa), as.character(seqnames(rotation_pos)))]
-	rotation_pos <- resize(rotation_pos, width = 0)
-
-	seq_rotate(fa,rotation_pos)  
+	seq_rotate(fa, rotation_pos)
 }
 
 
 
-fasta_rotate_bam <- function(qry_fa,bam) {
+fasta_rotate_bam <- function(ref_fa,bam) {
     aln <- readGAlignments(bam,use.names=TRUE)
     
     # For each query, determine the ref it cover most
@@ -59,8 +67,8 @@ fasta_rotate_bam <- function(qry_fa,bam) {
     aln <- aln[!duplicated(names(aln))]
     
     # Use selected alignment to rotate queries
-    rotation_pos <- range(bam_cigar_to_bedpe(aln)$query) |> resize(width=0L)
+    rotation_pos <- range(bam_cigar_to_bedpe(aln)$query)
     
-    fa <- read_fasta(qry_fa)
+    fa <- read_fasta(ref_fa)
     seq_rotate(fa,rotation_pos)
 }

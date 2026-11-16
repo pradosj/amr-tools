@@ -6,7 +6,7 @@ record MetaPath {
 }
 
 // Rotate every sequence of a genome in a FASTA file according to best hits (highest bit score) found in 
-// the given BLAST to a reference library.
+// the given BLAST of a reference library (query) to the FASTA (subject).
 process FASTA_ROTATE_BLAST {
     container 'registry.gitlab.unige.ch/amr-genomics/rscript:v3'
     label 'rscript'
@@ -42,7 +42,7 @@ process FASTA_ROTATE_BLAST {
 
 
 // Rotate every sequence of a genome in a FASTA file according to best hits (highest bit score) found in 
-// the given BLAST to a reference library.
+// the given BAM of a library (query) to the FASTA (subject).
 process FASTA_ROTATE_BAM {
     container 'registry.gitlab.unige.ch/amr-genomics/rscript:v3'
     label 'rscript'
