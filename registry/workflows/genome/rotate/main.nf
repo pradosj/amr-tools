@@ -27,6 +27,6 @@ workflow GENOME_ROTATE {
 	)
 
 	emit:
-	rotated_fasta: Channel<MetaPath> = rotated_ch    // the rotated FASTA files (same meta)
-	hits = bam_ch    // the minimap2 alignments of each FASTA (meta, meta_ref: the meta of origins, path: BAM, the FASTA as query)
+	fasta: Channel<MetaPath> = rotated_ch.fasta    // the rotated FASTA files (same meta)
+	rotation: Channel<MetaPath> = rotated_ch.tsv    // the rotation of each FASTA (TSV: chr, pos, strand of the new start of each sequence)
 }

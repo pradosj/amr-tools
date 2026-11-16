@@ -31,7 +31,8 @@ file to split: each of its sequences is a genome, named `<file name>:<sequence i
 Outputs, in the output folder (`results/` by default):
 
 - `genome-rotate/<genome>.fasta`: the rotated genome;
-- `genome-rotate/hits/<genome>.bam`: the minimap2 alignments of the genome (query) on the reference dataset.
+- `genome-rotate/rotation/<genome>.tsv`: the rotation of each sequence of the genome (columns `chr`, `pos`, `strand`;
+  `pos` 1 and strand `+` for the sequences left unchanged).
 
 # Test the pipeline
 

@@ -64,7 +64,7 @@ workflow {
 		// the same reference for each plasmid
 		rotated_ch = GENOME_ROTATE(
 			plasmids.combine(align_seq_ch).map({ p, a -> record(fasta: record(meta: p.meta, path: p.fasta), origins: record(meta: a.meta, path: a.fasta)) })
-		).rotated_fasta
+		).fasta
 		lineage_input_ch = rotated_ch.map({ r -> record(meta: r.meta, fasta: r.path) })
 	}
 

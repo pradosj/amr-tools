@@ -23,7 +23,8 @@ process FASTA_ROTATE_BAM {
     stageAs(file("${moduleDir}/assets"), 'assets')
 
     output:
-    record(meta: fasta.meta, path: file('rotated.fasta'))
+    fasta = record(meta: fasta.meta, path: file('rotated.fasta'))
+    tsv = record(meta: fasta.meta, path: file('rotation.tsv'))
 
     script:
     """
@@ -31,12 +32,14 @@ process FASTA_ROTATE_BAM {
     source("assets/lib_io.R")
     source("assets/lib_bam.R")
     source("assets/lib_fasta_rotate.R")
-    fasta_rotate_bam("input.fasta", "hits.bam") |>
-        writeXStringSet("rotated.fasta")
+    fa <- fasta_rotate_bam("input.fasta", "hits.bam")
+    writeXStringSet(fa, "rotated.fasta")
+    write_tsv(as_tibble(attr(fa, "rotation_pos")) |> select(chr = seqnames, pos = start, strand = strand), "rotation.tsv")
     """
 
     stub:
     """
     touch rotated.fasta
+    touch rotation.tsv
     """
 }

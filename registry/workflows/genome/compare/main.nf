@@ -22,7 +22,7 @@ workflow GENOME_COMPARE {
 	def query_ch: Channel<MetaPath> = queries
 	def rotated_query_ch: Channel<MetaPath> = channel.empty()
 	if (!no_query_rotation) {
-		query_ch = GENOME_ROTATE(queries.combine(ref: ref).map({ r -> record(fasta: record(meta: r.meta, path: r.path), origins: record(meta: null, path: r.ref)) })).rotated_fasta
+		query_ch = GENOME_ROTATE(queries.combine(ref: ref).map({ r -> record(fasta: record(meta: r.meta, path: r.path), origins: record(meta: null, path: r.ref)) })).fasta
 		rotated_query_ch = query_ch
 	}
 

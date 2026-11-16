@@ -21,6 +21,7 @@ seq_rotate <- function(fa, hits) {
   minus <- as.logical(strand(rotation_pos) == "-")
   FA[minus] <- reverseComplement(FA[minus])
   names(FA) <- names(fa)
+  attr(FA,"rotation_pos") <- rotation_pos
   FA
 }
 

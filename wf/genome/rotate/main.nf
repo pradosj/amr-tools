@@ -27,16 +27,16 @@ workflow {
 	def rotated = GENOME_ROTATE(genomes.combine(ref: ref).map({ r -> record(fasta: record(meta: r.meta, path: r.path), origins: record(meta: record(id: 'reference'), path: r.ref)) }))
 
 	publish:
-	rotated_fasta = rotated.rotated_fasta
-	hits = rotated.hits
+	fasta = rotated.fasta
+	rotation = rotated.rotation
 }
 
 
 output {
-	rotated_fasta: Channel<MetaPath> {
+	fasta: Channel<MetaPath> {
 		path { r -> r.path >> "genome-rotate/${r.meta.id}.fasta" }
 	}
-	hits: Channel<Record> {
-		path { r -> r.path >> "genome-rotate/hits/${r.meta.id}.bam" }
+	rotation: Channel<MetaPath> {
+		path { r -> r.path >> "genome-rotate/rotation/${r.meta.id}.tsv" }
 	}
 }
