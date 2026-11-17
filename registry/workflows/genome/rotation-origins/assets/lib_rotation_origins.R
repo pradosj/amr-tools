@@ -1,4 +1,4 @@
-# Functions of ROTATION_ORIGINS (sourced after lib_io.R and lib_blast.R)
+# Functions of FIND_ROTATION_ORIGINS (sourced after lib_io.R and lib_blast.R)
 
 suppressPackageStartupMessages({
 	library(GenomicRanges)

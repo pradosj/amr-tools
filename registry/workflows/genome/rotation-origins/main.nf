@@ -7,7 +7,7 @@ include { IdPath; MetaPath      } from './subworkflows/input/main.nf'
 
 
 // The regions shared by most of the genomes (at most one per sequence), from their self BLAST
-process FIND_ROTATION_ORIGINS {
+process SELECT_ROTATION_ORIGINS {
 	container 'registry.gitlab.unige.ch/amr-genomics/rscript:v3'
 	label 'rscript'
 	memory 8.GB
@@ -16,7 +16,7 @@ process FIND_ROTATION_ORIGINS {
 
 	input:
 	record(meta: Record?, fasta: Path, blast: Path)
-	assets: Path    // the assets folder of the subworkflow (lib_io.R, lib_blast.R, lib_rotation_origins.R)
+	assets: Path    // the assets folder of the workflow (lib_io.R, lib_blast.R, lib_rotation_origins.R)
 
 	stage:
 	stageAs(fasta, 'genomes.fasta')
@@ -45,7 +45,7 @@ process FIND_ROTATION_ORIGINS {
 // A single FASTA of rotation origins for a set of genomes (one FASTA file per genome), to give as `origins` to
 // GENOME_ROTATE: the longest regions shared by most of the genomes, at most one per sequence (chromosome, plasmid).
 // Empty channel when there is no genome; empty FASTA when no region is shared.
-workflow ROTATION_ORIGINS {
+workflow FIND_ROTATION_ORIGINS {
 	take:
 	meta: Record?                 // meta of the origins
 	genomes: Channel<IdPath>      // the genomes (unique ids)
@@ -62,7 +62,7 @@ workflow ROTATION_ORIGINS {
 			.combine(db_ch)
 			.map({ f, d -> record(meta: f.meta, path: f.path, ref: d, args: blastn_args ?: '-perc_identity 70 -evalue 1e-3 -subject_besthit') })
 	)
-	def origins_ch = FIND_ROTATION_ORIGINS(
+	def origins_ch = SELECT_ROTATION_ORIGINS(
 		fasta_ch
 			.combine(self_ch)
 			.map({ f, b -> record(meta: f.meta, fasta: f.path, blast: b.path) }),

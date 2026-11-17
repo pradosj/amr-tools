@@ -2,7 +2,7 @@ nextflow.enable.types = true
 
 include { PLASMID_LINEAGE; PlasmidLineageParams; Genome } from './workflows/plasmid-lineage/main.nf'
 include { GENOME_ROTATE } from './workflows/rotate/main.nf'
-include { ROTATION_ORIGINS } from './subworkflows/rotation_origins/main.nf'
+include { FIND_ROTATION_ORIGINS } from './workflows/rotation-origins/main.nf'
 include { IDENTITY as COPY_FASTA } from './modules/identity/main.nf'
 include { AmrParams } from './workflows/plasmid-lineage/workflows/amr-annot/main.nf'
 include { DATABASES; DbParams; Db } from './subworkflows/db/main.nf'
@@ -44,7 +44,7 @@ workflow {
 	def lineage_input_ch = plasmids
 	def rotated_ch = channel.empty()
 	if (!params.no_rotation) {
-		def origins_ch = ROTATION_ORIGINS(
+		def origins_ch = FIND_ROTATION_ORIGINS(
 			record(id: params.name),
 			plasmids.map({ r -> asIdPath(record(meta: r.meta, path: r.fasta)) }),
 			params.lineage?.blastn_args
