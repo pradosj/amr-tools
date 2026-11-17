@@ -22,6 +22,13 @@ read_assembly_stats <- function(dir) {
 	stats$short_reads <- read_samtools_stats(fs::path(dir,'short_reads.bam.stats'))
 	stats$long_reads <- read_samtools_stats(fs::path(dir,'long_reads.bam.stats'))
 	stats$checkm2 <- read_checkm2_quality_tsv(fs::path(dir,'checkm2_quality_report.tsv'))
+
+	# mean depth of each contig (NA without reads)
+	long_cov <- read_samtools_coverage(fs::path(dir,'long_reads.coverage.tsv'))
+	short_cov <- read_samtools_coverage(fs::path(dir,'short_reads.coverage.tsv'))
+	stats$contigs <- stats$contigs |>
+		left_join(select(long_cov,contig_name,long_cov = meandepth),by = "contig_name") |>
+		left_join(select(short_cov,contig_name,short_cov = meandepth),by = "contig_name")
 	
 	stats$assembly_stats <- stats$contigs |>
 		summarize(

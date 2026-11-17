@@ -3,6 +3,8 @@ nextflow.enable.types = true
 include { MINIMAP2_ALIGN_BAM } from './modules/minimap2/align_bam'
 include { SAMTOOLS_STATS as SAMTOOLS_STATS_LONG  } from './modules/samtools/stats'
 include { SAMTOOLS_STATS as SAMTOOLS_STATS_SHORT } from './modules/samtools/stats'
+include { SAMTOOLS_COVERAGE as SAMTOOLS_COVERAGE_LONG  } from './modules/samtools/coverage'
+include { SAMTOOLS_COVERAGE as SAMTOOLS_COVERAGE_SHORT } from './modules/samtools/coverage'
 include { BWA_MEM            } from './modules/bwa/mem'
 include { BWA_INDEX          } from './modules/bwa/index'
 include { CHECKM2_PREDICT    } from './modules/checkm2/predict'
@@ -42,13 +44,15 @@ process COMBINE_QC_STATS {
 	cpus 2
 	time 30.m
 	input:
-	record(meta: Record, fasta: Path, long_stats: Path?, short_stats: Path?, checkm2: Path?)
+	record(meta: Record, fasta: Path, long_stats: Path?, short_stats: Path?, long_cov: Path?, short_cov: Path?, checkm2: Path?)
 	assets: Path    // the assets folder of the workflow (lib_io.R, lib_assembly_stats.R)
 	stage:
 	stageAs(assets, 'assets')
 	stageAs(fasta, 'stats/assembly.fasta')
 	stageAs(long_stats, 'stats/long_reads.bam.stats')
 	stageAs(short_stats, 'stats/short_reads.bam.stats')
+	stageAs(long_cov, 'stats/long_reads.coverage.tsv')
+	stageAs(short_cov, 'stats/short_reads.coverage.tsv')
 	stageAs(checkm2, 'stats/checkm2_quality_report.tsv')
 	output:
 	record(meta: meta, rds: file('qc.rds'))
@@ -121,6 +125,7 @@ workflow GENOME_QC {
 		.map({ i -> record(meta: i.meta, ref: i) })
 	def short_bam_ch = BWA_MEM(short_reads.join(index_ch, by: 'meta'))
 	def short_stats_ch = SAMTOOLS_STATS_SHORT(short_bam_ch.bam)
+	def short_cov_ch = SAMTOOLS_COVERAGE_SHORT(short_bam_ch.bam)
 
 	// Long reads alignment on the assembly, and statistics
 	def long_bam_ch = MINIMAP2_ALIGN_BAM(
@@ -129,6 +134,7 @@ workflow GENOME_QC {
 			.join(assemblies.map({ r -> record(meta: r.meta, ref: r, args: '-x map-ont') }), by: 'meta')
 	)
 	def long_stats_ch = SAMTOOLS_STATS_LONG(long_bam_ch.bam)
+	def long_cov_ch = SAMTOOLS_COVERAGE_LONG(long_bam_ch.bam)
 
 	// Genome completeness
 	def checkm2_ch = channel.empty()
@@ -145,6 +151,8 @@ workflow GENOME_QC {
 			.map({ r -> record(meta: r.meta, fasta: r.path) })
 			.join(long_stats_ch.map({ r -> record(meta: r.meta, long_stats: r.path) }), by: 'meta', remainder: true)
 			.join(short_stats_ch.map({ r -> record(meta: r.meta, short_stats: r.path) }), by: 'meta', remainder: true)
+			.join(long_cov_ch.map({ r -> record(meta: r.meta, long_cov: r.path) }), by: 'meta', remainder: true)
+			.join(short_cov_ch.map({ r -> record(meta: r.meta, short_cov: r.path) }), by: 'meta', remainder: true)
 			.join(checkm2_ch.map({ r -> record(meta: r.meta, checkm2: r.path) }), by: 'meta', remainder: true),
 		assets
 	)

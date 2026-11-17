@@ -298,6 +298,25 @@ read_samtools_stats <- function(f) {
 	)
 }
 
+#' Coverage of each contig computed by samtools coverage
+#'
+#' @param f Output of samtools coverage (TSV, one line per reference sequence).
+#' @return A tibble with contig_name, numreads, covbases, coverage (% of bases covered) and meandepth
+#'  (empty when the file does not exist or is empty).
+read_samtools_coverage <- function(f) {
+	expected_structure <- tibble(
+		contig_name = character(0),
+		numreads = numeric(0),
+		covbases = numeric(0),
+		coverage = numeric(0),
+		meandepth = numeric(0)
+	)
+	if (!fs::file_exists(f) || fs::file_size(f) == 0) return(expected_structure)
+	read_tsv(f,show_col_types = FALSE,col_types = cols(`#rname`="c",numreads="n",covbases="n",coverage="n",meandepth="n",.default="-")) |>
+		rename(contig_name = `#rname`) |>
+		bind_rows(expected_structure)
+}
+
 #' Completeness and contamination of a CheckM2 result
 #'
 #' @param tsv_file CheckM2 quality_report.tsv.
