@@ -132,7 +132,6 @@ e.g. `nextflow run pradosj/amr-tools/wf/amr-annot --assemblies.fasta='assemblies
 | [`assemblies-qc`](wf/genome/qc) | Quality control of assemblies (statistics, reads alignments, CheckM2) |
 | [`amr-annot`](wf/amr-annot) | AMR and plasmid annotation of assemblies and reads, with a multi-sample report |
 | [`orgfinder`](wf/orgfinder) | Organism detection of assemblies with FastANI |
-| [`plasmid-lineage`](wf/plasmid-lineage) | Lineage of a set of plasmids: rotation, alignment, AMR annotation, HTML report |
 | [`asm-compare`](wf/genome/compare) | Comparison of assemblies with a reference assembly |
 | [`genome-rotate`](wf/genome/rotate) | Rotation of the sequences of genomes to start at their best hit on a reference dataset |
 | [`gtf2gff`](wf/gtf2gff) | Conversion of a NCBI GTF into a GFF for `bcftools csq` |

@@ -19,7 +19,7 @@ curl -s https://get.nextflow.io | bash
 # Usage
 
 ```bash
-nextflow run pradosj/amr-tools/wf/plasmid-lineage --fasta='plasmids/*.fasta' --name=my_plasmids
+nextflow run pradosj/amr-tools/tmp/plasmid-lineage --fasta='plasmids/*.fasta' --name=my_plasmids
 ```
 
 Each FASTA file is a plasmid, named by its file name (without the FASTA extension), and all the plasmids form one set, named by `--name` (the sequence ids must be unique across the files). The alignment of the plasmids is set with `--lineage.blastn_args`, and the AMR annotation with `--amr.<tool>.skip` / `--amr.<tool>.args`. The AMRFinderPlus database is read from the databases folder `--db.basedir` (default `results/db`), and downloaded when missing, see [Databases](../../README.md#databases).
@@ -29,5 +29,5 @@ Outputs: `<name>/` (`report.html`, the rotated plasmids `rotated/<plasmid>.fasta
 # Test the pipeline
 
 ```bash
-nextflow run pradosj/amr-tools/wf/plasmid-lineage/main.nf -profile standard,test
+nextflow run pradosj/amr-tools/tmp/plasmid-lineage/main.nf -profile standard,test
 ```
