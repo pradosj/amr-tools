@@ -8,6 +8,7 @@ include { SAMTOOLS_COVERAGE as SAMTOOLS_COVERAGE_SHORT } from './modules/samtool
 include { BWA_MEM            } from './modules/bwa/mem'
 include { BWA_INDEX          } from './modules/bwa/index'
 include { CHECKM2_PREDICT    } from './modules/checkm2/predict'
+include { QUARTO_RENDER      } from './modules/quarto/render'
 include { MetaPath           } from './subworkflows/input/main.nf'
 
 
@@ -157,6 +158,15 @@ workflow GENOME_QC {
 		assets
 	)
 
+	// HTML dashboard of each assembly
+	def report_ch = QUARTO_RENDER(qc_ch.map({ r -> record(
+		meta: r.meta,
+		template: file("${moduleDir}/assets/genome_qc_report.qmd"),
+		extra: null,
+		files: [r.rds],
+		args: "-P 'qc:${r.rds.name}' -M 'title:Genome QC ${r.meta.id}__${r.meta.assembler_name}'"
+	) }))
+
 	// no table when there is no assembly
 	def multiqc_ch = GENOME_MULTIQC(
 		qc_ch.map({ r -> r.rds }).collect().flatMap({ fs -> fs.isEmpty() ? [] : [fs.toList()] }),
@@ -167,6 +177,7 @@ workflow GENOME_QC {
 	long_alignments: Channel<Record>  = long_bam_ch.outputs     // records with fields meta, meta_ref, bam, bai
 	short_alignments: Channel<Record> = short_bam_ch.outputs    // records with fields meta, meta_ref, bam, bai
 	assembly_qc: Channel<Record>      = qc_ch             // records with fields meta, rds
+	report: Channel<Record>           = report_ch         // records with fields meta, html (dashboard of each assembly)
 	multiqc: Channel<Record>          = multiqc_ch        // records with fields txt, xlsx
 	checkm2: Channel<MetaPath>        = checkm2_ch        // records with fields meta, path (quality_report.tsv)
 }

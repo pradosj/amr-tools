@@ -246,6 +246,7 @@ workflow {
 	assemblies_fasta        = asm_rec
 	assemblies_dir          = asm_dir_ch
 	assemblies_checkm2      = asm_qc_ch.checkm2
+	assemblies_qc_report    = asm_qc_ch.report
 	assemblies_multiqc      = asm_qc_ch.multiqc
 
 	amr_assemblies  = amr_annot_ch.assemblies_amr
@@ -284,6 +285,9 @@ output {
 	}
 	assemblies_checkm2: Channel<Record> {
 		path { r -> r.path >> "assemblies/${r.meta.id}__${r.meta.assembler_name}.qc/checkm2_quality.tsv" }
+	}
+	assemblies_qc_report: Channel<Record> {
+		path { r -> r.html >> "assemblies/${r.meta.id}__${r.meta.assembler_name}.qc/qc_report.html" }
 	}
 	assemblies_multiqc: Channel<Record> {
 		path { r ->

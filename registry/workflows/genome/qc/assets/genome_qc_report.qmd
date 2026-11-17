@@ -1,0 +1,227 @@
+---
+title: "Genome QC"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+format:
+  dashboard:
+    theme: cosmo
+    embed-resources: true
+    nav-buttons: []
+params:
+  qc: "qc.rds"
+---
+
+```{r setup}
+#| include: false
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+library(tidyverse)
+library(reactable)
+
+qc <- readRDS(params$qc)
+
+#' Format a number with thousands separators, or a dash when it is missing
+#'
+#' @param x a number (or NULL)
+#' @param suffix text appended to the number
+#' @param fmt sprintf format of the number
+#' @return a string
+fmt_num <- function(x, suffix = "", fmt = "%s") {
+	if (length(x) == 0 || is.na(x)) return("–")
+	paste0(sprintf(fmt, if (fmt == "%s") format(x, big.mark = "'") else x), suffix)
+}
+
+#' The statistics of the alignment of a set of reads on the assembly
+#'
+#' @param reads the samtools stats of the reads, as read by read_samtools_stats()
+#' @param total_len the length of the assembly
+#' @return a list: num_reads, pct_mapped, mean_depth (NA without reads)
+reads_summary <- function(reads, total_len) {
+	n <- pluck(reads, "SN", "raw.total.sequences", .default = NA_real_)
+	list(
+		num_reads = n,
+		pct_mapped = 100 * pluck(reads, "SN", "reads.mapped", .default = NA_real_) / n,
+		mean_depth = pluck(reads, "SN", "bases.mapped..cigar.", .default = NA_real_) / total_len
+	)
+}
+
+#' Median depth of the contigs, weighted by their length (the depth of the chromosome on an isolate assembly)
+#'
+#' @param depth the mean depth of each contig
+#' @param len the length of each contig
+#' @return the weighted median (NA when all the depths are missing)
+weighted_median_depth <- function(depth, len) {
+	ok <- !is.na(depth)
+	if (!any(ok)) return(NA_real_)
+	o <- order(depth[ok])
+	d <- depth[ok][o]
+	w <- cumsum(len[ok][o])
+	d[which(w >= w[length(w)] / 2)[1]]
+}
+
+#' The depth histogram of a set of reads
+#'
+#' @param reads the samtools stats of the reads, as read by read_samtools_stats()
+#' @return a ggplot, or a message when there are no reads
+depth_histogram <- function(reads) {
+	h <- reads$COV_HIST
+	if (is.null(h) || nrow(h) == 0) return(cat("No reads"))
+	ggplot(h, aes(x = range_max, y = count)) +
+		geom_col(fill = "grey20") +
+		labs(x = "read depth", y = "bases") +
+		theme_minimal()
+}
+
+stats <- qc$assembly_stats
+long <- reads_summary(qc$long_reads, stats$total_len)
+short <- reads_summary(qc$short_reads, stats$total_len)
+
+contigs <- qc$contigs |>
+	mutate(
+		GC_pct = 100 * GC_count / length,
+		long_rel = long_cov / weighted_median_depth(long_cov, length),
+		short_rel = short_cov / weighted_median_depth(short_cov, length)
+	)
+```
+
+# Summary
+
+## Row {height=20%}
+
+```{r}
+#| content: valuebox
+#| title: "Assembly"
+list(icon = "file-earmark-text", color = "primary", value = paste0(qc$sample_id, " (", qc$assembler_name, ")"))
+```
+
+```{r}
+#| content: valuebox
+#| title: "Total length"
+list(icon = "rulers", color = "primary", value = fmt_num(stats$total_len, " bp"))
+```
+
+```{r}
+#| content: valuebox
+#| title: "Contigs"
+list(icon = "list-ol", color = "primary", value = fmt_num(stats$num_contig))
+```
+
+```{r}
+#| content: valuebox
+#| title: "N50"
+list(icon = "bar-chart", color = "primary", value = fmt_num(stats$N50, " bp"))
+```
+
+```{r}
+#| content: valuebox
+#| title: "GC"
+list(icon = "percent", color = "primary", value = fmt_num(100 * stats$GC_pct, " %", "%.1f"))
+```
+
+```{r}
+#| content: valuebox
+#| title: "CheckM2 completeness / contamination"
+list(icon = "check2-circle", color = "secondary", value = paste(
+	fmt_num(qc$checkm2$Completeness[1], " %", "%.1f"),
+	fmt_num(qc$checkm2$Contamination[1], " %", "%.1f"),
+	sep = " / "
+))
+```
+
+## Row {height=40%}
+
+```{r}
+#| content: valuebox
+#| title: "Long reads"
+list(icon = "arrow-left-right", color = "info", value = fmt_num(long$num_reads))
+```
+
+```{r}
+#| content: valuebox
+#| title: "Long reads mapped"
+list(icon = "bullseye", color = if (is.na(long$pct_mapped)) "light" else if (long$pct_mapped >= 90) "success" else if (long$pct_mapped >= 80) "warning" else "danger",
+	value = fmt_num(long$pct_mapped, " %", "%.1f"))
+```
+
+```{r}
+#| content: valuebox
+#| title: "Long reads mean depth"
+list(icon = "layers", color = "info", value = fmt_num(long$mean_depth, "x", "%.1f"))
+```
+
+```{r}
+#| title: "Long reads depth"
+depth_histogram(qc$long_reads)
+```
+
+## Row {height=40%}
+
+```{r}
+#| content: valuebox
+#| title: "Short reads"
+list(icon = "arrow-left-right", color = "info", value = fmt_num(short$num_reads))
+```
+
+```{r}
+#| content: valuebox
+#| title: "Short reads mapped"
+list(icon = "bullseye", color = if (is.na(short$pct_mapped)) "light" else if (short$pct_mapped >= 90) "success" else if (short$pct_mapped >= 80) "warning" else "danger",
+	value = fmt_num(short$pct_mapped, " %", "%.1f"))
+```
+
+```{r}
+#| content: valuebox
+#| title: "Short reads mean depth"
+list(icon = "layers", color = "info", value = fmt_num(short$mean_depth, "x", "%.1f"))
+```
+
+```{r}
+#| title: "Short reads depth"
+depth_histogram(qc$short_reads)
+```
+
+# Contigs
+
+## Row {height=55%}
+
+```{r}
+#| title: "Contigs (relative depth: depth / length weighted median depth of the contigs)"
+contigs |>
+	select(contig_name, length, GC_pct, N_count, long_cov, long_rel, short_cov, short_rel) |>
+	reactable(
+		searchable = TRUE,
+		defaultPageSize = 20,
+		compact = TRUE,
+		striped = TRUE,
+		defaultSorted = list(length = "desc"),
+		columns = list(
+			contig_name = colDef(name = "Contig", minWidth = 200),
+			length = colDef(name = "Length", format = colFormat(separators = TRUE)),
+			GC_pct = colDef(name = "GC %", format = colFormat(digits = 1)),
+			N_count = colDef(name = "N"),
+			long_cov = colDef(name = "Long reads depth", format = colFormat(digits = 1)),
+			long_rel = colDef(name = "Long reads rel. depth", format = colFormat(digits = 2)),
+			short_cov = colDef(name = "Short reads depth", format = colFormat(digits = 1)),
+			short_rel = colDef(name = "Short reads rel. depth", format = colFormat(digits = 2))
+		)
+	)
+```
+
+## Row {height=45%}
+
+```{r}
+#| title: "Relative depth of the contigs"
+d <- contigs |>
+	select(contig_name, length, `long reads` = long_rel, `short reads` = short_rel) |>
+	pivot_longer(c(`long reads`, `short reads`), names_to = "reads", values_to = "rel_depth") |>
+	filter(!is.na(rel_depth))
+if (nrow(d) == 0) {
+	cat("No reads")
+} else {
+	ggplot(d, aes(x = length, y = rel_depth, color = reads)) +
+		geom_hline(yintercept = 1, linetype = "dashed", color = "grey50") +
+		geom_point(size = 2, alpha = 0.7) +
+		scale_x_log10(labels = scales::label_comma()) +
+		scale_y_log10() +
+		labs(x = "contig length (bp)", y = "relative depth", color = NULL) +
+		theme_minimal()
+}
+```

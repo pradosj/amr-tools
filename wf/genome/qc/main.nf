@@ -35,6 +35,7 @@ workflow {
 	publish:
 	db = dbs.built
 	assemblies_checkm2 = qc.checkm2
+	assemblies_qc_report = qc.report
 	assemblies_multiqc = qc.multiqc
 }
 
@@ -44,6 +45,9 @@ output {
 	}
 	assemblies_checkm2: Channel<Record> {
 		path { r -> r.path >> "assemblies/${r.meta.id}__${r.meta.assembler_name}.qc/checkm2_quality.tsv" }
+	}
+	assemblies_qc_report: Channel<Record> {
+		path { r -> r.html >> "assemblies/${r.meta.id}__${r.meta.assembler_name}.qc/qc_report.html" }
 	}
 	assemblies_multiqc: Channel<Record> {
 		path { r ->
