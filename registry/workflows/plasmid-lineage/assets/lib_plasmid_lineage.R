@@ -14,20 +14,6 @@ suppressPackageStartupMessages({
 #  Alignments
 # ---------------------------------------
 
-#' Regions of the queries, with the subjects aligning on each of them
-#'
-#' @param aln Alignments, as read by read_blast6().
-#' @return A GRanges of the disjoint regions of the queries, with the ids of the subjects aligning on each of
-#'   them in `subjects`.
-find_shared_regions <- function(aln) {
-	d <- blast_query_granges(aln) |>
-		unstrand() |>
-		disjoin()
-	h <- findOverlaps(d, unstrand(blast_query_granges(aln)), type = "within")
-	d$subjects <- extractList(aln$subject_id, as(h, "List")) |> unique()
-	d
-}
-
 #' Polygons joining the aligned regions of the query and of the subject
 #'
 #' @param aln Alignments, as read by read_blast6().
@@ -128,30 +114,3 @@ gg_alignment_polygons <- function(polygons, seqlen) {
 		theme_bw() +
 		ylab("") + xlab("Genomic position")
 }
-
-# ---------------------------------------
-#  Steps of the pipeline
-# ---------------------------------------
-
-#' Longest region of a sequence shared by most of the sequences
-#'
-#' The pipeline rotates the sequences to start at this region.
-#'
-#' @param fasta FASTA file of the sequences.
-#' @param blast Self alignment of the sequences, as read by read_blast6().
-#' @param out FASTA file written with the region (empty when there is none).
-#' @param min_len Minimum length of the alignments.
-#' @param min_frac Minimum fraction of the sequences sharing the region.
-find_align_seq <- function(fasta, blast, out, min_len = 1000, min_frac = 0.8) {
-	fa <- read_fasta(fasta)
-	aln <- read_blast6(blast) |>
-		filter(align_len >= min_len)
-	align_seq <- DNAStringSet()
-	if (nrow(aln) > 0) {
-		d <- find_shared_regions(aln)
-		d <- d[lengths(d$subjects) / n_distinct(aln$subject_id) >= min_frac]
-		if (length(d) > 0) align_seq <- fa[d[which.max(width(d))]]
-	}
-	writeXStringSet(align_seq, out)
-}
-

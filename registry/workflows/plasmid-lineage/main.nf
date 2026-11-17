@@ -19,44 +19,6 @@ record Genome {
 }
 
 
-
-
-// Longest region shared by most plasmids (empty when there is none): the reference used by the pipeline to rotate the plasmids
-process FIND_ALIGN_SEQ {
-	container 'registry.gitlab.unige.ch/amr-genomics/rscript:v3'
-	label 'rscript'
-	memory 8.GB
-	cpus 1
-	time 30.m
-
-	input:
-	record(meta: Record, fasta: Path, blast: Path)
-	assets: Path
-
-	stage:
-	stageAs(fasta, 'plasmids.fasta')
-	stageAs(blast, 'plasmids.self.blastn')
-	stageAs(assets, 'assets')
-
-	output:
-	record(meta: meta, fasta: file('align_seq.fasta'))
-
-	script:
-	"""
-	#!/usr/bin/env Rscript
-	source("assets/lib_io.R")
-	source("assets/lib_blast.R")
-	source("assets/lib_plasmid_lineage.R")
-	find_align_seq("plasmids.fasta", "plasmids.self.blastn", "align_seq.fasta")
-	"""
-
-	stub:
-	"""
-	touch align_seq.fasta
-	"""
-}
-
-
 // A file or folder of the report data, and its name in the report_data folder
 record NamedFile {
 	name: String

@@ -1,14 +1,12 @@
 nextflow.enable.types = true
 
-include { PLASMID_LINEAGE; PlasmidLineageParams; Genome; FIND_ALIGN_SEQ } from './workflows/plasmid-lineage/main.nf'
+include { PLASMID_LINEAGE; PlasmidLineageParams; Genome } from './workflows/plasmid-lineage/main.nf'
 include { GENOME_ROTATE } from './workflows/rotate/main.nf'
-include { FASTA_CAT } from './modules/fasta/cat'
-include { MAKEBLASTDB } from './modules/blast/makeblastdb'
-include { BLASTN as BLASTN_SELF } from './modules/blast/blastn'
+include { ROTATION_ORIGINS } from './subworkflows/rotation_origins/main.nf'
 include { IDENTITY as COPY_FASTA } from './modules/identity/main.nf'
 include { AmrParams } from './workflows/plasmid-lineage/workflows/amr-annot/main.nf'
 include { DATABASES; DbParams; Db } from './subworkflows/db/main.nf'
-include { INPUT_FASTA } from './subworkflows/input/main.nf'
+include { INPUT_FASTA; asIdPath } from './subworkflows/input/main.nf'
 include { validateParameters; paramsSummaryLog } from 'plugin/nf-schema'
 
 
@@ -46,24 +44,14 @@ workflow {
 	def lineage_input_ch = plasmids
 	def rotated_ch = channel.empty()
 	if (!params.no_rotation) {
-		def blastn_args = params.lineage?.blastn_args ?: '-perc_identity 70 -evalue 1e-3 -subject_besthit'
-		def fasta_ch = FASTA_CAT(plasmids
-			.map({ r -> record(meta: null, path: r.fasta) })    // no meta: the sequence names are kept
-			.collect()
-			.flatMap({ rs -> rs.isEmpty() ? [] : [record(meta: record(id: params.name), genomes: rs.toList().toSorted({ r -> r.path }))] })
-		).fasta.map({ r -> record(meta: r.meta, fasta: r.path) })
-		def self_ch = BLASTN_SELF(
-			fasta_ch
-				.join(MAKEBLASTDB(fasta_ch.map({ r -> record(meta: r.meta, path: r.fasta) })).map({ d -> record(meta: d.meta, db: d) }), by: 'meta')
-				.map({ r -> record(meta: r.meta, path: r.fasta, ref: r.db, args: blastn_args) })
+		def origins_ch = ROTATION_ORIGINS(
+			record(id: params.name),
+			plasmids.map({ r -> asIdPath(record(meta: r.meta, path: r.fasta)) }),
+			params.lineage?.blastn_args
 		)
-		def align_seq_ch = FIND_ALIGN_SEQ(
-			fasta_ch.join(self_ch, by: 'meta').map({ r -> record(meta: r.meta, fasta: r.fasta, blast: r.path) }),
-			file("${projectDir}/workflows/plasmid-lineage/assets")
-		)
-		// the same reference for each plasmid
+		// the same origins for each plasmid
 		rotated_ch = GENOME_ROTATE(
-			plasmids.combine(align_seq_ch).map({ p, a -> record(fasta: record(meta: p.meta, path: p.fasta), origins: record(meta: a.meta, path: a.fasta)) })
+			plasmids.combine(origins_ch).map({ p, a -> record(fasta: record(meta: p.meta, path: p.fasta), origins: a) })
 		).fasta
 		lineage_input_ch = rotated_ch.map({ r -> record(meta: r.meta, fasta: r.path) })
 	}
