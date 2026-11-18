@@ -1,7 +1,7 @@
 nextflow.enable.types = true
 
 // Simple variant calling from a BAM between 2 assembled genomes
-process BCFTOOLS_ASM5_MPILEUP {
+process BCFTOOLS_MPILEUP_ASM5 {
     container 'community.wave.seqera.io/library/bcftools_htslib:1.23.1--9f08ec665533d64a'
     memory 10.GB
     cpus 4

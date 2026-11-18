@@ -2,7 +2,7 @@ nextflow.enable.types = true
 
 include { GENOME_ROTATE         } from './workflows/rotate/main.nf'
 include { MINIMAP2_ALIGN_BAM    } from './modules/minimap2/align_bam'
-include { BCFTOOLS_ASM5_MPILEUP } from './modules/bcftools/mpileup_asm5'
+include { BCFTOOLS_MPILEUP_ASM5 } from './modules/bcftools/mpileup_asm5'
 include { QUARTO_RENDER         } from './modules/quarto/render'
 include { MetaPath              } from './subworkflows/input/main.nf'
 
@@ -32,7 +32,7 @@ workflow GENOME_COMPARE {
 	).outputs
 
 	// Call mutations
-	def mut_ch = BCFTOOLS_ASM5_MPILEUP(
+	def mut_ch = BCFTOOLS_MPILEUP_ASM5(
 		aln_ch.combine(ref: ref).map({ r -> record(meta: r.meta, ref: r.ref, bam: r.bam, gff: ref_gff, args: mpileup_args) })
 	)
 
