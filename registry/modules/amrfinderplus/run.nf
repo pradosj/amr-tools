@@ -10,6 +10,9 @@ process AMRFINDERPLUS_RUN {
     // db: AMRFinderPlus database folder, as created by AMRFINDERPLUS_UPDATE
     record(meta: Record, fasta: Path, db: Path, args: String?)
 
+    stage:
+    stageAs(db, 'db')
+
     output:
     record(
         meta: meta,
