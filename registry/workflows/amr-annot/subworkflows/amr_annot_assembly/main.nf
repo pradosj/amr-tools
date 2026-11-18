@@ -41,7 +41,7 @@ record Genome {
 
 
 // Gather the AMR results of an assembly into a folder (published as amr/assemblies/<id>__<assembler_name>.amr), read into an RDS file
-process AMR_COMBINE_ASSEMBLY {
+process COMBINE_ASSEMBLY_ANNOT {
 	container 'registry.gitlab.unige.ch/amr-genomics/rscript:v3'
 	label 'rscript'
 	memory 8.GB
@@ -158,7 +158,7 @@ workflow AMR_ANNOT_ASSEMBLY {
 
 	// Gather the results of each assembly into a folder and an RDS file
 	def fai_ch = SAMTOOLS_FAIDX(assemblies.map({ r -> record(meta: r.meta, path: r.fasta, args: null) }))
-	def combine_ch = AMR_COMBINE_ASSEMBLY(
+	def combine_ch = COMBINE_ASSEMBLY_ANNOT(
 		assemblies
 			.join(orgfinder_ch.map({ r -> record(meta: r.meta, org_name: r.org_name, orgfinder: r.dir) }), by: 'meta', remainder: true)
 			.join(amrfinderplus_ch.map({ r -> record(meta: r.meta, amrfinderplus: r.dir) }), by: 'meta', remainder: true)

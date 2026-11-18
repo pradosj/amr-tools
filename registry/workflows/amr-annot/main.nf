@@ -62,7 +62,7 @@ process AMR_MULTIQC {
 	cpus 2
 	time 30.m
 	input:
-	record(assemblies: List<Path>, reads: List<Path>)    // RDS files of AMR_COMBINE_ASSEMBLY and AMR_COMBINE_READS
+	record(assemblies: List<Path>, reads: List<Path>)    // RDS files of COMBINE_ASSEMBLY_ANNOT and AMR_COMBINE_READS
 	assets: Path    // the assets folder of the workflow (lib_io.R, lib_typing.R)
 	stage:
 	stageAs(assets, 'assets')
