@@ -8,7 +8,7 @@ process BCFTOOLS_MPILEUP_ASM5 {
     time 1.h
 
     input:
-    record(meta: Record, ref: Path, bam: Path, gff: Path?, args: String?)
+    record(meta: Record, ref: Path, bam: Path, gff: Path?, filter: String?, args: String?)
 
     stage:
     stageAs(ref, 'ref.fasta')
@@ -24,6 +24,7 @@ process BCFTOOLS_MPILEUP_ASM5 {
     )
 
     script:
+    def keep = filter ?: '(FORMAT/AD[:1] >= 1)'
     def csq_cmd = gff ? "| bcftools csq -Oz --force --local-csq --fasta-ref='ref.fasta' --gff-annot='ref.gff'" : ''
     def csq_qry = gff ? '\\t%INFO/BCSQ' : ''
     """
@@ -35,7 +36,7 @@ process BCFTOOLS_MPILEUP_ASM5 {
         --fasta-ref="ref.fasta" \\
         alignment.bam \\
         | bcftools norm -Ou -m- -f "ref.fasta" \\
-        | bcftools filter -Ou -i '(FORMAT/AD[:1] >= 1)' \\
+        | bcftools filter -Ou -i '${keep}' \\
         | bcftools +setGT -Oz -- -t a -n c:1 \\
         ${csq_cmd} \\
         > mutations.vcf.gz
