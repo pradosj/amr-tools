@@ -2,7 +2,7 @@ nextflow.enable.types = true
 
 include { GENOME_ROTATE         } from './workflows/rotate/main.nf'
 include { MINIMAP2_ALIGN_BAM    } from './modules/minimap2/align_bam'
-include { BCFTOOLS_ASM5_MPILEUP } from './modules/bcftools/asm5_mpileup'
+include { BCFTOOLS_ASM5_MPILEUP } from './modules/bcftools/mpileup_asm5'
 include { QUARTO_RENDER         } from './modules/quarto/render'
 include { MetaPath              } from './subworkflows/input/main.nf'
 
