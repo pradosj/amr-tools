@@ -33,6 +33,7 @@ output {
 	distance: Value<Record> {
 		path { r ->
 			r.graph    >> 'wg-blastn-distance/distance_graph.rds'
+			r.distances >> 'wg-blastn-distance/distance.tsv'
 		}
 	}
 	report: Value<Record> {

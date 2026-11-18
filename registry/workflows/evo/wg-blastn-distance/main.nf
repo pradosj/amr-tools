@@ -24,7 +24,7 @@ process GENOME_DISTANCE {
 	stageAs(assets, 'assets')
 
 	output:
-	record(meta: meta, graph: file('distance_graph.rds'))
+	record(meta: meta, graph: file('distance_graph.rds'), distances: file('distance.tsv'))
 
 	script:
 	"""
@@ -33,11 +33,18 @@ process GENOME_DISTANCE {
 	seq_genomes <- read_tsv("genomes.tsv", col_types = "ccc")
 	g <- genome_distance_graph("genomes.self.blastn", seq_genomes, min_len = ${min_len})
 	saveRDS(g, "distance_graph.rds")
+	g |>
+		activate(edges) |>
+		mutate(genome1 = .N()\$name[from], genome2 = .N()\$name[to]) |>
+		as_tibble("edges") |>
+		select(-from, -to) |>
+		relocate(genome1, genome2) |>
+		write_tsv("distance.tsv", na = "")
 	"""
 
 	stub:
 	"""
-	touch distance_graph.rds
+	touch distance_graph.rds distance.tsv
 	"""
 }
 

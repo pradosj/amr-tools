@@ -1,23 +1,11 @@
 
 
-- Faire le pipeline rotate_genome
-- dans genome/compare utiliser le workfow rotate_genome
-- Ajouter la distance matrix et les hits dans l'output de wg-*
-
-
+- mettre les containers docker dans docker/
 - Revoir le pipeline des plasmid pour utiliser pymlst et wg-blastn
 
+- Faire un outil comme pyMLST de construction de schema a partir des SNP et des jonctions
+   - commencer par faire un script qui cherche les SNPs et les jonctions dans un alignment minimap2 entre 2 genomes
 
-
-
-
-
- 
-
-- Faire un outil comme pyMLST de construction de schema a partir des SNP et des jonctions 
-  
-
-- Ajouter des qc d'assemblage, et notemment la couverture en read par contig extraite des BAM
 - Faire un pipeline de variant calling a partir des reads ONT sur un assemblage
 - Generer le VCF a partir du BAM pour chaque assemblage
 

@@ -36,6 +36,9 @@ Outputs, in the output folder (`results/` by default):
   0 merged into a single node);
 - `wg-blastn-distance/distance_graph.rds`: the distance graph of the genomes (tbl_graph: an edge per pair of genomes
   aligning, with the number of mismatches, gap openings, fragments, aligned bp, errors and the distance (`weight`)).
+- `wg-blastn-distance/distance.tsv`: the edges of the distance graph, one line per pair of genomes aligning (each genome
+  with itself included): `genome1`, `genome2`, then the columns of the edges (`num_mis`, `num_gapopen`, `n_frag`,
+  `total_frag_len`, `err`, `weight`).
 
 # Test the pipeline
 
