@@ -1,6 +1,5 @@
 
 
-- mettre les containers docker dans docker/
 - Revoir le pipeline des plasmid pour utiliser pymlst et wg-blastn
 
 - Faire un outil comme pyMLST de construction de schema a partir des SNP et des jonctions
@@ -14,7 +13,7 @@
 - Ajouter REsfinder et plasmid finder au databases ?
 - Ajouter une database RepA et Inc pour la rotation des plasmids et des chromosomes
 - ajouter les GTF quand on download les databases de NCBI dans org_db ?
-- Ajouter l'option de rotate dans INPUT_FASTA
+- Ajouter l'option de rotate dans INPUT_FASTA ?
 - Supprimer les plasmids de la org_db pour OrgFinder
 
 
