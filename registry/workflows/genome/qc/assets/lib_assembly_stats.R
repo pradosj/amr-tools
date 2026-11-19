@@ -7,7 +7,8 @@ fa_extract_contigs_stats <- function(fa_file) {
 	fa <- readDNAStringSet(fa_file)
 	contigs <- tibble(
 		contig_idx = seq_along(fa),
-		contig_name = str_replace(names(fa)," .*",""),
+		contig_id = str_remove(names(fa)," .*"),
+		contig_name = names(fa),
 		length = lengths(fa),
 		GC_count = as.vector(Biostrings::letterFrequency(fa,"GC")),
 		N_count = as.vector(Biostrings::letterFrequency(fa,"N"))
@@ -27,8 +28,8 @@ read_assembly_stats <- function(dir) {
 	long_cov <- read_samtools_coverage(fs::path(dir,'long_reads.coverage.tsv'))
 	short_cov <- read_samtools_coverage(fs::path(dir,'short_reads.coverage.tsv'))
 	stats$contigs <- stats$contigs |>
-		left_join(select(long_cov,contig_name,long_cov = meandepth),by = "contig_name") |>
-		left_join(select(short_cov,contig_name,short_cov = meandepth),by = "contig_name")
+		left_join(select(long_cov,contig_id,long_cov = meandepth),by = "contig_id") |>
+		left_join(select(short_cov,contig_id,short_cov = meandepth),by = "contig_id")
 	
 	stats$assembly_stats <- stats$contigs |>
 		summarize(

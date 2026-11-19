@@ -181,7 +181,7 @@ read_plasmidfinder_json <- function(json_file) {
 	}
 	out |>
 		bind_rows(expected_structure) |>
-		mutate(contig_id = str_replace(contig_name," .*","")) |>
+		mutate(contig_id = str_remove(contig_name," .*")) |>
 		relocate(contig_id,plasmid_type=plasmid,coverage,identity)
 }
 
@@ -210,7 +210,7 @@ read_mobtyper_tsv <- function(tsv_file) {
 		)	
 		if (!file.exists(tsv_file)) return(expected_structure)
 		read_tsv(tsv_file,col_types = cols(.default="c")) |>
-			mutate(contig_id=str_replace(sample_id," .*","")) |>
+			mutate(contig_id=str_remove(sample_id," .*")) |>
 			dplyr::rename(contig_name=sample_id,relaxase_types=`relaxase_type(s)`,rep_types=`rep_type(s)`) |>
 			bind_rows(expected_structure) |>
 			relocate(contig_id)
@@ -287,7 +287,7 @@ read_samtools_stats <- function(f) {
 				sep = "\t",comment="",fill = TRUE,
 				col.names = c("tag","var","value","comment")
 			) |>
-			mutate(var=str_replace(var,": *$","") |> make.names()) |>
+			mutate(var=str_remove(var,": *$") |> make.names()) |>
 			pull(value,name = var) |>
 			as.list(),
 		COV_HIST = read.table(
@@ -301,11 +301,11 @@ read_samtools_stats <- function(f) {
 #' Coverage of each contig computed by samtools coverage
 #'
 #' @param f Output of samtools coverage (TSV, one line per reference sequence).
-#' @return A tibble with contig_name, numreads, covbases, coverage (% of bases covered) and meandepth
+#' @return A tibble with contig_id, numreads, covbases, coverage (% of bases covered) and meandepth
 #'  (empty when the file does not exist or is empty).
 read_samtools_coverage <- function(f) {
 	expected_structure <- tibble(
-		contig_name = character(0),
+		contig_id = character(0),
 		numreads = numeric(0),
 		covbases = numeric(0),
 		coverage = numeric(0),
@@ -313,8 +313,10 @@ read_samtools_coverage <- function(f) {
 	)
 	if (!fs::file_exists(f) || fs::file_size(f) == 0) return(expected_structure)
 	read_tsv(f,show_col_types = FALSE,col_types = cols(`#rname`="c",numreads="n",covbases="n",coverage="n",meandepth="n",.default="-")) |>
-		rename(contig_name = `#rname`) |>
-		bind_rows(expected_structure)
+		rename(contig_id = `#rname`) |>
+		bind_rows(expected_structure) |>
+		mutate(contig_id = str_remove(contig_id," .*")) |>
+		relocate(contig_id)
 }
 
 #' Completeness and contamination of a CheckM2 result

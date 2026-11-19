@@ -185,7 +185,7 @@ depth_histogram(qc$short_reads)
 ```{r}
 #| title: "Contigs (relative depth: depth / length weighted median depth of the contigs)"
 contigs |>
-	select(contig_name, length, GC_pct, N_count, long_cov, long_rel, short_cov, short_rel) |>
+	select(contig_id, length, GC_pct, N_count, long_cov, long_rel, short_cov, short_rel) |>
 	reactable(
 		searchable = TRUE,
 		defaultPageSize = 20,
@@ -193,7 +193,7 @@ contigs |>
 		striped = TRUE,
 		defaultSorted = list(length = "desc"),
 		columns = list(
-			contig_name = colDef(name = "Contig", minWidth = 200),
+			contig_id = colDef(name = "Contig", minWidth = 200),
 			length = colDef(name = "Length", format = colFormat(separators = TRUE)),
 			GC_pct = colDef(name = "GC %", format = colFormat(digits = 1)),
 			N_count = colDef(name = "N"),
@@ -210,7 +210,7 @@ contigs |>
 ```{r}
 #| title: "Relative depth of the contigs"
 d <- contigs |>
-	select(contig_name, length, `long reads` = long_rel, `short reads` = short_rel) |>
+	select(contig_id, length, `long reads` = long_rel, `short reads` = short_rel) |>
 	pivot_longer(c(`long reads`, `short reads`), names_to = "reads", values_to = "rel_depth") |>
 	filter(!is.na(rel_depth))
 if (nrow(d) == 0) {
