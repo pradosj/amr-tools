@@ -31,10 +31,17 @@ record IdPath {
 	path: Path
 }
 
+// Illumina reads (read2 null for single-end reads)
 record ShortReads {
 	meta: Record?
 	read1: Path
 	read2: Path?
+}
+
+// ONT reads: one FASTQ
+record LongReads {
+	meta: Record?
+	reads: Path
 }
 
 // Sequencing reads of a sample: high quality ONT reads and/or Illumina reads

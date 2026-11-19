@@ -73,6 +73,11 @@
 							"args": {
 							  "type": "string",
 							  "default": ""
+							},
+							"db": {
+							  "type": "string",
+							  "format": "directory-path",
+							  "description": "CheckM2 database folder (default: the checkm2 folder of the databases folder)"
 							}
 						}
 					}

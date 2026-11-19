@@ -108,8 +108,8 @@
 			"default": false
 		},
 
-		"assemblies_qc": {
-			"title": "Parameters for tool assemblies_qc",
+		"genome_qc": {
+			"title": "Parameters of the QC of the assemblies (genome_qc)",
 			"type": "object",
 			"properties": {
 					"checkm2": {
@@ -122,6 +122,11 @@
 							"args": {
 							  "type": "string",
 							  "default": ""
+							},
+							"db": {
+							  "type": "string",
+							  "format": "directory-path",
+							  "description": "CheckM2 database folder (default: the checkm2 folder of the databases folder)"
 							}
 						}
 					}

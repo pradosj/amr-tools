@@ -1,6 +1,6 @@
 nextflow.enable.types = true
 
-include { GENOME_QC; AssembliesQcParams } from './workflows/qc/main.nf'
+include { GENOME_QC; GenomeQcParams } from './workflows/qc/main.nf'
 include { INPUT_READS; INPUT_ASSEMBLIES; ReadsParams; AssembliesParams; MetaPath } from './subworkflows/input/main.nf'
 include { DATABASES; DbParams; Db } from './subworkflows/db/main.nf'
 include { validateParameters; paramsSummaryLog } from 'plugin/nf-schema'
@@ -11,7 +11,7 @@ params {
 	db: DbParams = record(basedir: 'results/db', checkm2: 'checkm2', org_db: 'org_db', amrfinderplus: 'amrfinderplus')    // databases folder (built when missing), or tar archive of it (path or URL)
 	assemblies: AssembliesParams = record(fasta: null)
 	reads: ReadsParams = record(ont: null, illumina: null)
-	assemblies_qc: AssembliesQcParams = record(checkm2: record(skip: false, args: ''))
+	genome_qc: GenomeQcParams = record(checkm2: record(skip: false, args: ''))
 }
 
 workflow {
@@ -24,13 +24,28 @@ workflow {
 		.map({ r -> record(meta: record(id: r.meta.id, assembler_name: 'none'), path: r.path) })
 	def reads = INPUT_READS(params.reads?.ont, params.reads?.illumina)
 
-	// Reads of the sample of each assembly
-	def asm_keys = assemblies.map({ r -> record(meta: record(id: r.meta.id), asm_meta: r.meta) })
-	def asm_short_reads = asm_keys.join(reads.short_reads, by: 'meta').map({ r -> record(meta: r.asm_meta, read1: r.read1, read2: r.read2) })
-	def asm_long_reads = asm_keys.join(reads.long_reads, by: 'meta').map({ r -> record(meta: r.asm_meta, reads: r.path) })
+	// Each assembly with the reads of its sample
+	def qc_input = assemblies
+		.map({ r -> record(meta: record(id: r.meta.id), asm: r) })
+		.join(reads.short_reads, by: 'meta', remainder: true)
+		.join(reads.long_reads.map({ r -> record(meta: r.meta, reads: r.path) }), by: 'meta', remainder: true)
+		.filter({ r -> r.asm != null })
+		.map({ r -> record(
+			meta: r.asm.meta,
+			path: r.asm.path,
+			short_reads: r.read1 ? record(meta: null, read1: r.read1, read2: r.read2) : null,
+			long_reads: r.reads ? record(meta: null, reads: r.reads) : null
+		) })
 
-	def dbs = DATABASES(params.db, (params.assemblies_qc?.checkm2?.skip ? [] : [Db.CHECKM2]).toSet())
-	def qc = GENOME_QC(params.assemblies_qc, dbs.checkm2, assemblies, asm_short_reads, asm_long_reads)
+	def dbs = DATABASES(params.db, (params.genome_qc?.checkm2?.skip || params.genome_qc?.checkm2?.db ? [] : [Db.CHECKM2]).toSet())
+	def qc = GENOME_QC(
+		qc_input,
+		dbs.checkm2.map({ db -> record(checkm2: record(
+			skip: params.genome_qc?.checkm2?.skip,
+			args: params.genome_qc?.checkm2?.args,
+			db: params.genome_qc?.checkm2?.db ?: db    // the database given by --genome_qc.checkm2.db, else the one of the databases folder
+		)) })
+	)
 
 	publish:
 	db = dbs.built

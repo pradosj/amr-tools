@@ -9,35 +9,30 @@ include { BWA_MEM            } from './modules/bwa/mem'
 include { BWA_INDEX          } from './modules/bwa/index'
 include { CHECKM2_PREDICT    } from './modules/checkm2/predict'
 include { QUARTO_RENDER      } from './modules/quarto/render'
-include { MetaPath           } from './subworkflows/input/main.nf'
+include { MetaPath; ShortReads; LongReads } from './subworkflows/input/main.nf'
 
 
-// Options of CheckM2 (params.assemblies_qc.checkm2)
+// Options of CheckM2 (params.genome_qc.checkm2 of the pipelines)
 record Checkm2Params {
 	skip: Boolean?
 	args: String?
+	db: Path?        // CheckM2 database folder
 }
 
-// Options of GENOME_QC (params.assemblies_qc)
-record AssembliesQcParams {
+// Options of the QC of the assemblies (params.genome_qc of the pipelines)
+record GenomeQcParams {
 	checkm2: Checkm2Params?
 }
 
-// Illumina reads of the sample of an assembly (same meta as the assembly): read2 is null for single-end reads
-record ShortReads {
+// An assembly and the reads of its sample (meta holding id (sample id) and assembler_name)
+record GenomeQcInput {
 	meta: Record?
-	read1: Path
-	read2: Path?
+	path: Path                  // FASTA of the assembly
+	short_reads: ShortReads?    // Illumina reads (their meta is not used), null when there are none
+	long_reads: LongReads?      // ONT reads (their meta is not used), null when there are none
 }
 
-// ONT reads of the sample of an assembly (same meta as the assembly): one FASTQ
-record LongReads {
-	meta: Record?
-	reads: Path
-}
-
-
-// Gather the QC statistics of an assembly into an RDS file
+// Gather the QC statistics of an assembly into a JSON file (read_assembly_stats() of lib_assembly_stats.R)
 process COMBINE_QC_STATS {
 	container "registry.gitlab.unige.ch/amr-genomics/rscript:v3"
 	label 'rscript'
@@ -45,34 +40,29 @@ process COMBINE_QC_STATS {
 	cpus 2
 	time 30.m
 	input:
-	record(meta: Record, fasta: Path, long_stats: Path?, short_stats: Path?, long_cov: Path?, short_cov: Path?, checkm2: Path?)
+	record(meta: Record?, path: Path, long_stats: Path?, short_stats: Path?, long_cov: Path?, short_cov: Path?, checkm2: Path?)
 	assets: Path    // the assets folder of the workflow (lib_io.R, lib_assembly_stats.R)
 	stage:
 	stageAs(assets, 'assets')
-	stageAs(fasta, 'stats/assembly.fasta')
+	stageAs(path, 'stats/assembly.fasta')
 	stageAs(long_stats, 'stats/long_reads.bam.stats')
 	stageAs(short_stats, 'stats/short_reads.bam.stats')
 	stageAs(long_cov, 'stats/long_reads.coverage.tsv')
 	stageAs(short_cov, 'stats/short_reads.coverage.tsv')
 	stageAs(checkm2, 'stats/checkm2_quality_report.tsv')
 	output:
-	record(meta: meta, rds: file('qc.rds'))
+	record(meta: meta, json: file('qc.json'))
 	script:
-	// meta is reported as [[sample_id], [assembler_name]]
-	def meta_json = new groovy.json.JsonBuilder([[sample_id: meta.id], [assembler_name: meta.assembler_name]]).toString()
 	"""
 	#!/usr/bin/env Rscript
 	source("assets/lib_io.R")
 	source("assets/lib_assembly_stats.R")
-	stats <- read_assembly_stats("./stats")
-	stats[["meta"]] <- '${meta_json}'
-	stats[["sample_id"]] <- '${meta.id}'
-	stats[["assembler_name"]] <- '${meta.assembler_name}'
-	saveRDS(stats,"qc.rds")
+	qc <- read_assembly_stats("./stats", sample_id = '${meta.id}', assembler_name = '${meta.assembler_name}')
+	jsonlite::write_json(qc, "qc.json", auto_unbox = TRUE, na = "null", null = "null", digits = NA, pretty = TRUE)
 	"""
 	stub:
 	"""
-	touch qc.rds
+	touch qc.json
 	"""
 }
 
@@ -84,11 +74,11 @@ process GENOME_MULTIQC {
 	cpus 2
 	time 30.m
 	input:
-	rds: List<Path>
+	json: List<Path>    // the qc.json of each assembly
 	assets: Path    // the assets folder of the workflow (lib_io.R, lib_assembly_stats.R)
 	stage:
 	stageAs(assets, 'assets')
-	stageAs(rds, 'stats/qc*.rds')
+	stageAs(json, 'stats/qc*.json')
 	output:
 	record(
 		xlsx: file('assemblies_multiqc.xlsx'),
@@ -99,7 +89,7 @@ process GENOME_MULTIQC {
 	#!/usr/bin/env Rscript
 	source("assets/lib_io.R")
 	source("assets/lib_assembly_stats.R")
-	A <- rlang::inject(aggregate_assembly_stats(!!!(c(${rds.collect({ f -> "'${f}'" }).join(",")}) |> map(readRDS) |> unname())))
+	A <- aggregate_assembly_stats(fs::dir_ls("stats", glob = "*.json"))
 	A |> write.table(file="assemblies_multiqc.txt",sep="\\t",quote=FALSE,row.names=FALSE)
 	A |> openxlsx::write.xlsx("assemblies_multiqc.xlsx")
 	"""
@@ -112,44 +102,47 @@ process GENOME_MULTIQC {
 
 workflow GENOME_QC {
 	take:
-	opts: AssembliesQcParams
-	checkm2_db: Value<Path?>          // CheckM2 database folder (null when checkm2 is skipped)
-	assemblies: Channel<MetaPath>     // the FASTA of each assembly, meta holding id (sample id) and assembler_name
-	short_reads: Channel<ShortReads>
-	long_reads: Channel<LongReads>
+	genomes: Channel<GenomeQcInput> // each assembly with the reads of its sample
+	opts: Value<GenomeQcParams?>    // options, with the CheckM2 database (CheckM2 skipped when checkm2.skip is set or its db is null)
 
 	main:
 	def assets = file("${moduleDir}/assets")
 
-	// Short reads alignment on the BWA index of the assembly, and statistics
-	def index_ch = BWA_INDEX(assemblies)
+	// Short reads alignment on the BWA index of the assembly (indexed only when there are short reads), and statistics
+	def with_short_ch = genomes.filter({ g -> g.short_reads != null })
+	def index_ch = BWA_INDEX(with_short_ch.map({ g -> record(meta: g.meta, path: g.path) }))
 		.map({ i -> record(meta: i.meta, ref: i) })
-	def short_bam_ch = BWA_MEM(short_reads.join(index_ch, by: 'meta'))
+	def short_bam_ch = BWA_MEM(
+		with_short_ch
+			.map({ g -> record(meta: g.meta, read1: g.short_reads.read1, read2: g.short_reads.read2, args: null) })
+			.join(index_ch, by: 'meta')
+	)
 	def short_stats_ch = SAMTOOLS_STATS_SHORT(short_bam_ch.bam)
 	def short_cov_ch = SAMTOOLS_COVERAGE_SHORT(short_bam_ch.bam)
 
 	// Long reads alignment on the assembly, and statistics
 	def long_bam_ch = MINIMAP2_ALIGN_BAM(
-		long_reads
-			.map({ r -> record(meta: r.meta, path: r.reads) })
-			.join(assemblies.map({ r -> record(meta: r.meta, ref: r, args: '-x map-ont') }), by: 'meta')
+		genomes
+			.filter({ g -> g.long_reads != null })
+			.map({ g -> record(meta: g.meta, path: g.long_reads.reads, ref: record(meta: g.meta, path: g.path), args: '-x map-ont') })
 	)
 	def long_stats_ch = SAMTOOLS_STATS_LONG(long_bam_ch.bam)
 	def long_cov_ch = SAMTOOLS_COVERAGE_LONG(long_bam_ch.bam)
 
 	// Genome completeness
-	def checkm2_ch = channel.empty()
-	if (!opts.checkm2?.skip) {
-		checkm2_ch = CHECKM2_PREDICT(assemblies.combine(db: checkm2_db, args: opts.checkm2?.args))
-	}
+	def checkm2_ch = CHECKM2_PREDICT(
+		genomes
+			.combine(opts: opts)
+			.filter({ r -> !r.opts?.checkm2?.skip && r.opts?.checkm2?.db != null })
+			.map({ r -> record(meta: r.meta, path: r.path, db: r.opts.checkm2.db, args: r.opts.checkm2.args) })
+	)
 
 	//TODO: RUN VCF_LONG
 	//TODO: RUN VCF_SHORT
 	//TODO: HTML_REPORT()
 	//TODO: CHARACTERIZE_UNMAPPED_READS
 	def qc_ch = COMBINE_QC_STATS(
-		assemblies
-			.map({ r -> record(meta: r.meta, fasta: r.path) })
+		genomes
 			.join(long_stats_ch.map({ r -> record(meta: r.meta, long_stats: r.path) }), by: 'meta', remainder: true)
 			.join(short_stats_ch.map({ r -> record(meta: r.meta, short_stats: r.path) }), by: 'meta', remainder: true)
 			.join(long_cov_ch.map({ r -> record(meta: r.meta, long_cov: r.path) }), by: 'meta', remainder: true)
@@ -162,21 +155,21 @@ workflow GENOME_QC {
 	def report_ch = QUARTO_RENDER(qc_ch.map({ r -> record(
 		meta: r.meta,
 		template: file("${moduleDir}/assets/genome_qc_report.qmd"),
-		extra: null,
-		files: [r.rds],
-		args: "-P 'qc:${r.rds.name}' -M 'title:Genome QC ${r.meta.id}__${r.meta.assembler_name}'"
+		extra: assets,
+		files: [r.json],
+		args: "-P 'qc:${r.json.name}' -M 'title:Genome QC ${r.meta.id}__${r.meta.assembler_name}'"
 	) }))
 
 	// no table when there is no assembly
 	def multiqc_ch = GENOME_MULTIQC(
-		qc_ch.map({ r -> r.rds }).collect().flatMap({ fs -> fs.isEmpty() ? [] : [fs.toList()] }),
+		qc_ch.map({ r -> r.json }).collect().flatMap({ fs -> fs.isEmpty() ? [] : [fs.toList()] }),
 		assets
 	)
 
 	emit:
 	long_alignments: Channel<Record>  = long_bam_ch.outputs     // records with fields meta, meta_ref, bam, bai
 	short_alignments: Channel<Record> = short_bam_ch.outputs    // records with fields meta, meta_ref, bam, bai
-	assembly_qc: Channel<Record>      = qc_ch             // records with fields meta, rds
+	assembly_qc: Channel<Record>      = qc_ch             // records with fields meta, json (qc.json)
 	report: Channel<Record>           = report_ch         // records with fields meta, html (dashboard of each assembly)
 	multiqc: Channel<Record>          = multiqc_ch        // records with fields txt, xlsx
 	checkm2: Channel<MetaPath>        = checkm2_ch        // records with fields meta, path (quality_report.tsv)
