@@ -7,16 +7,25 @@ format:
     embed-resources: true
     nav-buttons: []
 params:
-  qc: "qc.rds"
+  qc: "qc.json"
 ---
 
 ```{r setup}
 #| include: false
 knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
-library(tidyverse)
+source("assets/lib_io.R")
+source("assets/lib_assembly_stats.R")
 library(reactable)
 
-qc <- readRDS(params$qc)
+qc <- read_assembly_qc(params$qc)
+
+#' Color of the value box of the percentage of reads mapped
+#'
+#' @param pct the percentage of reads mapped (NULL or NA without reads)
+#' @return a bootstrap color name
+mapped_color <- function(pct) {
+	if (length(pct) == 0 || is.na(pct)) "light" else if (pct >= 90) "success" else if (pct >= 80) "warning" else "danger"
+}
 
 #' Format a number with thousands separators, or a dash when it is missing
 #'
@@ -27,20 +36,6 @@ qc <- readRDS(params$qc)
 fmt_num <- function(x, suffix = "", fmt = "%s") {
 	if (length(x) == 0 || is.na(x)) return("–")
 	paste0(sprintf(fmt, if (fmt == "%s") format(x, big.mark = "'") else x), suffix)
-}
-
-#' The statistics of the alignment of a set of reads on the assembly
-#'
-#' @param reads the samtools stats of the reads, as read by read_samtools_stats()
-#' @param total_len the length of the assembly
-#' @return a list: num_reads, pct_mapped, mean_depth (NA without reads)
-reads_summary <- function(reads, total_len) {
-	n <- pluck(reads, "SN", "raw.total.sequences", .default = NA_real_)
-	list(
-		num_reads = n,
-		pct_mapped = 100 * pluck(reads, "SN", "reads.mapped", .default = NA_real_) / n,
-		mean_depth = pluck(reads, "SN", "bases.mapped..cigar.", .default = NA_real_) / total_len
-	)
 }
 
 #' Median depth of the contigs, weighted by their length (the depth of the chromosome on an isolate assembly)
@@ -59,10 +54,10 @@ weighted_median_depth <- function(depth, len) {
 
 #' The depth histogram of a set of reads
 #'
-#' @param reads the samtools stats of the reads, as read by read_samtools_stats()
+#' @param reads the summary of the reads (long_reads or short_reads of qc.json, NULL without reads)
 #' @return a ggplot, or a message when there are no reads
 depth_histogram <- function(reads) {
-	h <- reads$COV_HIST
+	h <- reads$depth_hist
 	if (is.null(h) || nrow(h) == 0) return(cat("No reads"))
 	ggplot(h, aes(x = range_max, y = count)) +
 		geom_col(fill = "grey20") +
@@ -70,9 +65,9 @@ depth_histogram <- function(reads) {
 		theme_minimal()
 }
 
-stats <- qc$assembly_stats
-long <- reads_summary(qc$long_reads, stats$total_len)
-short <- reads_summary(qc$short_reads, stats$total_len)
+stats <- qc$assembly
+long <- qc$long_reads
+short <- qc$short_reads
 
 contigs <- qc$contigs |>
 	mutate(
@@ -113,15 +108,15 @@ list(icon = "bar-chart", color = "primary", value = fmt_num(stats$N50, " bp"))
 ```{r}
 #| content: valuebox
 #| title: "GC"
-list(icon = "percent", color = "primary", value = fmt_num(100 * stats$GC_pct, " %", "%.1f"))
+list(icon = "percent", color = "primary", value = fmt_num(stats$GC_pct, " %", "%.1f"))
 ```
 
 ```{r}
 #| content: valuebox
 #| title: "CheckM2 completeness / contamination"
 list(icon = "check2-circle", color = "secondary", value = paste(
-	fmt_num(qc$checkm2$Completeness[1], " %", "%.1f"),
-	fmt_num(qc$checkm2$Contamination[1], " %", "%.1f"),
+	fmt_num(qc$checkm2$completeness, " %", "%.1f"),
+	fmt_num(qc$checkm2$contamination, " %", "%.1f"),
 	sep = " / "
 ))
 ```
@@ -131,13 +126,13 @@ list(icon = "check2-circle", color = "secondary", value = paste(
 ```{r}
 #| content: valuebox
 #| title: "Long reads"
-list(icon = "arrow-left-right", color = "info", value = fmt_num(long$num_reads))
+list(icon = "arrow-left-right", color = "info", value = fmt_num(long$num_sequenced))
 ```
 
 ```{r}
 #| content: valuebox
 #| title: "Long reads mapped"
-list(icon = "bullseye", color = if (is.na(long$pct_mapped)) "light" else if (long$pct_mapped >= 90) "success" else if (long$pct_mapped >= 80) "warning" else "danger",
+list(icon = "bullseye", color = mapped_color(long$pct_mapped),
 	value = fmt_num(long$pct_mapped, " %", "%.1f"))
 ```
 
@@ -157,13 +152,13 @@ depth_histogram(qc$long_reads)
 ```{r}
 #| content: valuebox
 #| title: "Short reads"
-list(icon = "arrow-left-right", color = "info", value = fmt_num(short$num_reads))
+list(icon = "arrow-left-right", color = "info", value = fmt_num(short$num_sequenced))
 ```
 
 ```{r}
 #| content: valuebox
 #| title: "Short reads mapped"
-list(icon = "bullseye", color = if (is.na(short$pct_mapped)) "light" else if (short$pct_mapped >= 90) "success" else if (short$pct_mapped >= 80) "warning" else "danger",
+list(icon = "bullseye", color = mapped_color(short$pct_mapped),
 	value = fmt_num(short$pct_mapped, " %", "%.1f"))
 ```
 

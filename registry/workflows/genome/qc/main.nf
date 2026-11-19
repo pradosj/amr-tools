@@ -33,7 +33,7 @@ record GenomeQcInput {
 }
 
 // Gather the QC statistics of an assembly into a JSON file (read_assembly_stats() of lib_assembly_stats.R)
-process COMBINE_QC_STATS {
+process MERGE_QC_STATS {
 	container "registry.gitlab.unige.ch/amr-genomics/rscript:v3"
 	label 'rscript'
 	memory 8.GB
@@ -57,7 +57,8 @@ process COMBINE_QC_STATS {
 	#!/usr/bin/env Rscript
 	source("assets/lib_io.R")
 	source("assets/lib_assembly_stats.R")
-	qc <- read_assembly_stats("./stats", sample_id = '${meta.id}', assembler_name = '${meta.assembler_name}')
+	qc <- merge_genome_qc_stats("./stats")
+	qc[['meta']][['id']] <- '${meta.id}'
 	jsonlite::write_json(qc, "qc.json", auto_unbox = TRUE, na = "null", null = "null", digits = NA, pretty = TRUE)
 	"""
 	stub:
@@ -141,7 +142,7 @@ workflow GENOME_QC {
 	//TODO: RUN VCF_SHORT
 	//TODO: HTML_REPORT()
 	//TODO: CHARACTERIZE_UNMAPPED_READS
-	def qc_ch = COMBINE_QC_STATS(
+	def qc_ch = MERGE_QC_STATS(
 		genomes
 			.join(long_stats_ch.map({ r -> record(meta: r.meta, long_stats: r.path) }), by: 'meta', remainder: true)
 			.join(short_stats_ch.map({ r -> record(meta: r.meta, short_stats: r.path) }), by: 'meta', remainder: true)

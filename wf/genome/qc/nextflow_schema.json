@@ -59,8 +59,8 @@
 			}
 		},
 
-		"assemblies_qc": {
-			"title": "Parameters for tool assemblies_qc",
+		"genome_qc": {
+			"title": "Parameters of the QC of the assemblies (genome_qc)",
 			"type": "object",
 			"properties": {
 					"checkm2": {
