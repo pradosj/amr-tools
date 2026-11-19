@@ -32,7 +32,7 @@ record GenomeQcInput {
 	long_reads: LongReads?      // ONT reads (their meta is not used), null when there are none
 }
 
-// Gather the QC statistics of an assembly into a JSON file (read_assembly_stats() of lib_assembly_stats.R)
+// Gather the QC statistics of an assembly into a JSON file (merge_genome_qc_stats() of lib_assembly_stats.R, plus the meta id and assembler_name)
 process MERGE_QC_STATS {
 	container "registry.gitlab.unige.ch/amr-genomics/rscript:v3"
 	label 'rscript'
@@ -59,6 +59,7 @@ process MERGE_QC_STATS {
 	source("assets/lib_assembly_stats.R")
 	qc <- merge_genome_qc_stats("./stats")
 	qc[['meta']][['id']] <- '${meta.id}'
+	qc[['meta']][['assembler_name']] <- '${meta.assembler_name}'
 	jsonlite::write_json(qc, "qc.json", auto_unbox = TRUE, na = "null", null = "null", digits = NA, pretty = TRUE)
 	"""
 	stub:

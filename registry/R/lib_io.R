@@ -293,7 +293,7 @@ read_samtools_stats <- function(f) {
 		COV_HIST = read.table(
 					text = str_subset(stats,"^COV\t"),
 					sep = "\t",comment="",fill = TRUE,
-					col.names = c("tag","range","range_max","count"),colClasses = c(tag="NULL",range="numeric",range_max="numeric",count="numeric")
+					col.names = c("tag","range","range_max","count"),colClasses = c(tag="NULL",range="character",range_max="numeric",count="numeric")
 				) 
 	)
 }

@@ -1,10 +1,14 @@
-# QC statistics of an assembly (COMBINE_QC_STATS, written as qc.json), its dashboard (genome_qc_report.qmd)
+# QC statistics of an assembly (MERGE_QC_STATS, written as qc.json), its dashboard (genome_qc_report.qmd)
 # and the table of all the assemblies (GENOME_MULTIQC). Sourced after lib_io.R.
 
 library(tidyverse)
 library(Biostrings)
 
-# Extract statistics of each contig from the sequence
+#' Statistics of each contig of an assembly
+#'
+#' @param fa_file FASTA file of the assembly.
+#' @return A tibble with contig_idx, contig_id (the name up to the first space), contig_name, length,
+#'  GC_count and N_count.
 fa_extract_contigs_stats <- function(fa_file) {
 	fa <- readDNAStringSet(fa_file)
 	tibble(
@@ -18,23 +22,36 @@ fa_extract_contigs_stats <- function(fa_file) {
 }
 
 #' Summary of the alignment of a set of reads on an assembly
+#'
+#' @param stats_file Output of samtools stats (missing file: no reads).
+#' @return A one row tibble with num_sequenced, num_mapped, num_mapped_bp, pct_mapped (% of the reads mapped,
+#'  NA without reads) and depth_hist (list column: tibble depth, count, the number of bases of the assembly
+#'  at each read depth, empty without reads).
 samtools_stats_summary <- function(stats_file) {
 	s <- read_samtools_stats(stats_file)
 	enframe(s) %>% 
 	  pivot_wider() %>% 
 	  mutate(
-	    num_sequenced = as.numeric(pluck(SN, "raw.total.sequences", .default = NA_real_)),
-	    num_mapped = as.numeric(pluck(SN, "reads.mapped", .default = NA_real_)),
-	    num_mapped_bp = as.numeric(pluck(SN, "bases.mapped..cigar.", .default = NA_real_))
+	    num_sequenced = as.numeric(pluck(SN, 1, "raw.total.sequences", .default = NA_real_)),
+	    num_mapped = as.numeric(pluck(SN, 1, "reads.mapped", .default = NA_real_)),
+	    num_mapped_bp = as.numeric(pluck(SN, 1, "bases.mapped..cigar.", .default = NA_real_))
 	  ) %>% 
 	  mutate(
 	    pct_mapped = 100 * num_mapped / num_sequenced,
-	    num_mapped_bp = num_mapped_bp,
 	    depth_hist = map(COV_HIST,~as_tibble(.) |> select(depth=range_max,count))
-	  )
+	  ) %>% 
+	  select(-SN, -COV_HIST)
 }
 
-#' Merge all statistics of an assembly found in dir
+#' Merge all the QC statistics of an assembly found in dir
+#'
+#' @param dir Folder holding assembly.fasta and, when available, {long,short}_reads.bam.stats (samtools stats),
+#'  {long,short}_reads.coverage.tsv (samtools coverage) and checkm2_quality_report.tsv.
+#' @return A list: assembly (one row tibble: num_contig, total_len, min_len, median_len, max_len, N50, GC_pct,
+#'  long_meandepth, short_meandepth (mean depth of the contigs weighted by their length, NA without reads),
+#'  checkm2.Completeness, checkm2.Contamination, checkm2.Average_Gene_Length (NA without CheckM2)), contigs
+#'  (see fa_extract_contigs_stats(), plus long_meandepth and short_meandepth), long_reads and short_reads
+#'  (see samtools_stats_summary()).
 merge_genome_qc_stats <- function(dir) {
   
   # Get basic contigs statistics from the sequence
@@ -76,54 +93,42 @@ merge_genome_qc_stats <- function(dir) {
 	)
 }
 
-
-
-
-
-#' Read the QC statistics of an assembly written by write_assembly_qc()
+#' Read the QC statistics of an assembly (qc.json of MERGE_QC_STATS)
 #'
-#' @param file The JSON file.
-#' @return The list of read_assembly_stats(), contigs and depth_hist as tibbles (with all their columns,
-#'  even when empty or when all the values are missing).
+#' @param file The JSON file: the list of merge_genome_qc_stats() and meta (id, assembler_name).
+#' @return The same list: meta as a list, assembly, contigs, long_reads and short_reads as tibbles (depth_hist
+#'  as a list column of tibbles depth, count), the depth columns numeric even when all their values are missing.
 read_assembly_qc <- function(file) {
 	qc <- jsonlite::read_json(file, simplifyVector = TRUE)
+	depth_cols <- c("long_meandepth","short_meandepth")
+	qc$assembly <- as_tibble(qc$assembly) |> mutate(across(any_of(depth_cols), as.numeric))
 	qc$contigs <- as_tibble(qc$contigs) |>
 		bind_rows(tibble(
 			contig_idx = integer(0), contig_id = character(0), contig_name = character(0), length = numeric(0),
-			GC_count = numeric(0), N_count = numeric(0), long_cov = numeric(0), short_cov = numeric(0)
+			GC_count = numeric(0), N_count = numeric(0), long_meandepth = numeric(0), short_meandepth = numeric(0)
 		)) |>
-		mutate(across(c(long_cov, short_cov), as.numeric))
+		mutate(across(all_of(depth_cols), as.numeric))
 	for (r in c("long_reads","short_reads")) {
-		if (!is.null(qc[[r]])) {
-			qc[[r]]$depth_hist <- as_tibble(qc[[r]]$depth_hist) |>
-				bind_rows(tibble(range_max = numeric(0), count = numeric(0)))
-		}
+		qc[[r]] <- as_tibble(qc[[r]]) |>
+			mutate(depth_hist = map(depth_hist, ~ bind_rows(as_tibble(.x), tibble(depth = numeric(0), count = numeric(0)))))
 	}
 	qc
 }
 
-
-
 #' Table of the QC statistics of assemblies, one row per assembly
 #'
-#' @param files The JSON files written by write_assembly_qc().
-#' @return A tibble with sample_id, assembler_name and the columns assembly.*, long_reads.*, short_reads.*
-#'  (without depth_hist) and checkm2.* (NA when missing), sorted by sample_id and assembler_name.
+#' @param files The qc.json files of MERGE_QC_STATS.
+#' @return A tibble with id, assembler_name, the columns of assembly (checkm2.* included), then the columns of
+#'  long_reads and short_reads (without depth_hist) prefixed by long_reads. and short_reads., sorted by id
+#'  and assembler_name.
 aggregate_assembly_stats <- function(files) {
-	fields <- list(
-		assembly = c("num_contig","total_len","min_len","median_len","max_len","N50","GC_pct"),
-		long_reads = c("num_sequenced","num_mapped","num_mapped_bp","pct_mapped","mean_depth"),
-		short_reads = c("num_sequenced","num_mapped","num_mapped_bp","pct_mapped","mean_depth"),
-		checkm2 = c("completeness","contamination")
-	)
 	files |>
 		map(function(f) {
-			qc <- jsonlite::read_json(f)
-			values <- imap(fields, function(names, block) {
-				map(names, ~ as.numeric(qc[[block]][[.x]] %||% NA_real_)) |> set_names(paste0(block, ".", names))
-			})
-			as_tibble(c(list(sample_id = qc$sample_id, assembler_name = qc$assembler_name), list_flatten(unname(values))))
+			qc <- read_assembly_qc(f)
+			reads <- function(r) qc[[r]] |> select(-depth_hist) |> rename_with(~ paste0(r, ".", .x))
+			tibble(id = qc$meta$id, assembler_name = qc$meta$assembler_name) |>
+				bind_cols(qc$assembly, reads("long_reads"), reads("short_reads"))
 		}) |>
 		bind_rows() |>
-		arrange(sample_id, assembler_name)
+		arrange(id, assembler_name)
 }

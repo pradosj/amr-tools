@@ -54,12 +54,12 @@ weighted_median_depth <- function(depth, len) {
 
 #' The depth histogram of a set of reads
 #'
-#' @param reads the summary of the reads (long_reads or short_reads of qc.json, NULL without reads)
+#' @param reads the summary of the reads (long_reads or short_reads of qc.json)
 #' @return a ggplot, or a message when there are no reads
 depth_histogram <- function(reads) {
-	h <- reads$depth_hist
+	h <- reads$depth_hist[[1]]
 	if (is.null(h) || nrow(h) == 0) return(cat("No reads"))
-	ggplot(h, aes(x = range_max, y = count)) +
+	ggplot(h, aes(x = depth, y = count)) +
 		geom_col(fill = "grey20") +
 		labs(x = "read depth", y = "bases") +
 		theme_minimal()
@@ -72,8 +72,8 @@ short <- qc$short_reads
 contigs <- qc$contigs |>
 	mutate(
 		GC_pct = 100 * GC_count / length,
-		long_rel = long_cov / weighted_median_depth(long_cov, length),
-		short_rel = short_cov / weighted_median_depth(short_cov, length)
+		long_rel = long_meandepth / weighted_median_depth(long_meandepth, length),
+		short_rel = short_meandepth / weighted_median_depth(short_meandepth, length)
 	)
 ```
 
@@ -84,7 +84,7 @@ contigs <- qc$contigs |>
 ```{r}
 #| content: valuebox
 #| title: "Assembly"
-list(icon = "file-earmark-text", color = "primary", value = paste0(qc$sample_id, " (", qc$assembler_name, ")"))
+list(icon = "file-earmark-text", color = "primary", value = paste0(qc$meta$id, " (", qc$meta$assembler_name, ")"))
 ```
 
 ```{r}
@@ -115,8 +115,8 @@ list(icon = "percent", color = "primary", value = fmt_num(stats$GC_pct, " %", "%
 #| content: valuebox
 #| title: "CheckM2 completeness / contamination"
 list(icon = "check2-circle", color = "secondary", value = paste(
-	fmt_num(qc$checkm2$completeness, " %", "%.1f"),
-	fmt_num(qc$checkm2$contamination, " %", "%.1f"),
+	fmt_num(stats$checkm2.Completeness, " %", "%.1f"),
+	fmt_num(stats$checkm2.Contamination, " %", "%.1f"),
 	sep = " / "
 ))
 ```
@@ -139,7 +139,7 @@ list(icon = "bullseye", color = mapped_color(long$pct_mapped),
 ```{r}
 #| content: valuebox
 #| title: "Long reads mean depth"
-list(icon = "layers", color = "info", value = fmt_num(long$mean_depth, "x", "%.1f"))
+list(icon = "layers", color = "info", value = fmt_num(stats$long_meandepth, "x", "%.1f"))
 ```
 
 ```{r}
@@ -165,7 +165,7 @@ list(icon = "bullseye", color = mapped_color(short$pct_mapped),
 ```{r}
 #| content: valuebox
 #| title: "Short reads mean depth"
-list(icon = "layers", color = "info", value = fmt_num(short$mean_depth, "x", "%.1f"))
+list(icon = "layers", color = "info", value = fmt_num(stats$short_meandepth, "x", "%.1f"))
 ```
 
 ```{r}
@@ -180,7 +180,7 @@ depth_histogram(qc$short_reads)
 ```{r}
 #| title: "Contigs (relative depth: depth / length weighted median depth of the contigs)"
 contigs |>
-	select(contig_id, length, GC_pct, N_count, long_cov, long_rel, short_cov, short_rel) |>
+	select(contig_id, length, GC_pct, N_count, long_meandepth, long_rel, short_meandepth, short_rel) |>
 	reactable(
 		searchable = TRUE,
 		defaultPageSize = 20,
@@ -192,9 +192,9 @@ contigs |>
 			length = colDef(name = "Length", format = colFormat(separators = TRUE)),
 			GC_pct = colDef(name = "GC %", format = colFormat(digits = 1)),
 			N_count = colDef(name = "N"),
-			long_cov = colDef(name = "Long reads depth", format = colFormat(digits = 1)),
+			long_meandepth = colDef(name = "Long reads depth", format = colFormat(digits = 1)),
 			long_rel = colDef(name = "Long reads rel. depth", format = colFormat(digits = 2)),
-			short_cov = colDef(name = "Short reads depth", format = colFormat(digits = 1)),
+			short_meandepth = colDef(name = "Short reads depth", format = colFormat(digits = 1)),
 			short_rel = colDef(name = "Short reads rel. depth", format = colFormat(digits = 2))
 		)
 	)
