@@ -1,7 +1,7 @@
 nextflow.enable.types = true
 
-include { FLYE             } from './modules/flye'
-include { MEDAKA_CONSENSUS } from './modules/medaka/consensus'
+include { FLYE             } from './modules/asm/flye'
+include { MEDAKA_CONSENSUS } from './modules/asm/medaka/consensus'
 include { PILON_POLISH as PILON_POLISH_ROUND1 } from './subworkflows/pilon_polish'
 include { PILON_POLISH as PILON_POLISH_ROUND2 } from './subworkflows/pilon_polish'
 include { PILON_POLISH as PILON_POLISH_ROUND3 } from './subworkflows/pilon_polish'

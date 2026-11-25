@@ -1,11 +1,11 @@
 nextflow.enable.types = true
 
-include { FLYE                          } from './modules/flye'
+include { FLYE                          } from './modules/asm/flye'
 include { LONG_FLYE_MEDAKA              } from './subworkflows/flye_medaka_pilon'
 include { HYBRID_FLYE_MEDAKA_PILON      } from './subworkflows/flye_medaka_pilon'
-include { UNICYCLER                     } from './modules/unicycler'
-include { SPADES                        } from './modules/spades'
-include { HYBRACTER                     } from './modules/hybracter'
+include { UNICYCLER                     } from './modules/asm/unicycler'
+include { SPADES                        } from './modules/asm/spades'
+include { HYBRACTER                     } from './modules/asm/hybracter'
 include { MetaPath                      } from './subworkflows/input/main.nf'
 
 
