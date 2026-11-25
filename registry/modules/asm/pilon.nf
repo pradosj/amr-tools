@@ -21,6 +21,9 @@ process PILON {
         ${args ?: '--fix all --changes'} \\
         --threads ${task.cpus} \\
         --output pilon/pilon
+
+    # keep only the contig names of the input assembly in the headers: Pilon adds a _pilon suffix to them
+    sed -i -E '/^>/ { s/ .*\$//; s/_pilon\$// }' pilon/pilon.fasta
     """
 
     stub:

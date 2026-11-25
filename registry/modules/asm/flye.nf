@@ -11,7 +11,8 @@ process FLYE {
     record(meta: Record?, long_reads: Path, args: String?)
 
     output:
-    record(meta: meta, path: file('flye/assembly.fasta'), dir: file('flye'))
+    // info: what the assembler tells of the contigs, by block: topology (circular or linear, from assembly_info.txt)
+    record(meta: meta, path: file('flye/assembly.fasta'), dir: file('flye'), info: file('info.json'))
 
     script:
     """
@@ -20,11 +21,19 @@ process FLYE {
         --threads ${task.cpus} \\
         --out-dir ./flye \\
         --nano-hq ${long_reads}
+
+    # topology of each contig: circ. column (4th) of assembly_info.txt, Y: circular, N: linear
+    awk -F'\\t' '
+        BEGIN { printf "{\\n  \\"topology\\": {" }
+        NR > 1 { printf "%s\\n    \\"%s\\": \\"%s\\"", (n++ ? "," : ""), \$1, (\$4 == "Y" ? "circular" : "linear") }
+        END { print (n ? "\\n  " : "") "}\\n}" }
+    ' flye/assembly_info.txt > info.json
     """
 
     stub:
     """
     mkdir -p flye/
     touch flye/assembly.fasta
+    echo '{"topology": {}}' > info.json
     """
 }

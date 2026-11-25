@@ -29,6 +29,7 @@ record Assembly {
 	meta: Record?
 	path: Path
 	dir: Path
+	info: Path?    // info.json: what the assembler tells of the contigs (topology), null when it tells nothing
 }
 
 // An assembly to do: the reads of a sample (null when missing), the strategy and the tools arguments
@@ -46,6 +47,7 @@ record AssembledGenome {
 	meta: Record           // the meta of its job
 	path: Path             // the assembly FASTA
 	dir: Path              // the assembler outputs folder
+	info: Path?            // info.json of the assembler (topology of the contigs: circular or linear, a contig missing when unknown), null when the assembler tells nothing
 	short_read1: Path?
 	short_read2: Path?
 	long_reads: Path?
@@ -73,12 +75,13 @@ workflow READS_ASSEMBLE {
 			.map({ r -> r + record(args: r.args?.hybracter) })
 	)
 
+	// the assemblers without info.json yet get a null info
 	def assembly_ch: Channel<Assembly> = flye
 		.mix(flye_medaka)
 		.mix(flye_medaka_pilon)
-		.mix(spades)
-		.mix(unicycler)
-		.mix(hybracter)
+		.mix(spades.map({ r -> r + record(info: null) }))
+		.mix(unicycler.map({ r -> r + record(info: null) }))
+		.mix(hybracter.map({ r -> r + record(info: null) }))
 
 	emit:
 	// the assembly FASTA and folder, with the reads and the meta of its job (a single emit: the workflow returns this channel)
