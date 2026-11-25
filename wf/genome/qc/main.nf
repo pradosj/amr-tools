@@ -1,7 +1,7 @@
 nextflow.enable.types = true
 
 include { GENOME_QC; GenomeQcParams } from './workflows/qc/main.nf'
-include { INPUT_READS; INPUT_ASSEMBLIES; ReadsParams; AssembliesParams; MetaPath; pathList; jsonSampleId } from './subworkflows/input/main.nf'
+include { INPUT_READS; INPUT_ASSEMBLIES; ReadsParams; AssembliesParams } from './subworkflows/input/main.nf'
 include { DATABASES; DbParams; Db } from './subworkflows/db/main.nf'
 include { validateParameters; paramsSummaryLog } from 'plugin/nf-schema'
 
@@ -20,19 +20,16 @@ workflow {
 	validateParameters()
 	log.info(paramsSummaryLog(workflow))
 
-	def assemblies: Channel<MetaPath> = INPUT_ASSEMBLIES(params.assemblies?.fasta)
-		.map({ r -> record(meta: record(id: r.meta.id, assembler_name: 'none'), path: r.path) })
+	// the FASTA of each assembly, with the asm.json of its assembler given with --assemblies.json (null when not given)
+	def assemblies = INPUT_ASSEMBLIES(params.assemblies?.fasta, params.assemblies?.json)
+		.map({ r -> record(meta: record(id: r.meta.id, assembler_name: 'none'), path: r.path, json: r.json) })
 	def reads = INPUT_READS(params.reads?.ont, params.reads?.illumina)
-	// asm.json of the assemblers given with --assemblies.json (topology of the contigs), by sample id of the file names
-	def json_ch = channel.fromList(params.assemblies?.json ? pathList(params.assemblies.json) : [])
-		.map({ f -> record(meta: record(id: jsonSampleId(f.name)), json: f) })
 
-	// Each assembly with the reads and the asm.json of its sample
+	// Each assembly with the reads of its sample
 	def qc_input = assemblies
 		.map({ r -> record(meta: record(id: r.meta.id), asm: r) })
 		.join(reads.short_reads, by: 'meta', remainder: true)
 		.join(reads.long_reads.map({ r -> record(meta: r.meta, reads: r.path) }), by: 'meta', remainder: true)
-		.join(json_ch, by: 'meta', remainder: true)
 		.filter({ r -> r.asm != null })
 		.map({ r -> record(
 			meta: r.asm.meta,
@@ -40,7 +37,7 @@ workflow {
 			short_read1: r.read1,
 			short_read2: r.read2,
 			long_reads: r.reads,
-			json: r.json    // null without asm.json
+			json: r.asm.json
 		) })
 
 	def dbs = DATABASES(params.db, (params.genome_qc?.checkm2?.skip || params.genome_qc?.checkm2?.db ? [] : [Db.CHECKM2]).toSet())

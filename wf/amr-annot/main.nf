@@ -30,7 +30,7 @@ workflow {
 	validateParameters()
 	log.info(paramsSummaryLog(workflow))
 
-	def assemblies: Channel<Genome> = INPUT_ASSEMBLIES(params.assemblies?.fasta)
+	def assemblies: Channel<Genome> = INPUT_ASSEMBLIES(params.assemblies?.fasta, null)
 		.map({ r -> record(meta: record(id: r.meta.id, assembler_name: 'none'), fasta: r.path) })
 	def reads = INPUT_READS(params.reads?.ont, params.reads?.illumina)
 	def dbs = DATABASES(params.db, ((params.amr?.orgfinder?.skip ? [] : [Db.ORG_DB]) + (params.amr?.amrfinderplus?.skip ? [] : [Db.AMRFINDERPLUS])).toSet())

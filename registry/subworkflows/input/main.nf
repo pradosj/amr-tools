@@ -32,6 +32,13 @@ record IdPath {
 	path: Path
 }
 
+// An assembly given as input: its FASTA file, and the asm.json of its assembler (topology of the contigs, null when not given)
+record InputAssembly {
+	meta: IdMeta
+	path: Path
+	json: Path?
+}
+
 // Illumina reads (read2 null for single-end reads)
 record ShortReads {
 	meta: Record?
@@ -187,11 +194,17 @@ workflow INPUT_FASTA {
 
 workflow INPUT_ASSEMBLIES {
 	take:
-	fasta: String?
+	fasta: String?    // FASTA files of the assemblies (see INPUT_FASTA)
+	json: String?     // asm.json files of their assemblers (comma-separated paths, globs or URLs), matched to the FASTA files by sample id (jsonSampleId())
 
 	main:
+	def json_ch = channel.fromList(json ? pathList(json) : [])
+		.map({ f -> record(meta: record(id: jsonSampleId(f.name)), json: f) })
+	// each FASTA file with the asm.json of its sample (null when there is none), the asm.json files without FASTA ignored
 	def asm_ch = INPUT_FASTA(fasta)
+		.join(json_ch, by: 'meta', remainder: true)
+		.filter({ r -> r.path != null })
 
 	emit:
-	assemblies: Channel<IdPath> = asm_ch
+	assemblies: Channel<InputAssembly> = asm_ch    // a single emit: the workflow returns this channel
 }
