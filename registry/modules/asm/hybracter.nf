@@ -12,9 +12,9 @@ process HYBRACTER {
 
     output:
     // path: the final assembly, of FINAL_OUTPUT/complete (a contig longer than the chromosome length) or
-    // FINAL_OUTPUT/incomplete; info: what the assembler tells of the contigs, by block: topology (circular or linear,
+    // FINAL_OUTPUT/incomplete; asm_info: what the assembler tells of the contigs, by block: topology (circular or linear,
     // from the circular column of sample_per_contig_stats.tsv: only for the complete assemblies)
-    record(meta: meta, path: file('assembly.fasta'), dir: file('hybracter'), info: file('info.json'))
+    record(meta: meta, path: file('assembly.fasta'), dir: file('hybracter'), asm_info: file('asm.json'))
 
     script:
     def cmd = short_read1 ? 'hybrid-single' : 'long-single'
@@ -39,7 +39,7 @@ process HYBRACTER {
         NR == 1 { for (i = 1; i <= NF; i++) if (\$i == "circular") c = i; next }
         c { printf "%s\\n    \\"%s\\": \\"%s\\"", (n++ ? "," : ""), \$1, (\$c == "True" ? "circular" : "linear") }
         END { print (n ? "\\n  " : "") "}\\n}" }
-    ' \$final/sample_per_contig_stats.tsv > info.json
+    ' \$final/sample_per_contig_stats.tsv > asm.json
     """
 
     stub:
@@ -47,6 +47,6 @@ process HYBRACTER {
     mkdir -p hybracter/FINAL_OUTPUT/complete
     touch hybracter/FINAL_OUTPUT/complete/sample_final.fasta
     ln -s hybracter/FINAL_OUTPUT/complete/sample_final.fasta assembly.fasta
-    echo '{"topology": {}}' > info.json
+    echo '{"topology": {}}' > asm.json
     """
 }

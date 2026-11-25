@@ -20,7 +20,7 @@ workflow {
 	validateParameters()
 	log.info(paramsSummaryLog(workflow))
 
-	// the FASTA of each genome, with the info.json of its assembler given with --genomes.json (null when not given)
+	// the FASTA of each genome, with the asm.json of its assembler given with --genomes.json (null when not given)
 	def genomes = INPUT_GENOMES(params.genomes?.fasta, params.genomes?.json)
 		.map({ r -> record(meta: record(id: r.meta.id, assembler_name: 'none'), path: r.path, json: r.json) })
 	def reads = INPUT_READS(params.reads?.ont, params.reads?.illumina)
@@ -37,7 +37,7 @@ workflow {
 			short_read1: r.read1,
 			short_read2: r.read2,
 			long_reads: r.reads,
-			json: r.asm.json
+			asm_info: r.asm.json
 		) })
 
 	def dbs = DATABASES(params.db, (params.genome_qc?.checkm2?.skip || params.genome_qc?.checkm2?.db ? [] : [Db.CHECKM2]).toSet())

@@ -44,7 +44,7 @@ output {
 		mode "copy" //because link is problematic
 		path { r ->
 			r.path >> "genomes/${r.meta.id}__${r.meta.assembler_name}.fasta"
-			r.info >> "genomes/${r.meta.id}__${r.meta.assembler_name}.info.json"    // what the assembler tells of the contigs (topology), when it does
+			r.asm_info >> "genomes/${r.meta.id}__${r.meta.assembler_name}.asm.json"    // what the assembler tells of the contigs (topology), when it does
 			r.dir >> (params.verbose ? "genomes/${r.meta.id}__${r.meta.assembler_name}.output" : null)    // assembler folder, with --verbose
 		}
 	}

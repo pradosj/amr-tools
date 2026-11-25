@@ -31,7 +31,7 @@ record GenomeQcInput {
 	short_read1: Path?          // Illumina reads, null when there are none
 	short_read2: Path?          // null for single-end reads
 	long_reads: Path?           // ONT reads, null when there are none
-	json: Path?                 // info.json of the assembler (topology of the contigs), null when there is none
+	asm_info: Path?             // asm.json of the assembler (topology of the contigs), null when there is none
 }
 
 // Gather the QC statistics of an assembly into a JSON file (merge_genome_qc_stats() of lib_assembly_stats.R, plus the meta id and assembler_name)
@@ -42,12 +42,12 @@ process MERGE_QC_STATS {
 	cpus 2
 	time 30.m
 	input:
-	record(meta: Record?, path: Path, json: Path?, long_stats: Path?, short_stats: Path?, long_cov: Path?, short_cov: Path?, checkm2: Path?)
+	record(meta: Record?, path: Path, asm_info: Path?, long_stats: Path?, short_stats: Path?, long_cov: Path?, short_cov: Path?, checkm2: Path?)
 	assets: Path    // the assets folder of the workflow (lib_io.R, lib_assembly_stats.R)
 	stage:
 	stageAs(assets, 'assets')
 	stageAs(path, 'stats/assembly.fasta')
-	stageAs(json, 'stats/assembly.json')
+	stageAs(asm_info, 'stats/assembly.json')
 	stageAs(long_stats, 'stats/long_reads.bam.stats')
 	stageAs(short_stats, 'stats/short_reads.bam.stats')
 	stageAs(long_cov, 'stats/long_reads.coverage.tsv')

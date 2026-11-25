@@ -11,8 +11,8 @@ process FLYE {
     record(meta: Record?, long_reads: Path, args: String?)
 
     output:
-    // info: what the assembler tells of the contigs, by block: topology (circular or linear, from assembly_info.txt)
-    record(meta: meta, path: file('flye/assembly.fasta'), dir: file('flye'), info: file('info.json'))
+    // asm_info: what the assembler tells of the contigs, by block: topology (circular or linear, from assembly_info.txt)
+    record(meta: meta, path: file('flye/assembly.fasta'), dir: file('flye'), asm_info: file('asm.json'))
 
     script:
     """
@@ -27,13 +27,13 @@ process FLYE {
         BEGIN { printf "{\\n  \\"topology\\": {" }
         NR > 1 { printf "%s\\n    \\"%s\\": \\"%s\\"", (n++ ? "," : ""), \$1, (\$4 == "Y" ? "circular" : "linear") }
         END { print (n ? "\\n  " : "") "}\\n}" }
-    ' flye/assembly_info.txt > info.json
+    ' flye/assembly_info.txt > asm.json
     """
 
     stub:
     """
     mkdir -p flye/
     touch flye/assembly.fasta
-    echo '{"topology": {}}' > info.json
+    echo '{"topology": {}}' > asm.json
     """
 }

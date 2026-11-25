@@ -11,7 +11,7 @@ record ReadsParams {
 
 record GenomesParams {
 	fasta: String?
-	json: String?    // info.json files of the assemblers (topology of the contigs), matched to the FASTA files by sample id
+	json: String?    // asm.json files of the assemblers (topology of the contigs), matched to the FASTA files by sample id
 }
 
 
@@ -32,7 +32,7 @@ record IdPath {
 	path: Path
 }
 
-// A genome given as input: the FASTA file of its assembly, and the info.json of its assembler (topology of the contigs, null when not given)
+// A genome given as input: the FASTA file of its assembly, and the asm.json of its assembler (topology of the contigs, null when not given)
 record InputGenome {
 	meta: IdMeta
 	path: Path
@@ -93,9 +93,9 @@ def fastaSampleId(name: String) -> String {
 	return name.replaceAll(/\.(fasta|fa|fna)(\.gz)?$/, '')
 }
 
-// Sample id of an info.json file: its name without the .info.json (or .json) extension, as for the FASTA files
+// Sample id of an asm.json file: its name without the .asm.json (or .json) extension, as for the FASTA files
 def jsonSampleId(name: String) -> String {
-	return name.replaceAll(/(\.info)?\.json$/, '')
+	return name.replaceAll(/(\.asm)?\.json$/, '')
 }
 
 // Paired-end Illumina file names end with _1, _2, _R1 or _R2 (optionally followed by _001)
@@ -195,12 +195,12 @@ workflow INPUT_FASTA {
 workflow INPUT_GENOMES {
 	take:
 	fasta: String?    // FASTA files of the genomes (see INPUT_FASTA)
-	json: String?     // info.json files of their assemblers (comma-separated paths, globs or URLs), matched to the FASTA files by sample id (jsonSampleId())
+	json: String?     // asm.json files of their assemblers (comma-separated paths, globs or URLs), matched to the FASTA files by sample id (jsonSampleId())
 
 	main:
 	def json_ch = channel.fromList(json ? pathList(json) : [])
 		.map({ f -> record(meta: record(id: jsonSampleId(f.name)), json: f) })
-	// each FASTA file with the info.json of its sample (null when there is none), the info.json files without FASTA ignored
+	// each FASTA file with the asm.json of its sample (null when there is none), the asm.json files without FASTA ignored
 	def genome_ch = INPUT_FASTA(fasta)
 		.join(json_ch, by: 'meta', remainder: true)
 		.filter({ r -> r.path != null })

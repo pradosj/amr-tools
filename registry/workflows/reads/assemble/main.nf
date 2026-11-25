@@ -29,7 +29,7 @@ record Assembly {
 	meta: Record?
 	path: Path
 	dir: Path
-	info: Path?    // info.json: what the assembler tells of the contigs (topology), null when it tells nothing
+	asm_info: Path?    // asm.json: what the assembler tells of the contigs (topology), null when it tells nothing
 }
 
 // An assembly to do: the reads of a sample (null when missing), the strategy and the tools arguments
@@ -47,7 +47,7 @@ record AssembledGenome {
 	meta: Record           // the meta of its job
 	path: Path             // the assembly FASTA
 	dir: Path              // the assembler outputs folder
-	info: Path?            // info.json of the assembler (topology of the contigs: circular or linear, a contig missing when unknown), null when the assembler tells nothing
+	asm_info: Path?            // asm.json of the assembler (topology of the contigs: circular or linear, a contig missing when unknown), null when the assembler tells nothing
 	short_read1: Path?
 	short_read2: Path?
 	long_reads: Path?

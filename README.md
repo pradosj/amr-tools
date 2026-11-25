@@ -53,7 +53,7 @@ To assemble and annotate reads (the sample id is taken from the file names):
 nextflow run pradosj/amr-tools --reads.ont='ont/*.fastq.gz' --reads.illumina='illumina/*_R{1,2}.fastq.gz' --assembler.name=hybrid_unicycler
 ```
 
-Inputs can also be given with a samplesheet: `--csv samples.csv` (columns `sample_id`, `reads_long`, `reads_short_1`, `reads_short_2`, `genome_fasta`, `genome_json`: the info.json of the assembler of `genome_fasta`).
+Inputs can also be given with a samplesheet: `--csv samples.csv` (columns `sample_id`, `reads_long`, `reads_short_1`, `reads_short_2`, `genome_fasta`, `genome_json`: the asm.json of the assembler of `genome_fasta`).
 ONT reads can be given as FASTQ, BAM or CRAM files.
 
 Main options:
@@ -112,7 +112,7 @@ The output folder `results` has the following organization:
 
  - `results/db`: databases built by the run (`checkm2/`, `org_db/`, `amrfinderplus/`), found by the next runs with the default `--db.basedir`
  
- - `results/genomes`: FASTA of the genomes (assembled or given) (`<sample>__<assembler>.fasta`), the topology of their contigs given by the assembler (`<sample>__<assembler>.info.json`: `{ "topology": { "<contig>": "circular" | "linear" } }`, a contig missing when its topology is unknown; not for spades, nor for the given genomes: their info.json, given by --genomes.json or the genome_json column, is not published), the assembler folder with `--verbose` (`.output`), and the QC results (`.qc/`: CheckM2, dashboard)
+ - `results/genomes`: FASTA of the genomes (assembled or given) (`<sample>__<assembler>.fasta`), the topology of their contigs given by the assembler (`<sample>__<assembler>.asm.json`: `{ "topology": { "<contig>": "circular" | "linear" } }`, a contig missing when its topology is unknown; not for spades, nor for the given genomes: their asm.json, given by --genomes.json or the genome_json column, is not published), the assembler folder with `--verbose` (`.output`), and the QC results (`.qc/`: CheckM2, dashboard)
 
  - `results/reads`: filtered reads
 

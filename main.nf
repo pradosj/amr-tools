@@ -27,7 +27,7 @@ record ReadsParams {
 // Input genomes given as glob patterns, the sample id is taken from the file names
 record GenomesParams {
 	fasta: String?    // FASTA files of the genomes
-	json: String?     // info.json files of their assemblers (topology of the contigs), matched to the FASTA files by sample id
+	json: String?     // asm.json files of their assemblers (topology of the contigs), matched to the FASTA files by sample id
 }
 
 params {
@@ -55,12 +55,12 @@ params {
 }
 
 
-// The files of a genome: FASTA (path), assembler folder (dir) and info.json of the assembler (info)
+// The files of a genome: FASTA (path), assembler folder (dir) and asm.json of the assembler (asm_info)
 record GenomeFiles {
 	meta: Record?
 	path: Path
 	dir: Path?
-	info: Path?
+	asm_info: Path?
 }
 
 // Input files of a sample
@@ -70,7 +70,7 @@ record Sample {
 	reads_short_1: Path?
 	reads_short_2: Path?
 	genome_fasta: Path?
-	genome_json: Path?    // info.json of the assembler of genome_fasta
+	genome_json: Path?    // asm.json of the assembler of genome_fasta
 }
 
 def samplePart(id: String, reads_long: Path?, reads_short_1: Path?, reads_short_2: Path?, genome_fasta: Path?, genome_json: Path?) -> Sample {
@@ -237,18 +237,18 @@ workflow {
 				.map({ r -> record(meta: r.meta, path: r.fasta) })
 		).map({ r -> record(meta: r.meta, fasta: r.file) }))
 
-	// The FASTA of the given genomes (path) with the info.json given for them (info, null when not given), identified by a
+	// The FASTA of the given genomes (path) with the asm.json given for them (asm_info, null when not given), identified by a
 	// meta record holding both id (sample id) and assembler_name ('none')
 	def given_info_ch = samples
 		.filter({ s -> s.genome_fasta && s.genome_json })
-		.map({ s -> record(meta: record(id: s.id), info: s.genome_json) })
+		.map({ s -> record(meta: record(id: s.id), asm_info: s.genome_json) })
 	def given_genome_ch = given_asm_ch
 		.join(given_info_ch, by: 'meta', remainder: true)
 		.filter({ r -> r.fasta != null })
-		.map({ r -> record(meta: r.meta + record(assembler_name: 'none'), path: r.fasta, info: r.info) })
-	// all the genomes: FASTA (path), assembler folder (dir, null for the given genomes) and info.json of the assembler (info)
-	def given_rec: Channel<GenomeFiles> = given_genome_ch.map({ r -> record(meta: r.meta, path: r.path, dir: null, info: r.info) })
-	def asm_rec = given_rec.mix(assemblies.map({ r -> record(meta: r.meta, path: r.path, dir: r.dir, info: r.info) }))
+		.map({ r -> record(meta: r.meta + record(assembler_name: 'none'), path: r.fasta, asm_info: r.asm_info) })
+	// all the genomes: FASTA (path), assembler folder (dir, null for the given genomes) and asm.json of the assembler (asm_info)
+	def given_rec: Channel<GenomeFiles> = given_genome_ch.map({ r -> record(meta: r.meta, path: r.path, dir: null, asm_info: r.asm_info) })
+	def asm_rec = given_rec.mix(assemblies.map({ r -> record(meta: r.meta, path: r.path, dir: r.dir, asm_info: r.asm_info) }))
 
 	// Each genome with the reads of its sample: the assembled genomes carry them, the given genomes (a single one by
 	// sample) are joined with the reads of their sample
@@ -263,9 +263,9 @@ workflow {
 			short_read1: r.read1,
 			short_read2: r.read2,
 			long_reads: r.reads,
-			json: r.asm.info
+			asm_info: r.asm.asm_info
 		) })
-	def asm_qc_input = given_qc_input.mix(assemblies.map({ r -> r + record(json: r.info) }))    // json: the info.json of the assembler
+	def asm_qc_input = given_qc_input.mix(assemblies)
 
 	// Databases: from the databases folder --db.basedir, or built
 	def db_needs: Set<Db> = (
@@ -329,7 +329,7 @@ output {
 		mode "copy" //because link is problematic
 		path { r ->
 			r.path >> "genomes/${r.meta.id}__${r.meta.assembler_name}.fasta"
-			r.info >> "genomes/${r.meta.id}__${r.meta.assembler_name}.info.json"    // what the assembler tells of the contigs (topology), when it does
+			r.asm_info >> "genomes/${r.meta.id}__${r.meta.assembler_name}.asm.json"    // what the assembler tells of the contigs (topology), when it does
 			r.dir >> (params.verbose ? "genomes/${r.meta.id}__${r.meta.assembler_name}.output" : null)    // assembler folder (none for the given genomes)
 		}
 	}
