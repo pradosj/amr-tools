@@ -33,8 +33,9 @@ workflow {
 		.map({ r -> record(
 			meta: r.asm.meta,
 			path: r.asm.path,
-			short_reads: r.read1 ? record(meta: null, read1: r.read1, read2: r.read2) : null,
-			long_reads: r.reads ? record(meta: null, reads: r.reads) : null
+			short_read1: r.read1,
+			short_read2: r.read2,
+			long_reads: r.reads
 		) })
 
 	def dbs = DATABASES(params.db, (params.genome_qc?.checkm2?.skip || params.genome_qc?.checkm2?.db ? [] : [Db.CHECKM2]).toSet())

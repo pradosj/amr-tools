@@ -38,12 +38,6 @@ record ShortReads {
 	read2: Path?
 }
 
-// ONT reads: one FASTQ
-record LongReads {
-	meta: Record?
-	reads: Path
-}
-
 // Sequencing reads of a sample: high quality ONT reads and/or Illumina reads
 record SeqReads {
 	meta: Record?

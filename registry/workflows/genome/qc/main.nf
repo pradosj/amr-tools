@@ -9,7 +9,7 @@ include { BWA_MEM            } from './modules/aln/bwa/mem'
 include { BWA_INDEX          } from './modules/aln/bwa/index'
 include { CHECKM2_PREDICT    } from './modules/checkm2/predict'
 include { QUARTO_RENDER      } from './modules/r/quarto/render'
-include { MetaPath; ShortReads; LongReads } from './subworkflows/input/main.nf'
+include { MetaPath } from './subworkflows/input/main.nf'
 
 
 // Options of CheckM2 (params.genome_qc.checkm2 of the pipelines)
@@ -28,8 +28,9 @@ record GenomeQcParams {
 record GenomeQcInput {
 	meta: Record?
 	path: Path                  // FASTA of the assembly
-	short_reads: ShortReads?    // Illumina reads (their meta is not used), null when there are none
-	long_reads: LongReads?      // ONT reads (their meta is not used), null when there are none
+	short_read1: Path?          // Illumina reads, null when there are none
+	short_read2: Path?          // null for single-end reads
+	long_reads: Path?           // ONT reads, null when there are none
 }
 
 // Gather the QC statistics of an assembly into a JSON file (merge_genome_qc_stats() of lib_assembly_stats.R, plus the meta id and assembler_name)
@@ -111,12 +112,12 @@ workflow GENOME_QC {
 	def assets = file("${moduleDir}/assets")
 
 	// Short reads alignment on the BWA index of the assembly (indexed only when there are short reads), and statistics
-	def with_short_ch = genomes.filter({ g -> g.short_reads != null })
+	def with_short_ch = genomes.filter({ g -> g.short_read1 })
 	def index_ch = BWA_INDEX(with_short_ch.map({ g -> record(meta: g.meta, path: g.path) }))
 		.map({ i -> record(meta: i.meta, ref: i) })
 	def short_bam_ch = BWA_MEM(
 		with_short_ch
-			.map({ g -> record(meta: g.meta, read1: g.short_reads.read1, read2: g.short_reads.read2, args: null) })
+			.map({ g -> record(meta: g.meta, read1: g.short_read1, read2: g.short_read2, args: null) })
 			.join(index_ch, by: 'meta')
 	)
 	def short_stats_ch = SAMTOOLS_STATS_SHORT(short_bam_ch.bam)
@@ -125,8 +126,8 @@ workflow GENOME_QC {
 	// Long reads alignment on the assembly, and statistics
 	def long_bam_ch = MINIMAP2_ALIGN_BAM(
 		genomes
-			.filter({ g -> g.long_reads != null })
-			.map({ g -> record(meta: g.meta, path: g.long_reads.reads, ref: record(meta: g.meta, path: g.path), args: '-x map-ont') })
+			.filter({ g -> g.long_reads })
+			.map({ g -> record(meta: g.meta, path: g.long_reads, ref: record(meta: g.meta, path: g.path), args: '-x map-ont') })
 	)
 	def long_stats_ch = SAMTOOLS_STATS_LONG(long_bam_ch.bam)
 	def long_cov_ch = SAMTOOLS_COVERAGE_LONG(long_bam_ch.bam)
