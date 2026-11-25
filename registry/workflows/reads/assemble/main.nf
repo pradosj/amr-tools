@@ -75,12 +75,12 @@ workflow READS_ASSEMBLE {
 			.map({ r -> r + record(args: r.args?.hybracter) })
 	)
 
-	// the assemblers without info.json yet get a null info
+	// HYBRACTER does not give info.json yet: null info
 	def assembly_ch: Channel<Assembly> = flye
 		.mix(flye_medaka)
 		.mix(flye_medaka_pilon)
-		.mix(spades.map({ r -> r + record(info: null) }))
-		.mix(unicycler.map({ r -> r + record(info: null) }))
+		.mix(spades)
+		.mix(unicycler)
 		.mix(hybracter.map({ r -> r + record(info: null) }))
 
 	emit:
