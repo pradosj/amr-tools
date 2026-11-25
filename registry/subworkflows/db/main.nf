@@ -1,7 +1,7 @@
 nextflow.enable.types = true
 
 include { CHECKM2_DB           } from './modules/checkm2/db'
-include { AMRFINDERPLUS_UPDATE } from './modules/amrfinderplus/update'
+include { AMRFINDERPLUS_UPDATE } from './modules/ann/amrfinderplus/update'
 include { UNTAR                } from './modules/io/tar/untar.nf'
 include { ORG_DB_BUILD         } from './subworkflows/org_db/main.nf'
 

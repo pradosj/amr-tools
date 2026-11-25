@@ -1,7 +1,7 @@
 nextflow.enable.types = true
 
 
-include { SAMTOOLS_FASTQ as ONT_BAM_TO_FASTQ } from './modules/samtools/fastq'
+include { SAMTOOLS_FASTQ as ONT_BAM_TO_FASTQ } from './modules/aln/samtools/fastq'
 include { GZIP_UNZ                           } from './modules/io/gzip/unz'
 
 record ReadsParams {

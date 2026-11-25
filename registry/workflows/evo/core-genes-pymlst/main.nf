@@ -1,7 +1,7 @@
 nextflow.enable.types = true
 
-include { PROKKA        } from './modules/tseemann/prokka'
-include { FASTA_CAT     } from './modules/fasta/cat'
+include { PROKKA        } from './modules/ann/tseemann/prokka'
+include { FASTA_CAT     } from './modules/fa/cat'
 include { MAKEBLASTDB   } from './modules/aln/blast/makeblastdb'
 include { BLASTN        } from './modules/aln/blast/blastn'
 include { PYMLST        } from './subworkflows/pymlst/main.nf'

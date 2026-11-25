@@ -1,6 +1,6 @@
 nextflow.enable.types = true
 
-include { PYMLST_WGMLST } from './modules/pymlst/wgmlst'
+include { PYMLST_WGMLST } from './modules/evo/pymlst/wgmlst'
 include { QUARTO_RENDER } from './modules/r/quarto/render'
 include { MetaPath; IdPath } from './subworkflows/input/main.nf'
 

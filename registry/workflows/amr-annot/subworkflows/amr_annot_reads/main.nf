@@ -1,9 +1,9 @@
 nextflow.enable.types = true
 
-include { RESFINDER     as RESFINDER_LONGREAD      } from './modules/cgetools/resfinder'
-include { RESFINDER     as RESFINDER_SHORTREAD     } from './modules/cgetools/resfinder'
-include { PLASMIDFINDER as PLASMIDFINDER_LONGREAD  } from './modules/cgetools/plasmidfinder'
-include { PLASMIDFINDER as PLASMIDFINDER_SHORTREAD } from './modules/cgetools/plasmidfinder'
+include { RESFINDER     as RESFINDER_LONGREAD      } from './modules/ann/cgetools/resfinder'
+include { RESFINDER     as RESFINDER_SHORTREAD     } from './modules/ann/cgetools/resfinder'
+include { PLASMIDFINDER as PLASMIDFINDER_LONGREAD  } from './modules/ann/cgetools/plasmidfinder'
+include { PLASMIDFINDER as PLASMIDFINDER_SHORTREAD } from './modules/ann/cgetools/plasmidfinder'
 
 
 // Options of a tool that can also run on the reads (params.amr.<tool>)

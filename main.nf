@@ -1,6 +1,6 @@
 nextflow.enable.types = true
 
-include { SAMTOOLS_FASTQ as CONVERT_LONG_BAM_TO_FASTQ } from './registry/modules/samtools/fastq'
+include { SAMTOOLS_FASTQ as CONVERT_LONG_BAM_TO_FASTQ } from './registry/modules/aln/samtools/fastq'
 include { READS_FILTER; ReadsFilterParams             } from './registry/workflows/reads/filter/main.nf'
 include { READS_QC as FILTERED_READS_QC               } from './registry/workflows/reads/qc/main.nf'
 include { READS_ASSEMBLE; AssemblerParams             } from './registry/workflows/reads/assemble/main.nf'

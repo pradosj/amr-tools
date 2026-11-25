@@ -1,15 +1,15 @@
 nextflow.enable.types = true
 
-include { RESFINDER             } from './modules/cgetools/resfinder'
-include { PLASMIDFINDER         } from './modules/cgetools/plasmidfinder'
+include { RESFINDER             } from './modules/ann/cgetools/resfinder'
+include { PLASMIDFINDER         } from './modules/ann/cgetools/plasmidfinder'
 include { ORGFINDER; OrgfinderDb  } from './workflows/orgfinder/main.nf'
-include { SPECIATOR             } from './modules/speciator'
-include { AMRFINDERPLUS_RUN     } from './modules/amrfinderplus/run'
-include { PROKKA                } from './modules/tseemann/prokka'
-include { MLST                  } from './modules/tseemann/mlst'
-include { MLST as CGEMLST       } from './modules/cgetools/mlst'
-include { MOBTYPER              } from './modules/mobsuite/mobtyper.nf'
-include { SAMTOOLS_FAIDX        } from './modules/samtools/faidx'
+include { SPECIATOR             } from './modules/ann/speciator'
+include { AMRFINDERPLUS_RUN     } from './modules/ann/amrfinderplus/run'
+include { PROKKA                } from './modules/ann/tseemann/prokka'
+include { MLST                  } from './modules/ann/tseemann/mlst'
+include { MLST as CGEMLST       } from './modules/ann/cgetools/mlst'
+include { MOBTYPER              } from './modules/ann/mobsuite/mobtyper.nf'
+include { SAMTOOLS_FAIDX        } from './modules/aln/samtools/faidx'
 
 
 // Options of a tool (params.amr.<tool>). Fields are nullable: modules fall back to their own defaults.

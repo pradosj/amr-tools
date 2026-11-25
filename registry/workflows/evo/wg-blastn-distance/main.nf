@@ -1,6 +1,6 @@
 nextflow.enable.types = true
 
-include { FASTA_CAT     } from './modules/fasta/cat'
+include { FASTA_CAT     } from './modules/fa/cat'
 include { MAKEBLASTDB   } from './modules/aln/blast/makeblastdb'
 include { BLASTN        } from './modules/aln/blast/blastn'
 include { QUARTO_RENDER } from './modules/r/quarto/render'

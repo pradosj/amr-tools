@@ -1,10 +1,10 @@
 nextflow.enable.types = true
 
 include { MINIMAP2_ALIGN_BAM } from './modules/aln/minimap2/align_bam'
-include { SAMTOOLS_STATS as SAMTOOLS_STATS_LONG  } from './modules/samtools/stats'
-include { SAMTOOLS_STATS as SAMTOOLS_STATS_SHORT } from './modules/samtools/stats'
-include { SAMTOOLS_COVERAGE as SAMTOOLS_COVERAGE_LONG  } from './modules/samtools/coverage'
-include { SAMTOOLS_COVERAGE as SAMTOOLS_COVERAGE_SHORT } from './modules/samtools/coverage'
+include { SAMTOOLS_STATS as SAMTOOLS_STATS_LONG  } from './modules/aln/samtools/stats'
+include { SAMTOOLS_STATS as SAMTOOLS_STATS_SHORT } from './modules/aln/samtools/stats'
+include { SAMTOOLS_COVERAGE as SAMTOOLS_COVERAGE_LONG  } from './modules/aln/samtools/coverage'
+include { SAMTOOLS_COVERAGE as SAMTOOLS_COVERAGE_SHORT } from './modules/aln/samtools/coverage'
 include { BWA_MEM            } from './modules/aln/bwa/mem'
 include { BWA_INDEX          } from './modules/aln/bwa/index'
 include { CHECKM2_PREDICT    } from './modules/checkm2/predict'
