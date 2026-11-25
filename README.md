@@ -58,7 +58,7 @@ ONT reads can be given as FASTQ, BAM or CRAM files.
 
 Main options:
 
- - `--assembler.name`: assembly strategy, one of `long_flye`, `long_flye_medaka` (default), `long_unicycler`, `long_hybracter`, `short_unicycler`, `short_spades`, `hybrid_unicycler`, `hybrid_hybracter`, `hybrid_flye_medaka_pilon`
+ - `--assembler.name`: assembly strategies, comma-separated (each sample is assembled by each of them, e.g. `--assembler.name=long_flye_medaka,hybrid_unicycler`; a sample without the reads of a strategy is not assembled by it: long reads for the long_* ones, short reads for the short_* ones, both for the hybrid_* ones), among `long_flye`, `long_flye_medaka` (default), `long_unicycler`, `long_hybracter`, `short_unicycler`, `short_spades`, `hybrid_unicycler`, `hybrid_hybracter`, `hybrid_flye_medaka_pilon`
  - `--no_reads_filter`: assemble the given reads, without filtering them
  - `--no_reads_qc`: skip the reads QC report
  - `--amr.<tool>.skip` and `--amr.<tool>.args`: disable or configure an AMR annotation tool

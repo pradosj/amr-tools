@@ -282,17 +282,8 @@
 		    "name": {
 		      "type": "string",
 		      "default": "long_flye_medaka",
-		      "enum": [
-		      	"long_flye",
-		        "long_flye_medaka",
-		        "long_hybracter",
-		        "long_unicycler",
-		        "short_spades",
-		        "short_unicycler",
-		        "hybrid_unicycler",
-		        "hybrid_hybracter",
-		        "hybrid_flye_medaka_pilon"
-		      ]
+		      "description": "Assembly strategies, comma-separated (each sample is assembled by each of them): long_flye, long_flye_medaka, long_hybracter, long_unicycler, short_spades, short_unicycler, hybrid_unicycler, hybrid_hybracter, hybrid_flye_medaka_pilon",
+		      "pattern": "^\\s*(long_flye|long_flye_medaka|long_hybracter|long_unicycler|short_spades|short_unicycler|hybrid_unicycler|hybrid_hybracter|hybrid_flye_medaka_pilon)\\s*(,\\s*(long_flye|long_flye_medaka|long_hybracter|long_unicycler|short_spades|short_unicycler|hybrid_unicycler|hybrid_hybracter|hybrid_flye_medaka_pilon)\\s*)*$"
 		    },
 				"args": {
 					"type": "object",

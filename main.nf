@@ -3,7 +3,7 @@ nextflow.enable.types = true
 include { SAMTOOLS_FASTQ as CONVERT_LONG_BAM_TO_FASTQ } from './registry/modules/aln/samtools/fastq'
 include { READS_FILTER; ReadsFilterParams             } from './registry/workflows/reads/filter/main.nf'
 include { READS_QC as FILTERED_READS_QC               } from './registry/workflows/reads/qc/main.nf'
-include { READS_ASSEMBLE; AssemblerParams             } from './registry/workflows/reads/assemble/main.nf'
+include { READS_ASSEMBLE; AssemblerParams; AssembledGenome; assemblyJobs } from './registry/workflows/reads/assemble/main.nf'
 include { GENOME_QC; GenomeQcParams               } from './registry/workflows/genome/qc/main.nf'
 include { AMR_ANNOT; AmrParams                        } from './registry/workflows/amr-annot/main.nf'
 include { DATABASES; DbParams; Db                     } from './registry/subworkflows/db/main.nf'
@@ -187,14 +187,16 @@ workflow {
 		).multiqc
 	}
 
-	// De novo assembly of the samples given without assembly
+	// De novo assembly of the samples given without assembly: one assembly by each strategy of --assembler.name
 	def todo_ch = samples
 		.filter({ s -> !s.assembly_fasta })
-		.map({ s -> record(meta: record(id: s.id)) })
+		.map({ s -> record(meta: record(id: s.id), todo: true) })
 	def assemblies = READS_ASSEMBLE(
-		params.assembler,
-		sr_rec.join(todo_ch, by: 'meta'),
-		lr_rec.join(todo_ch, by: 'meta')
+		todo_ch
+			.join(sr_rec, by: 'meta', remainder: true)
+			.join(lr_rec, by: 'meta', remainder: true)
+			.filter({ r -> r.todo })
+			.flatMap({ r -> assemblyJobs(r, params.assembler) })
 	)
 	// Given assemblies: copied in the work directory (to be published), or decompressed when gzipped
 	def given_ch = samples
@@ -214,11 +216,12 @@ workflow {
 	// The FASTA of the assemblies (path), identified by a meta record holding both id (sample id) and assembler_name
 	def given_genome_ch: Channel<MetaPath> = given_asm_ch.map({ r -> record(meta: r.meta + record(assembler_name: 'none'), path: r.fasta) })
 	def asm_rec = given_genome_ch
-		.mix(assemblies.fasta)
+		.mix(assemblies.genomes.map({ r -> record(meta: r.meta, path: r.path) }))
 	def asm_dir_ch = assemblies.outputs
 
-	// Each assembly with the reads of its sample (a sample has a single assembly)
-	def asm_qc_input = asm_rec
+	// Each assembly with the reads of its sample: the assembled genomes carry them, the given assemblies (a single
+	// one by sample) are joined with the reads of their sample
+	def given_qc_input: Channel<AssembledGenome> = given_genome_ch
 		.map({ r -> record(meta: record(id: r.meta.id), asm: r) })
 		.join(sr_rec, by: 'meta', remainder: true)
 		.join(lr_rec, by: 'meta', remainder: true)
@@ -229,6 +232,7 @@ workflow {
 			short_reads: r.read1 ? record(meta: null, read1: r.read1, read2: r.read2) : null,
 			long_reads: r.reads ? record(meta: null, reads: r.reads) : null
 		) })
+	def asm_qc_input = given_qc_input.mix(assemblies.genomes)
 
 	// Databases: from the databases folder --db.basedir, or built
 	def db_needs: Set<Db> = (

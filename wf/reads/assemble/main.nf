@@ -1,6 +1,6 @@
 nextflow.enable.types = true
 
-include { READS_ASSEMBLE; AssemblerParams } from './workflows/assemble/main.nf'
+include { READS_ASSEMBLE; AssemblerParams; assemblyJobs } from './workflows/assemble/main.nf'
 include { INPUT_READS; ReadsParams                   } from './subworkflows/input/main.nf'
 include { validateParameters; paramsSummaryLog } from 'plugin/nf-schema'
 
@@ -19,10 +19,15 @@ workflow {
 	log.info(paramsSummaryLog(workflow))
 
 	def reads = INPUT_READS(params.reads?.ont, params.reads?.illumina)
-	def assemblies = READS_ASSEMBLE(params.assembler, reads.short_reads, reads.long_reads.map({ r -> record(meta: r.meta, reads: r.path) }))
+	// One assembly of each sample by each strategy of --assembler.name
+	def assemblies = READS_ASSEMBLE(
+		reads.short_reads
+			.join(reads.long_reads.map({ r -> record(meta: r.meta, reads: r.path) }), by: 'meta', remainder: true)
+			.flatMap({ r -> assemblyJobs(r, params.assembler) })
+	)
 
 	publish:
-	assemblies_fasta = assemblies.fasta
+	assemblies_fasta = assemblies.genomes
 	assemblies_dir = assemblies.outputs
 }
 
