@@ -1,15 +1,15 @@
 nextflow.enable.types = true
 
 include { GENOME_QC; GenomeQcParams } from './workflows/qc/main.nf'
-include { INPUT_READS; INPUT_ASSEMBLIES; ReadsParams; AssembliesParams } from './subworkflows/input/main.nf'
+include { INPUT_READS; INPUT_GENOMES; ReadsParams; GenomesParams } from './subworkflows/input/main.nf'
 include { DATABASES; DbParams; Db } from './subworkflows/db/main.nf'
 include { validateParameters; paramsSummaryLog } from 'plugin/nf-schema'
 
 
-// Input assemblies and reads given as glob patterns (the sample id is taken from the file names), and GENOME_QC options
+// Input genomes and reads given as glob patterns (the sample id is taken from the file names), and GENOME_QC options
 params {
 	db: DbParams = record(basedir: 'results/db', checkm2: 'checkm2', org_db: 'org_db', amrfinderplus: 'amrfinderplus')    // databases folder (built when missing), or tar archive of it (path or URL)
-	assemblies: AssembliesParams = record(fasta: null, json: null)
+	genomes: GenomesParams = record(fasta: null, json: null)
 	reads: ReadsParams = record(ont: null, illumina: null)
 	genome_qc: GenomeQcParams = record(checkm2: record(skip: false, args: ''))
 }
@@ -20,13 +20,13 @@ workflow {
 	validateParameters()
 	log.info(paramsSummaryLog(workflow))
 
-	// the FASTA of each assembly, with the asm.json of its assembler given with --assemblies.json (null when not given)
-	def assemblies = INPUT_ASSEMBLIES(params.assemblies?.fasta, params.assemblies?.json)
+	// the FASTA of each genome, with the info.json of its assembler given with --genomes.json (null when not given)
+	def genomes = INPUT_GENOMES(params.genomes?.fasta, params.genomes?.json)
 		.map({ r -> record(meta: record(id: r.meta.id, assembler_name: 'none'), path: r.path, json: r.json) })
 	def reads = INPUT_READS(params.reads?.ont, params.reads?.illumina)
 
-	// Each assembly with the reads of its sample
-	def qc_input = assemblies
+	// Each genome with the reads of its sample
+	def qc_input = genomes
 		.map({ r -> record(meta: record(id: r.meta.id), asm: r) })
 		.join(reads.short_reads, by: 'meta', remainder: true)
 		.join(reads.long_reads.map({ r -> record(meta: r.meta, reads: r.path) }), by: 'meta', remainder: true)
@@ -52,25 +52,25 @@ workflow {
 
 	publish:
 	db = dbs.built
-	assemblies_checkm2 = qc.checkm2
-	assemblies_qc_report = qc.report
-	assemblies_multiqc = qc.multiqc
+	genomes_checkm2 = qc.checkm2
+	genomes_qc_report = qc.report
+	genomes_multiqc = qc.multiqc
 }
 
 output {
 	db: Channel<Record> {
 		path { r -> r.dir >> "db/${r.name}" }    // databases built by this run: use --db=<output dir>/db in the next runs
 	}
-	assemblies_checkm2: Channel<Record> {
-		path { r -> r.path >> "assemblies/${r.meta.id}__${r.meta.assembler_name}.qc/checkm2_quality.tsv" }
+	genomes_checkm2: Channel<Record> {
+		path { r -> r.path >> "genomes/${r.meta.id}__${r.meta.assembler_name}.qc/checkm2_quality.tsv" }
 	}
-	assemblies_qc_report: Channel<Record> {
-		path { r -> r.html >> "assemblies/${r.meta.id}__${r.meta.assembler_name}.qc/qc_report.html" }
+	genomes_qc_report: Channel<Record> {
+		path { r -> r.html >> "genomes/${r.meta.id}__${r.meta.assembler_name}.qc/qc_report.html" }
 	}
-	assemblies_multiqc: Channel<Record> {
+	genomes_multiqc: Channel<Record> {
 		path { r ->
-			r.txt >> "reports/assemblies_multiqc.txt"
-			r.xlsx >> "reports/assemblies_multiqc.xlsx"
+			r.txt >> "reports/genomes_multiqc.txt"
+			r.xlsx >> "reports/genomes_multiqc.xlsx"
 		}
 	}
 }

@@ -7,7 +7,7 @@ include { READS_ASSEMBLE; AssemblerParams } from './registry/workflows/reads/ass
 include { GENOME_QC; GenomeQcParams; GenomeQcInput } from './registry/workflows/genome/qc/main.nf'
 include { AMR_ANNOT; AmrParams                        } from './registry/workflows/amr-annot/main.nf'
 include { DATABASES; DbParams; Db                     } from './registry/subworkflows/db/main.nf'
-include { pathList; fastaSampleId; MetaPath         } from './registry/subworkflows/input/main.nf'
+include { pathList; fastaSampleId; jsonSampleId; MetaPath } from './registry/subworkflows/input/main.nf'
 include { GZIP_UNZ as DECOMPRESS_ASSEMBLY_FASTA } from './registry/modules/io/gzip/unz'
 include { IDENTITY as COPY_ASSEMBLY_FASTA             } from './registry/modules/io/identity'
 include { IDENTITY as COPY_SHORT_READS                } from './registry/modules/io/identity'
@@ -24,10 +24,10 @@ record ReadsParams {
 	illumina: String?
 }
 
-// Input assemblies given as glob patterns, the sample id is taken from the file names
-record AssembliesParams {
-	fasta: String?
-	info: String?
+// Input genomes given as glob patterns, the sample id is taken from the file names
+record GenomesParams {
+	fasta: String?    // FASTA files of the genomes
+	json: String?     // info.json files of their assemblers (topology of the contigs), matched to the FASTA files by sample id
 }
 
 params {
@@ -35,7 +35,7 @@ params {
 	db:      DbParams = record(basedir: 'results/db', checkm2: 'checkm2', org_db: 'org_db', amrfinderplus: 'amrfinderplus')    // databases folder (built when missing), or tar archive of it (path or URL)
 	csv:     Path? = null
 	reads:   ReadsParams = record(ont: null, illumina: null)
-	assemblies: AssembliesParams = record(fasta: null, info: null)
+	genomes: GenomesParams = record(fasta: null, json: null)
 	no_reads_filter: Boolean = false   // work with the given reads
 	no_reads_qc: Boolean = false
 	reads_filter: ReadsFilterParams = record(long_limit: 1_000_000_000, short_limit: 1_000_000_000, chopper_args: '--quality 15 --minlength 200')
@@ -55,17 +55,26 @@ params {
 }
 
 
+// The files of a genome: FASTA (path), assembler folder (dir) and info.json of the assembler (info)
+record GenomeFiles {
+	meta: Record?
+	path: Path
+	dir: Path?
+	info: Path?
+}
+
 // Input files of a sample
 record Sample {
 	id: String
 	reads_long: Path?
 	reads_short_1: Path?
 	reads_short_2: Path?
-	assembly_fasta: Path?
+	genome_fasta: Path?
+	genome_json: Path?    // info.json of the assembler of genome_fasta
 }
 
-def samplePart(id: String, reads_long: Path?, reads_short_1: Path?, reads_short_2: Path?, assembly_fasta: Path?) -> Sample {
-	return record(id: id, reads_long: reads_long, reads_short_1: reads_short_1, reads_short_2: reads_short_2, assembly_fasta: assembly_fasta)
+def samplePart(id: String, reads_long: Path?, reads_short_1: Path?, reads_short_2: Path?, genome_fasta: Path?, genome_json: Path?) -> Sample {
+	return record(id: id, reads_long: reads_long, reads_short_1: reads_short_1, reads_short_2: reads_short_2, genome_fasta: genome_fasta, genome_json: genome_json)
 }
 
 // The file given for a field of a sample: each input file must be given only once
@@ -85,7 +94,8 @@ def mergeSample(id: String, parts: Bag<Sample>) -> Sample {
 		reads_long: uniqueFile(id, 'reads_long', parts.collect({ p -> p.reads_long }).findAll({ f -> f }).toList()),
 		reads_short_1: uniqueFile(id, 'reads_short_1', parts.collect({ p -> p.reads_short_1 }).findAll({ f -> f }).toList()),
 		reads_short_2: uniqueFile(id, 'reads_short_2', parts.collect({ p -> p.reads_short_2 }).findAll({ f -> f }).toList()),
-		assembly_fasta: uniqueFile(id, 'assembly_fasta', parts.collect({ p -> p.assembly_fasta }).findAll({ f -> f }).toList())
+		genome_fasta: uniqueFile(id, 'genome_fasta', parts.collect({ p -> p.genome_fasta }).findAll({ f -> f }).toList()),
+		genome_json: uniqueFile(id, 'genome_json', parts.collect({ p -> p.genome_json }).findAll({ f -> f }).toList())
 	)
 }
 
@@ -96,17 +106,18 @@ def sampleFromRow(row: Map) -> Sample {
 		row.reads_long ? file(row.reads_long as String) : null,
 		row.reads_short_1 ? file(row.reads_short_1 as String) : null,
 		row.reads_short_2 ? file(row.reads_short_2 as String) : null,
-		row.assembly_fasta ? file(row.assembly_fasta as String) : null
+		row.genome_fasta ? file(row.genome_fasta as String) : null,
+		row.genome_json ? file(row.genome_json as String) : null
 	)
 }
 
 
-// Samples given with --csv, or found from the --reads.ont, --reads.illumina and --assemblies.fasta lists of glob patterns and URLs
+// Samples given with --csv, or found from the --reads.ont, --reads.illumina, --genomes.fasta and --genomes.json lists of glob patterns and URLs
 workflow SAMPLES {
 	take:
 	csv: Path?
 	reads: ReadsParams
-	assemblies: AssembliesParams
+	genomes: GenomesParams
 
 	main:
 	def samples_ch = channel.empty()
@@ -118,18 +129,22 @@ workflow SAMPLES {
 		def parts_ch = channel.empty()
 		if (reads.ont) {
 			parts_ch = parts_ch.mix(channel.fromList(pathList(reads.ont))
-				.map({ f -> samplePart(f.name.replaceAll('\\.(fastq\\.gz|fq\\.gz|bam|cram)$', ''), f, null, null, null) }))
+				.map({ f -> samplePart(f.name.replaceAll('\\.(fastq\\.gz|fq\\.gz|bam|cram)$', ''), f, null, null, null, null) }))
 		}
 		if (reads.illumina) {
 			parts_ch = parts_ch.mix(channel.fromList(pathList(reads.illumina))
 				.map({ f ->
 					def id = f.name.replaceAll(illumina_re, '')
-					(f.name =~ illumina_re)[0][2] == '1' ? samplePart(id, null, f, null, null) : samplePart(id, null, null, f, null)
+					(f.name =~ illumina_re)[0][2] == '1' ? samplePart(id, null, f, null, null, null) : samplePart(id, null, null, f, null, null)
 				}))
 		}
-		if (assemblies.fasta) {
-			parts_ch = parts_ch.mix(channel.fromList(pathList(assemblies.fasta))
-				.map({ f -> samplePart(fastaSampleId(f.name), null, null, null, f) }))
+		if (genomes.fasta) {
+			parts_ch = parts_ch.mix(channel.fromList(pathList(genomes.fasta))
+				.map({ f -> samplePart(fastaSampleId(f.name), null, null, null, f, null) }))
+		}
+		if (genomes.json) {
+			parts_ch = parts_ch.mix(channel.fromList(pathList(genomes.json))
+				.map({ f -> samplePart(jsonSampleId(f.name), null, null, null, null, f) }))
 		}
 		samples_ch = parts_ch
 			.map({ s -> tuple(s.id, s) })
@@ -148,7 +163,7 @@ workflow {
 	validateParameters()
 	log.info(paramsSummaryLog(workflow))
 
-	def samples = SAMPLES(params.csv, params.reads, params.assemblies)
+	def samples = SAMPLES(params.csv, params.reads, params.genomes)
 
 	// Copy the input reads in the work directory, so they can be published when not filtered
 	def sr_rec = COPY_SHORT_READS(
@@ -190,7 +205,7 @@ workflow {
 	// De novo assembly of the samples given without assembly: one assembly by each strategy of --assembler.name
 	def assemblers = channel.fromList((params.assembler?.name ?: 'long_flye_medaka').tokenize(',').collect({ n -> n.trim() }))
 	def todo_ch = samples
-		.filter({ s -> !s.assembly_fasta })
+		.filter({ s -> !s.genome_fasta })
 		.map({ s -> record(meta: record(id: s.id), todo: true) })
 	def assemblies = READS_ASSEMBLE(
 		todo_ch
@@ -207,10 +222,10 @@ workflow {
 				args: params.assembler?.args
 			) })
 	)
-	// Given assemblies: copied in the work directory (to be published), or decompressed when gzipped
+	// Given genomes: copied in the work directory (to be published), or decompressed when gzipped
 	def given_ch = samples
-		.filter({ s -> s.assembly_fasta })
-		.map({ s -> record(meta: record(id: s.id), fasta: s.assembly_fasta) })
+		.filter({ s -> s.genome_fasta })
+		.map({ s -> record(meta: record(id: s.id), fasta: s.genome_fasta) })
 	def given_asm_ch = COPY_ASSEMBLY_FASTA(
 		given_ch
 			.filter({ r -> !r.fasta.name.endsWith('.gz') })
@@ -222,15 +237,21 @@ workflow {
 				.map({ r -> record(meta: r.meta, path: r.fasta) })
 		).map({ r -> record(meta: r.meta, fasta: r.file) }))
 
-	// The FASTA of the assemblies (path), identified by a meta record holding both id (sample id) and assembler_name
-	def given_genome_ch: Channel<MetaPath> = given_asm_ch.map({ r -> record(meta: r.meta + record(assembler_name: 'none'), path: r.fasta) })
-	// all the assemblies: FASTA (path), assembler folder (dir) and info.json of the assembler (info), dir and info null for
-	// the given assemblies
-	def asm_rec = given_genome_ch.map({ r -> record(meta: r.meta, path: r.path, dir: null, info: null) })
-		.mix(assemblies.map({ r -> record(meta: r.meta, path: r.path, dir: r.dir, info: r.info) }))
+	// The FASTA of the given genomes (path) with the info.json given for them (info, null when not given), identified by a
+	// meta record holding both id (sample id) and assembler_name ('none')
+	def given_info_ch = samples
+		.filter({ s -> s.genome_fasta && s.genome_json })
+		.map({ s -> record(meta: record(id: s.id), info: s.genome_json) })
+	def given_genome_ch = given_asm_ch
+		.join(given_info_ch, by: 'meta', remainder: true)
+		.filter({ r -> r.fasta != null })
+		.map({ r -> record(meta: r.meta + record(assembler_name: 'none'), path: r.fasta, info: r.info) })
+	// all the genomes: FASTA (path), assembler folder (dir, null for the given genomes) and info.json of the assembler (info)
+	def given_rec: Channel<GenomeFiles> = given_genome_ch.map({ r -> record(meta: r.meta, path: r.path, dir: null, info: r.info) })
+	def asm_rec = given_rec.mix(assemblies.map({ r -> record(meta: r.meta, path: r.path, dir: r.dir, info: r.info) }))
 
-	// Each assembly with the reads of its sample: the assembled genomes carry them, the given assemblies (a single
-	// one by sample) are joined with the reads of their sample
+	// Each genome with the reads of its sample: the assembled genomes carry them, the given genomes (a single one by
+	// sample) are joined with the reads of their sample
 	def given_qc_input: Channel<GenomeQcInput> = given_genome_ch
 		.map({ r -> record(meta: record(id: r.meta.id), asm: r) })
 		.join(sr_rec, by: 'meta', remainder: true)
@@ -242,9 +263,9 @@ workflow {
 			short_read1: r.read1,
 			short_read2: r.read2,
 			long_reads: r.reads,
-			json: null
+			json: r.asm.info
 		) })
-	def asm_qc_input = given_qc_input.mix(assemblies.map({ r -> r + record(json: r.info) }))    // json: the asm.json of the assembler
+	def asm_qc_input = given_qc_input.mix(assemblies.map({ r -> r + record(json: r.info) }))    // json: the info.json of the assembler
 
 	// Databases: from the databases folder --db.basedir, or built
 	def db_needs: Set<Db> = (
@@ -274,12 +295,12 @@ workflow {
 	reads_short_filtered = sr_rec
 	filtered_reads_multiqc = reads_multiqc_ch
 
-	assemblies              = asm_rec
-	assemblies_checkm2      = asm_qc_ch.checkm2
-	assemblies_qc_report    = asm_qc_ch.report
-	assemblies_multiqc      = asm_qc_ch.multiqc
+	genomes              = asm_rec
+	genomes_checkm2      = asm_qc_ch.checkm2
+	genomes_qc_report    = asm_qc_ch.report
+	genomes_multiqc      = asm_qc_ch.multiqc
 
-	amr_assemblies  = amr_annot_ch.assemblies_amr
+	amr_genomes  = amr_annot_ch.assemblies_amr
 	amr_reads       = amr_annot_ch.reads_amr
 	amr_multiqc     = amr_annot_ch.multiqc
 }
@@ -304,33 +325,33 @@ output {
 		path { r -> r.html >> "reports/multiqc.html" }
 	}
 
-	assemblies: Channel<Record> {
+	genomes: Channel<Record> {
 		mode "copy" //because link is problematic
 		path { r ->
-			r.path >> "assemblies/${r.meta.id}__${r.meta.assembler_name}.fasta"
-			r.info >> "assemblies/${r.meta.id}__${r.meta.assembler_name}.asm.json"    // what the assembler tells of the contigs (topology), when it does
-			r.dir >> (params.verbose ? "assemblies/${r.meta.id}__${r.meta.assembler_name}.output" : null)    // assembler folder (none for the given assemblies)
+			r.path >> "genomes/${r.meta.id}__${r.meta.assembler_name}.fasta"
+			r.info >> "genomes/${r.meta.id}__${r.meta.assembler_name}.info.json"    // what the assembler tells of the contigs (topology), when it does
+			r.dir >> (params.verbose ? "genomes/${r.meta.id}__${r.meta.assembler_name}.output" : null)    // assembler folder (none for the given genomes)
 		}
 	}
-	assemblies_checkm2: Channel<Record> {
-		path { r -> r.path >> "assemblies/${r.meta.id}__${r.meta.assembler_name}.qc/checkm2_quality.tsv" }
+	genomes_checkm2: Channel<Record> {
+		path { r -> r.path >> "genomes/${r.meta.id}__${r.meta.assembler_name}.qc/checkm2_quality.tsv" }
 	}
-	assemblies_qc_report: Channel<Record> {
-		path { r -> r.html >> "assemblies/${r.meta.id}__${r.meta.assembler_name}.qc/qc_report.html" }
+	genomes_qc_report: Channel<Record> {
+		path { r -> r.html >> "genomes/${r.meta.id}__${r.meta.assembler_name}.qc/qc_report.html" }
 	}
-	assemblies_multiqc: Channel<Record> {
+	genomes_multiqc: Channel<Record> {
 		path { r ->
-			r.txt >> "reports/assemblies_multiqc.txt"
-			r.xlsx >> "reports/assemblies_multiqc.xlsx"
+			r.txt >> "reports/genomes_multiqc.txt"
+			r.xlsx >> "reports/genomes_multiqc.xlsx"
 		}
 	}
 
-	amr_assemblies: Channel<Record> {
+	amr_genomes: Channel<Record> {
 		mode "copy"    // the folder holds symlinks to the task outputs
 		path { r ->
-			r.fasta >> "amr/assemblies/${r.meta.id}__${r.meta.assembler_name}.fasta"
-			r.fai >> "amr/assemblies/${r.meta.id}__${r.meta.assembler_name}.fasta.fai"
-			r.dir >> "amr/assemblies/${r.meta.id}__${r.meta.assembler_name}.amr"    // results of the AMR tools on the assembly
+			r.fasta >> "amr/genomes/${r.meta.id}__${r.meta.assembler_name}.fasta"
+			r.fai >> "amr/genomes/${r.meta.id}__${r.meta.assembler_name}.fasta.fai"
+			r.dir >> "amr/genomes/${r.meta.id}__${r.meta.assembler_name}.amr"    // results of the AMR tools on the assembly
 		}
 	}
 	amr_reads: Channel<Record> {
@@ -342,7 +363,7 @@ output {
 			r.html >> "reports/report.html"
 			r.rds >> "reports/amr_multiqc.rds"    // AMR results of all the assemblies and samples, as read by lib_typing.R
 			r.xlsx >> "reports/multitable.xlsx"
-			r.assemblies_tsv >> "reports/multitable_assemblies.tsv"
+			r.assemblies_tsv >> "reports/multitable_genomes.tsv"
 			r.contigs_tsv >> "reports/multitable_contigs.tsv"
 			r.resistances_tsv >> "reports/multitable_resistances.tsv"
 			r.plasmidfinder_hits_tsv >> "reports/multitable_plasmidfinder_hits.tsv"

@@ -34,15 +34,15 @@ nextflow run pradosj/amr-tools -profile standard,test
 Running the pipeline on a local computer requires [`docker`](https://www.docker.com) 
 (to run containerized software) and [`nextflow`](https://www.nextflow.io).
 
-If the FASTA files to process are in subfolder 'assemblies/' of your working directory
+If the FASTA files of the genomes to process are in subfolder 'genomes/' of your working directory
 
 ```bash
-nextflow run pradosj/amr-tools --assemblies.fasta='assemblies/*.fasta'
+nextflow run pradosj/amr-tools --genomes.fasta='genomes/*.fasta'
 ```
 
-File inputs (`--reads.ont`, `--reads.illumina`, `--assemblies.fasta`, and `--query`/`--fasta` in the standalone pipelines) are
+File inputs (`--reads.ont`, `--reads.illumina`, `--genomes.fasta`, and `--query`/`--fasta` in the standalone pipelines) are
 comma-separated lists of paths, glob patterns and URLs (a URL names one file: no glob pattern in URLs), e.g.
-`--assemblies.fasta='assemblies/*.fasta,https://www.ebi.ac.uk/ena/browser/api/fasta/CP047704.1'` or
+`--genomes.fasta='genomes/*.fasta,https://www.ebi.ac.uk/ena/browser/api/fasta/CP047704.1'` or
 `--reads.illumina='https://ftp.sra.ebi.ac.uk/vol1/fastq/<run path>/<run>_1.fastq.gz,https://ftp.sra.ebi.ac.uk/vol1/fastq/<run path>/<run>_2.fastq.gz'`.
 The sample id is the file name without its extension (and without the `_R1`/`_R2` suffix of paired-end Illumina reads).
 FASTA inputs can be gzipped (`.fasta.gz`, `.fa.gz`, `.fna.gz`): they are decompressed.
@@ -53,7 +53,7 @@ To assemble and annotate reads (the sample id is taken from the file names):
 nextflow run pradosj/amr-tools --reads.ont='ont/*.fastq.gz' --reads.illumina='illumina/*_R{1,2}.fastq.gz' --assembler.name=hybrid_unicycler
 ```
 
-Inputs can also be given with a samplesheet: `--csv samples.csv` (columns `sample_id`, `reads_long`, `reads_short_1`, `reads_short_2`, `assembly_fasta`, `assembly_info`).
+Inputs can also be given with a samplesheet: `--csv samples.csv` (columns `sample_id`, `reads_long`, `reads_short_1`, `reads_short_2`, `genome_fasta`, `genome_json`: the info.json of the assembler of `genome_fasta`).
 ONT reads can be given as FASTQ, BAM or CRAM files.
 
 Main options:
@@ -108,28 +108,28 @@ option `-output-dir`.
 
 The output folder `results` has the following organization:
 
- - `results/reports`: Folder containing final reports, with QC metrics and annotations
+ - `results/reports`: Folder containing final reports (`genomes_multiqc.{txt,xlsx}`, `multitable_genomes.tsv`, ...), with QC metrics and annotations
 
  - `results/db`: databases built by the run (`checkm2/`, `org_db/`, `amrfinderplus/`), found by the next runs with the default `--db.basedir`
  
- - `results/assemblies`: FASTA of assembled genomes (`<sample>__<assembler>.fasta`), the topology of their contigs given by the assembler (`<sample>__<assembler>.asm.json`: `{ "topology": { "<contig>": "circular" | "linear" } }`, a contig missing when its topology is unknown; not for spades nor the given assemblies), the assembler folder with `--verbose` (`.output`), and the QC results (`.qc/`: CheckM2, dashboard)
+ - `results/genomes`: FASTA of the genomes (assembled or given) (`<sample>__<assembler>.fasta`), the topology of their contigs given by the assembler (`<sample>__<assembler>.info.json`: `{ "topology": { "<contig>": "circular" | "linear" } }`, a contig missing when its topology is unknown; not for spades, nor for the given genomes: their info.json, given by --genomes.json or the genome_json column, is not published), the assembler folder with `--verbose` (`.output`), and the QC results (`.qc/`: CheckM2, dashboard)
 
  - `results/reads`: filtered reads
 
- - `results/amr`: results of the AMR annotation tools, by assembly (`amr/assemblies/`) and by reads sample (`amr/reads/`)
+ - `results/amr`: results of the AMR annotation tools, by genome (`amr/genomes/`) and by reads sample (`amr/reads/`)
 
 
 # Standalone pipelines
 
 Each step of `amr-tools`, and a few other tools, can be run on its own from the `wf/` folder,
-e.g. `nextflow run pradosj/amr-tools/wf/amr-annot --assemblies.fasta='assemblies/*.fasta'`.
+e.g. `nextflow run pradosj/amr-tools/wf/amr-annot --genomes.fasta='genomes/*.fasta'`.
 
 | Pipeline | Description |
 |:--|:--|
 | [`reads-qc`](wf/reads/qc) | Quality control of ONT and Illumina reads (NanoPlot, fastp, MultiQC) |
 | [`reads-filter`](wf/reads/filter) | Filtering and subsampling of the reads |
 | [`assemble`](wf/reads/assemble) | De novo assembly from ONT and/or Illumina reads |
-| [`assemblies-qc`](wf/genome/qc) | Quality control of assemblies (statistics, reads alignments, CheckM2) |
+| [`genome-qc`](wf/genome/qc) | Quality control of assemblies (statistics, reads alignments, CheckM2) |
 | [`amr-annot`](wf/amr-annot) | AMR and plasmid annotation of assemblies and reads, with a multi-sample report |
 | [`orgfinder`](wf/orgfinder) | Organism detection of assemblies with FastANI |
 | [`asm-compare`](wf/genome/compare) | Comparison of assemblies with a reference assembly |

@@ -62,14 +62,19 @@
 			"description": "If on, the pipeline will produce extended outputs for debugging purpose"
 		},
 		
-		"assemblies": {
-			"title": "Assemblies definition",
+		"genomes": {
+			"title": "Genomes definition",
 			"type": "object",
 			"properties": {
 				"fasta": {
 					"type": "string",
 					"pattern": "^(((https?|ftp)://[^,\\s]+|\\S+(\\.(fasta|fa|fna)(\\.gz)?|\\}))(,\\s*|$))+$",
-					"description": "FASTA files of the assemblies (.fasta, .fa or .fna, optionally gzipped): comma-separated paths, glob patterns or URLs"
+					"description": "FASTA files of the genomes (.fasta, .fa or .fna, optionally gzipped): comma-separated paths, glob patterns or URLs"
+				},
+				"json": {
+					"type": "string",
+					"pattern": "^(((https?|ftp)://[^,\\s]+|\\S+(\\.json|\\}))(,\\s*|$))+$",
+					"description": "info.json files of the assemblers (topology of the contigs, as published in genomes/ by the assembly pipelines): comma-separated paths, glob patterns or URLs, matched to the FASTA files by sample id (the file name without .info.json or .json)"
 				}
 			}
 		},

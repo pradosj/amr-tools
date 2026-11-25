@@ -1,7 +1,7 @@
 {
 	"$schema": "https://json-schema.org/draft/2020-12/schema",
 	"type": "object",
-	"required": ["assemblies"],
+	"required": ["genomes"],
 	"properties": {
 		"db": {
 			"title": "Databases",
@@ -30,15 +30,15 @@
 				}
 			}
 		},
-		"assemblies": {
-			"title": "Assemblies definition",
+		"genomes": {
+			"title": "Genomes definition",
 			"type": "object",
 			"required": ["fasta"],
 			"properties": {
 				"fasta": {
 					"type": "string",
 					"pattern": "^(((https?|ftp)://[^,\\s]+|\\S+(\\.(fasta|fa|fna)(\\.gz)?|\\})!?)(,\\s*|$))+$",
-					"description": "FASTA files of the assemblies (.fasta, .fa or .fna, optionally gzipped): comma-separated paths, glob patterns or URLs"
+					"description": "FASTA files of the genomes (.fasta, .fa or .fna, optionally gzipped): comma-separated paths, glob patterns or URLs"
 				}
 			}
 		},

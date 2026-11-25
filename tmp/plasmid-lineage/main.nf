@@ -62,7 +62,7 @@ workflow {
 	publish:
 	rotated = rotated_ch
 	report = lineage.report
-	amr_assemblies = lineage.amr_assemblies
+	amr_genomes = lineage.amr_assemblies
 	amr_multiqc = lineage.amr_multiqc
 	db = dbs.built
 }
@@ -77,12 +77,12 @@ output {
 	report: Channel<Record> {
 		path { r -> r.html >> "${r.meta.id}/report.html" }
 	}
-	amr_assemblies: Channel<Record> {
+	amr_genomes: Channel<Record> {
 		mode "copy"    // the folder holds symlinks to the task outputs
 		path { r ->
-			r.fasta >> "amr/assemblies/${r.meta.id}__${r.meta.assembler_name}.fasta"
-			r.fai >> "amr/assemblies/${r.meta.id}__${r.meta.assembler_name}.fasta.fai"
-			r.dir >> "amr/assemblies/${r.meta.id}__${r.meta.assembler_name}.amr"    // results of the AMR tools on the assembly
+			r.fasta >> "amr/genomes/${r.meta.id}__${r.meta.assembler_name}.fasta"
+			r.fai >> "amr/genomes/${r.meta.id}__${r.meta.assembler_name}.fasta.fai"
+			r.dir >> "amr/genomes/${r.meta.id}__${r.meta.assembler_name}.amr"    // results of the AMR tools on the assembly
 		}
 	}
 	amr_multiqc: Channel<Record> {
@@ -90,7 +90,7 @@ output {
 			r.html >> "reports/report.html"
 			r.rds >> "reports/amr_multiqc.rds"    // AMR results of all the assemblies and samples, as read by lib_typing.R
 			r.xlsx >> "reports/multitable.xlsx"
-			r.assemblies_tsv >> "reports/multitable_assemblies.tsv"
+			r.assemblies_tsv >> "reports/multitable_genomes.tsv"
 			r.contigs_tsv >> "reports/multitable_contigs.tsv"
 			r.resistances_tsv >> "reports/multitable_resistances.tsv"
 			r.plasmidfinder_hits_tsv >> "reports/multitable_plasmidfinder_hits.tsv"

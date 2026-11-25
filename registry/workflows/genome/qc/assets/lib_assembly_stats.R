@@ -47,7 +47,7 @@ samtools_stats_summary <- function(stats_file) {
 #'
 #' @param dir Folder holding assembly.fasta and, when available, {long,short}_reads.bam.stats (samtools stats),
 #'  {long,short}_reads.coverage.tsv (samtools coverage), checkm2_quality_report.tsv and assembly.json (the
-#'  asm.json of the assembler, see read_assembly_topology()).
+#'  info.json of the assembler, see read_assembly_topology()).
 #' @return A list: assembly (one row tibble: num_contig, total_len, min_len, median_len, max_len, N50, GC_pct,
 #'  long_meandepth, short_meandepth (mean depth of the contigs weighted by their length, NA without reads),
 #'  num_circular (number of circular contigs, NA when the assembler gives no topology),

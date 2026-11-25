@@ -36,16 +36,16 @@ workflow {
 	)
 
 	publish:
-	assemblies = assemblies
+	genomes = assemblies
 }
 
 output {
-	assemblies: Channel<Record> {
+	genomes: Channel<Record> {
 		mode "copy" //because link is problematic
 		path { r ->
-			r.path >> "assemblies/${r.meta.id}__${r.meta.assembler_name}.fasta"
-			r.info >> "assemblies/${r.meta.id}__${r.meta.assembler_name}.asm.json"    // what the assembler tells of the contigs (topology), when it does
-			r.dir >> (params.verbose ? "assemblies/${r.meta.id}__${r.meta.assembler_name}.output" : null)    // assembler folder, with --verbose
+			r.path >> "genomes/${r.meta.id}__${r.meta.assembler_name}.fasta"
+			r.info >> "genomes/${r.meta.id}__${r.meta.assembler_name}.info.json"    // what the assembler tells of the contigs (topology), when it does
+			r.dir >> (params.verbose ? "genomes/${r.meta.id}__${r.meta.assembler_name}.output" : null)    // assembler folder, with --verbose
 		}
 	}
 }

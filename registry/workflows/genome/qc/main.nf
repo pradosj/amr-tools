@@ -31,7 +31,7 @@ record GenomeQcInput {
 	short_read1: Path?          // Illumina reads, null when there are none
 	short_read2: Path?          // null for single-end reads
 	long_reads: Path?           // ONT reads, null when there are none
-	json: Path?                 // asm.json of the assembler (topology of the contigs), null when there is none
+	json: Path?                 // info.json of the assembler (topology of the contigs), null when there is none
 }
 
 // Gather the QC statistics of an assembly into a JSON file (merge_genome_qc_stats() of lib_assembly_stats.R, plus the meta id and assembler_name)

@@ -321,7 +321,7 @@ read_samtools_coverage <- function(f) {
 
 #' Topology of the contigs given by an assembler
 #'
-#' @param f The asm.json of the assembler (info.json of the READS_ASSEMBLE modules): `{ "topology": { "<contig_id>": "circular" | "linear" } }`,
+#' @param f The info.json of the assembler (output info of the READS_ASSEMBLE modules): `{ "topology": { "<contig_id>": "circular" | "linear" } }`,
 #'  a contig missing when its topology is unknown.
 #' @return A tibble with contig_id and topology (circular or linear), empty when the file does not exist.
 read_assembly_topology <- function(f) {

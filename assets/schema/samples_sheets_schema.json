@@ -36,22 +36,22 @@
         "errorMessage": "Wrong path provided (cannot contain spaces and must end with .fastq.gz or .fq.gz)",
         "meta": "reads_short_2"
       },
-      "assembly_fasta": {
+      "genome_fasta": {
         "type": "string",
         "format": "file-path",
         "exists": true,
         "pattern": "^\\S+\\.(fasta|fa|fna)(\\.gz)?$",
-        "description": "Path the FASTA file containing the assembly",
-        "meta": "assembly_fasta"
+        "description": "Path of the FASTA file of the genome (its assembly): the sample is not assembled",
+        "meta": "genome_fasta"
       },
-      "assembly_info": {
+      "genome_json": {
         "type": "string",
         "format": "file-path",
         "exists": true,
-        "pattern": "^\\S+\\.(txt|info|tsv)$",
-        "description": "Path tabular file describing each contig of the assembly",
-        "meta": "assembly_info"
-      }      
+        "pattern": "^\\S+\\.json$",
+        "description": "Path of the info.json of the assembler of genome_fasta (topology of the contigs: { \"topology\": { \"<contig>\": \"circular\" | \"linear\" } }), as published in genomes/ by the assembly pipelines",
+        "meta": "genome_json"
+      }
 
     }
   },
