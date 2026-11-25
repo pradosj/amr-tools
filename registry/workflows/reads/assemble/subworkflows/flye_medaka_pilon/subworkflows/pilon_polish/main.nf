@@ -1,7 +1,7 @@
 nextflow.enable.types = true
 
-include { BWA_INDEX   } from './modules/bwa/index'
-include { BWA_MEM     } from './modules/bwa/mem'
+include { BWA_INDEX   } from './modules/aln/bwa/index'
+include { BWA_MEM     } from './modules/aln/bwa/mem'
 include { PILON       } from './modules/asm/pilon'
 include { MetaPath    } from './subworkflows/input/main.nf'
 

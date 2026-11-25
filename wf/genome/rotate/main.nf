@@ -2,7 +2,7 @@ nextflow.enable.types = true
 
 include { GENOME_ROTATE                        } from './workflows/rotate/main.nf'
 include { INPUT_FASTA; MetaPath                } from './subworkflows/input/main.nf'
-include { GZIP_UNZ                             } from './modules/gzip/unz'
+include { GZIP_UNZ                             } from './modules/io/gzip/unz'
 include { validateParameters; paramsSummaryLog } from 'plugin/nf-schema'
 
 

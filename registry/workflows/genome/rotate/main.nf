@@ -1,6 +1,6 @@
 nextflow.enable.types = true
 
-include { MINIMAP2_ALIGN_BAM } from './modules/minimap2/align_bam'
+include { MINIMAP2_ALIGN_BAM } from './modules/aln/minimap2/align_bam'
 include { FASTA_ROTATE_BAM   } from './modules/fasta/rotate'
 include { MetaPath           } from './subworkflows/input/main.nf'
 

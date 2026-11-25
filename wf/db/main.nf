@@ -1,7 +1,7 @@
 nextflow.enable.types = true
 
 include { DATABASES; DB_FOLDER; DbParams; Db } from './subworkflows/db/main.nf'
-include { TAR                  } from './modules/tar/tar.nf'
+include { TAR                  } from './modules/io/tar/tar.nf'
 include { validateParameters; paramsSummaryLog } from 'plugin/nf-schema'
 
 

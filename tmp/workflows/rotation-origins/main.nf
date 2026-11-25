@@ -1,8 +1,8 @@
 nextflow.enable.types = true
 
 include { FASTA_CAT             } from './modules/fasta/cat'
-include { MAKEBLASTDB           } from './modules/blast/makeblastdb'
-include { BLASTN as BLASTN_SELF } from './modules/blast/blastn'
+include { MAKEBLASTDB           } from './modules/aln/blast/makeblastdb'
+include { BLASTN as BLASTN_SELF } from './modules/aln/blast/blastn'
 include { IdPath; MetaPath      } from './subworkflows/input/main.nf'
 
 

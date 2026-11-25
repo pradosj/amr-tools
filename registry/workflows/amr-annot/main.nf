@@ -2,7 +2,7 @@ nextflow.enable.types = true
 
 include { AMR_ANNOT_ASSEMBLY } from './subworkflows/amr_annot_assembly'
 include { AMR_ANNOT_READS    } from './subworkflows/amr_annot_reads'
-include { RMD_RENDER         } from './modules/rmd/render'
+include { RMD_RENDER         } from './modules/r/rmd/render'
 
 
 // Options of a tool (params.amr.<tool>). Fields are nullable: modules fall back to their own defaults.

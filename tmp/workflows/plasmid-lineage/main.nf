@@ -1,9 +1,9 @@
 nextflow.enable.types = true
 
 include { FASTA_CAT             } from './modules/fasta/cat'
-include { MAKEBLASTDB           } from './modules/blast/makeblastdb'
-include { BLASTN as BLASTN_SELF } from './modules/blast/blastn'
-include { QUARTO_RENDER         } from './modules/quarto/render'
+include { MAKEBLASTDB           } from './modules/aln/blast/makeblastdb'
+include { BLASTN as BLASTN_SELF } from './modules/aln/blast/blastn'
+include { QUARTO_RENDER         } from './modules/r/quarto/render'
 include { AMR_ANNOT; AmrParams  } from './workflows/amr-annot/main.nf'
 
 

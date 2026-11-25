@@ -8,10 +8,10 @@ include { GENOME_QC; GenomeQcParams               } from './registry/workflows/g
 include { AMR_ANNOT; AmrParams                        } from './registry/workflows/amr-annot/main.nf'
 include { DATABASES; DbParams; Db                     } from './registry/subworkflows/db/main.nf'
 include { pathList; fastaSampleId; MetaPath         } from './registry/subworkflows/input/main.nf'
-include { GZIP_UNZ as DECOMPRESS_ASSEMBLY_FASTA } from './registry/modules/gzip/unz'
-include { IDENTITY as COPY_ASSEMBLY_FASTA             } from './registry/modules/identity/main.nf'
-include { IDENTITY as COPY_SHORT_READS                } from './registry/modules/identity/main.nf'
-include { IDENTITY as COPY_LONG_READS                 } from './registry/modules/identity/main.nf'
+include { GZIP_UNZ as DECOMPRESS_ASSEMBLY_FASTA } from './registry/modules/io/gzip/unz'
+include { IDENTITY as COPY_ASSEMBLY_FASTA             } from './registry/modules/io/identity/main.nf'
+include { IDENTITY as COPY_SHORT_READS                } from './registry/modules/io/identity/main.nf'
+include { IDENTITY as COPY_LONG_READS                 } from './registry/modules/io/identity/main.nf'
 
 // ------------------------------------------------------------------
 // Main entry point when running the pipeline from command line

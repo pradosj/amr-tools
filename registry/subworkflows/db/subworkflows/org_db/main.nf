@@ -1,7 +1,7 @@
 nextflow.enable.types = true
 
 include { NCBI_DATASET_DOWNLOAD_GENOME } from './modules/ncbi/dataset/main.nf'
-include { UNTAR                        } from './modules/tar/untar.nf'
+include { UNTAR                        } from './modules/io/tar/untar.nf'
 
 // Reference database built from NCBI genomes
 record OrgfinderDb {
