@@ -3,7 +3,7 @@ nextflow.enable.types = true
 include { PLASMID_LINEAGE; PlasmidLineageParams; Genome } from './workflows/plasmid-lineage/main.nf'
 include { GENOME_ROTATE } from './workflows/rotate/main.nf'
 include { FIND_ROTATION_ORIGINS } from './workflows/rotation-origins/main.nf'
-include { IDENTITY as COPY_FASTA } from './modules/io/identity/main.nf'
+include { IDENTITY as COPY_FASTA } from './modules/io/identity'
 include { AmrParams } from './workflows/plasmid-lineage/workflows/amr-annot/main.nf'
 include { DATABASES; DbParams; Db } from './subworkflows/db/main.nf'
 include { INPUT_FASTA; asIdPath } from './subworkflows/input/main.nf'

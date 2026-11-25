@@ -1,6 +1,6 @@
 nextflow.enable.types = true
 
-include { FASTANI } from './modules/aln/fastani/main.nf'
+include { FASTANI } from './modules/aln/fastani'
 include { MetaPath } from './subworkflows/input/main.nf'
 
 
