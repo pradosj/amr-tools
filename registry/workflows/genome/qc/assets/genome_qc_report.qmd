@@ -101,6 +101,12 @@ list(icon = "list-ol", color = "primary", value = fmt_num(stats$num_contig))
 
 ```{r}
 #| content: valuebox
+#| title: "Circular contigs"
+list(icon = "arrow-repeat", color = "primary", value = fmt_num(stats$num_circular))
+```
+
+```{r}
+#| content: valuebox
 #| title: "N50"
 list(icon = "bar-chart", color = "primary", value = fmt_num(stats$N50, " bp"))
 ```
@@ -178,9 +184,9 @@ depth_histogram(qc$short_reads)
 ## Row {height=55%}
 
 ```{r}
-#| title: "Contigs (relative depth: depth / length weighted median depth of the contigs)"
+#| title: "Contigs (topology given by the assembler; relative depth: depth / length weighted median depth of the contigs)"
 contigs |>
-	select(contig_id, length, GC_pct, N_count, long_meandepth, long_rel, short_meandepth, short_rel) |>
+	select(contig_id, length, topology, GC_pct, N_count, long_meandepth, long_rel, short_meandepth, short_rel) |>
 	reactable(
 		searchable = TRUE,
 		defaultPageSize = 20,
@@ -190,6 +196,7 @@ contigs |>
 		columns = list(
 			contig_id = colDef(name = "Contig", minWidth = 200),
 			length = colDef(name = "Length", format = colFormat(separators = TRUE)),
+			topology = colDef(name = "Topology", na = "–"),
 			GC_pct = colDef(name = "GC %", format = colFormat(digits = 1)),
 			N_count = colDef(name = "N"),
 			long_meandepth = colDef(name = "Long reads depth", format = colFormat(digits = 1)),

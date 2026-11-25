@@ -241,9 +241,10 @@ workflow {
 			path: r.asm.path,
 			short_read1: r.read1,
 			short_read2: r.read2,
-			long_reads: r.reads
+			long_reads: r.reads,
+			json: null
 		) })
-	def asm_qc_input = given_qc_input.mix(assemblies)
+	def asm_qc_input = given_qc_input.mix(assemblies.map({ r -> r + record(json: r.info) }))    // json: the asm.json of the assembler
 
 	// Databases: from the databases folder --db.basedir, or built
 	def db_needs: Set<Db> = (

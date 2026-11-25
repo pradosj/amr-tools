@@ -11,6 +11,7 @@ record ReadsParams {
 
 record AssembliesParams {
 	fasta: String?
+	json: String?    // asm.json files of the assemblers (topology of the contigs), matched to the FASTA files by sample id
 }
 
 
@@ -83,6 +84,11 @@ process SPLIT_MULTIFASTA {
 // Sample id of a FASTA file: its name without the .fasta, .fa or .fna extension, optionally followed by .gz
 def fastaSampleId(name: String) -> String {
 	return name.replaceAll(/\.(fasta|fa|fna)(\.gz)?$/, '')
+}
+
+// Sample id of an asm.json file: its name without the .asm.json (or .json) extension, as for the FASTA files
+def jsonSampleId(name: String) -> String {
+	return name.replaceAll(/(\.asm)?\.json$/, '')
 }
 
 // Paired-end Illumina file names end with _1, _2, _R1 or _R2 (optionally followed by _001)

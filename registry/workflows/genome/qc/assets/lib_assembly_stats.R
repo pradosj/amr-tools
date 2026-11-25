@@ -46,11 +46,14 @@ samtools_stats_summary <- function(stats_file) {
 #' Merge all the QC statistics of an assembly found in dir
 #'
 #' @param dir Folder holding assembly.fasta and, when available, {long,short}_reads.bam.stats (samtools stats),
-#'  {long,short}_reads.coverage.tsv (samtools coverage) and checkm2_quality_report.tsv.
+#'  {long,short}_reads.coverage.tsv (samtools coverage), checkm2_quality_report.tsv and assembly.json (the
+#'  asm.json of the assembler, see read_assembly_topology()).
 #' @return A list: assembly (one row tibble: num_contig, total_len, min_len, median_len, max_len, N50, GC_pct,
 #'  long_meandepth, short_meandepth (mean depth of the contigs weighted by their length, NA without reads),
+#'  num_circular (number of circular contigs, NA when the assembler gives no topology),
 #'  checkm2.Completeness, checkm2.Contamination, checkm2.Average_Gene_Length (NA without CheckM2)), contigs
-#'  (see fa_extract_contigs_stats(), plus long_meandepth and short_meandepth), long_reads and short_reads
+#'  (see fa_extract_contigs_stats(), plus long_meandepth, short_meandepth and topology: circular, linear or NA),
+#'  long_reads and short_reads
 #'  (see samtools_stats_summary()).
 merge_genome_qc_stats <- function(dir) {
   
@@ -66,6 +69,10 @@ merge_genome_qc_stats <- function(dir) {
 	    left_join(select(short_cov,contig_id,short_meandepth = meandepth),by = "contig_id")
 	})
 
+	# Add the topology of the contigs given by the assembler (circular or linear, NA when unknown)
+	contigs <- contigs |>
+	  left_join(read_assembly_topology(fs::path(dir,'assembly.json')),by = "contig_id")
+
 	# Compute summary assembly statistics from contigs
 	assembly <- contigs %>% 
 	  summarize(
@@ -77,7 +84,8 @@ merge_genome_qc_stats <- function(dir) {
 	    N50 = N50(length),
 	    GC_pct = 100 * sum(GC_count) / total_len,
 	    long_meandepth = weighted.mean(long_meandepth,length),
-	    short_meandepth = weighted.mean(short_meandepth,length)
+	    short_meandepth = weighted.mean(short_meandepth,length),
+	    num_circular = if (all(is.na(topology))) NA_integer_ else sum(topology == "circular", na.rm = TRUE)
     )
 
 	# Add checkm2 results
@@ -97,7 +105,8 @@ merge_genome_qc_stats <- function(dir) {
 #'
 #' @param file The JSON file: the list of merge_genome_qc_stats() and meta (id, assembler_name).
 #' @return The same list: meta as a list, assembly, contigs, long_reads and short_reads as tibbles (depth_hist
-#'  as a list column of tibbles depth, count), the depth columns numeric even when all their values are missing.
+#'  as a list column of tibbles depth, count), the depth columns numeric and topology
+#'  character even when all their values are missing.
 read_assembly_qc <- function(file) {
 	qc <- jsonlite::read_json(file, simplifyVector = TRUE)
 	depth_cols <- c("long_meandepth","short_meandepth")
@@ -105,9 +114,10 @@ read_assembly_qc <- function(file) {
 	qc$contigs <- as_tibble(qc$contigs) |>
 		bind_rows(tibble(
 			contig_idx = integer(0), contig_id = character(0), contig_name = character(0), length = numeric(0),
-			GC_count = numeric(0), N_count = numeric(0), long_meandepth = numeric(0), short_meandepth = numeric(0)
+			GC_count = numeric(0), N_count = numeric(0), long_meandepth = numeric(0), short_meandepth = numeric(0),
+			topology = character(0)
 		)) |>
-		mutate(across(all_of(depth_cols), as.numeric))
+		mutate(across(all_of(depth_cols), as.numeric), topology = as.character(topology))
 	for (r in c("long_reads","short_reads")) {
 		qc[[r]] <- as_tibble(qc[[r]]) |>
 			mutate(depth_hist = map(depth_hist, ~ bind_rows(as_tibble(.x), tibble(depth = numeric(0), count = numeric(0)))))

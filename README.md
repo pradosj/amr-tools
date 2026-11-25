@@ -112,7 +112,7 @@ The output folder `results` has the following organization:
 
  - `results/db`: databases built by the run (`checkm2/`, `org_db/`, `amrfinderplus/`), found by the next runs with the default `--db.basedir`
  
- - `results/assemblies`: FASTA of assembled genomes, and CheckM2 results
+ - `results/assemblies`: FASTA of assembled genomes (`<sample>__<assembler>.fasta`), the topology of their contigs given by the assembler (`<sample>__<assembler>.asm.json`: `{ "topology": { "<contig>": "circular" | "linear" } }`, a contig missing when its topology is unknown; not for spades nor the given assemblies), the assembler folder with `--verbose` (`.output`), and the QC results (`.qc/`: CheckM2, dashboard)
 
  - `results/reads`: filtered reads
 
