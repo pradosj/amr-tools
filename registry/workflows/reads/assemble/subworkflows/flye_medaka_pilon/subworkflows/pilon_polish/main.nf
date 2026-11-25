@@ -13,6 +13,13 @@ record ShortReads {
 	read2: Path?
 }
 
+// An assembly: its FASTA and the folder of the tool outputs
+record Assembly {
+	meta: Record?
+	path: Path
+	dir: Path
+}
+
 // Polish assemblies with short reads: map the short reads on the assembly, then run Pilon
 workflow PILON_POLISH {
 	take:
@@ -23,10 +30,8 @@ workflow PILON_POLISH {
 	def index_ch = BWA_INDEX(assemblies)
 		.map({ i -> record(meta: i.meta, ref: i) })
 	def bam_ch = BWA_MEM(short_reads.join(index_ch, by: 'meta')).outputs
-	def pilon_ch = PILON(assemblies.map({ r -> record(meta: r.meta, fasta: r.path) }).join(bam_ch, by: 'meta'))
+	def pilon_ch = PILON(assemblies.join(bam_ch, by: 'meta'))
 
 	emit:
-	fasta: Channel<MetaPath> = pilon_ch.fasta      // the polished FASTA (pilon.fasta)
-	dir: Channel<MetaPath>   = pilon_ch.dir        // the Pilon folder
-	outputs: Channel<Record> = pilon_ch.outputs    // records with fields meta, dir, fasta
+	polished: Channel<Assembly> = pilon_ch    // path: pilon.fasta, dir: the Pilon folder; a single emit: the workflow returns this channel
 }

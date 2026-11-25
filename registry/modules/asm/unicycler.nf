@@ -12,8 +12,7 @@ process UNICYCLER {
     record(meta: Record?, short_read1: Path?, short_read2: Path?, long_reads: Path?, args: String?)
 
     output:
-    fasta = record(meta: meta, path: file('unicycler/assembly.fasta'))
-    outputs = record(meta: meta, dir: file('unicycler'), fasta: file('unicycler/assembly.fasta'))
+    record(meta: meta, path: file('unicycler/assembly.fasta'), dir: file('unicycler'))
 
     script:
     def short_opts = !short_read1 ? '' : (short_read2 ? "-1 ${short_read1} -2 ${short_read2}" : "-s ${short_read1}")

@@ -11,8 +11,7 @@ process FLYE {
     record(meta: Record?, long_reads: Path, args: String?)
 
     output:
-    fasta = record(meta: meta, path: file('flye/assembly.fasta'))
-    outputs = record(meta: meta, dir: file('flye'), fasta: file('flye/assembly.fasta'))
+    record(meta: meta, path: file('flye/assembly.fasta'), dir: file('flye'))
 
     script:
     """

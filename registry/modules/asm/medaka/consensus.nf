@@ -9,18 +9,17 @@ process MEDAKA_CONSENSUS {
     time 2.h
 
     input:
-    record(meta: Record, fasta: Path, reads: Path, args: String?)
+    record(meta: Record, path: Path, reads: Path, args: String?)    // path: the assembly to polish
 
     output:
-    fasta = record(meta: meta, path: file('medaka/consensus.fasta'))
-    outputs = record(meta: meta, dir: file('medaka'), fasta: file('medaka/consensus.fasta'))
+    record(meta: meta, path: file('medaka/consensus.fasta'), dir: file('medaka'))
 
     script:
     """
     medaka_consensus \\
         ${args ?: '--bacteria'} \\
         -f -t ${task.cpus} \\
-        -d ${fasta} \\
+        -d ${path} \\
         -i ${reads} \\
         -o medaka
     """

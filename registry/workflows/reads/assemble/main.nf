@@ -6,7 +6,6 @@ include { HYBRID_FLYE_MEDAKA_PILON      } from './subworkflows/flye_medaka_pilon
 include { UNICYCLER                     } from './modules/asm/unicycler'
 include { SPADES                        } from './modules/asm/spades'
 include { HYBRACTER                     } from './modules/asm/hybracter'
-include { MetaPath                      } from './subworkflows/input/main.nf'
 
 
 // Arguments given to each assembly tool. Fields are nullable: modules fall back to their own defaults.
@@ -24,13 +23,13 @@ record AssemblerParams {
 	args: AssemblerArgs?
 }
 
-// Outputs of an assembler: the assembly FASTA and the folder of the assembler outputs
-record AssemblyOutputs {
+
+// An assembly: its FASTA and the folder of the assembler outputs (the output of each assembler)
+record Assembly {
 	meta: Record?
-	fasta: Path
+	path: Path
 	dir: Path
 }
-
 
 // An assembly to do: the reads of a sample (null when missing), the strategy and the tools arguments
 record AssemblyJob {
@@ -46,6 +45,7 @@ record AssemblyJob {
 record AssembledGenome {
 	meta: Record           // the meta of its job
 	path: Path             // the assembly FASTA
+	dir: Path              // the assembler outputs folder
 	short_read1: Path?
 	short_read2: Path?
 	long_reads: Path?
@@ -73,11 +73,8 @@ workflow READS_ASSEMBLE {
 	jobs: Channel<AssemblyJob>    // the assemblies to do (several strategies allowed, in any combination)
 
 	main:
-	// Each strategy assembles its jobs with long (short) reads for the long (short) strategies, with both for the hybrid
-	// ones, the other jobs are ignored; the reads a strategy does not use are set to null. A process is called once:
-	// UNICYCLER and HYBRACTER take the jobs of all their strategies
 	def flye = FLYE(jobs.filter({ r -> r.assembler == 'long_flye' && r.long_reads }).map({ r -> r + record(args: r.args?.flye) }))
-	def flye_medaka = LONG_FLYE_MEDAKA(jobs.filter({ r -> r.assembler == 'long_flye_medaka' && r.long_reads }).map({ r -> r + record(short_read1: null, short_read2: null) }))
+	def flye_medaka = LONG_FLYE_MEDAKA(jobs.filter({ r -> r.assembler == 'long_flye_medaka' && r.long_reads }))
 	def flye_medaka_pilon = HYBRID_FLYE_MEDAKA_PILON(jobs.filter({ r -> r.assembler == 'hybrid_flye_medaka_pilon' && r.long_reads && r.short_read1 }))
 	def spades = SPADES(jobs.filter({ r -> r.assembler == 'short_spades' && r.short_read1 }).map({ r -> r + record(long_reads: null, args: r.args?.spades) }))
 	def unicycler = UNICYCLER(
@@ -92,23 +89,15 @@ workflow READS_ASSEMBLE {
 			.map({ r -> r + record(args: r.args?.hybracter) })
 	)
 
-	def fasta_ch: Channel<MetaPath> = flye.fasta
-		.mix(flye_medaka.fasta)
-		.mix(flye_medaka_pilon.fasta)
-		.mix(spades.fasta)
-		.mix(unicycler.fasta)
-		.mix(hybracter.fasta)
-	def outputs_ch: Channel<AssemblyOutputs> = flye.outputs
-		.mix(flye_medaka.outputs)
-		.mix(flye_medaka_pilon.outputs)
-		.mix(spades.outputs)
-		.mix(unicycler.outputs)
-		.mix(hybracter.outputs)
+	def assembly_ch: Channel<Assembly> = flye
+		.mix(flye_medaka)
+		.mix(flye_medaka_pilon)
+		.mix(spades)
+		.mix(unicycler)
+		.mix(hybracter)
 
 	emit:
-	// the assembly FASTA with the reads of its job, the meta of the job
-	genomes: Channel<AssembledGenome> = fasta_ch
-		.map({ r -> record(meta: r.meta, path: r.path) })
+	// the assembly FASTA and folder, with the reads and the meta of its job (a single emit: the workflow returns this channel)
+	genomes: Channel<AssembledGenome> = assembly_ch
 		.join(jobs.map({ j -> record(meta: j.meta, short_read1: j.short_read1, short_read2: j.short_read2, long_reads: j.long_reads) }), by: 'meta')
-	outputs: Channel<AssemblyOutputs> = outputs_ch    // records with fields meta, fasta, dir (assembler outputs)
 }

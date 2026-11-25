@@ -27,18 +27,15 @@ workflow {
 	)
 
 	publish:
-	assemblies_fasta = assemblies.genomes
-	assemblies_dir = assemblies.outputs
+	assemblies = assemblies
 }
 
 output {
-	assemblies_fasta: Channel<Record> {
+	assemblies: Channel<Record> {
 		mode "copy" //because link is problematic
-		path { r -> r.path >> "assemblies/${r.meta.id}__${r.meta.assembler_name}.fasta" }
-	}
-	assemblies_dir: Channel<Record> {
-		mode "copy" //because link is problematic
-		enabled params.verbose
-		path { r -> r.dir >> "assemblies/${r.meta.id}__${r.meta.assembler_name}.output" }
+		path { r ->
+			r.path >> "assemblies/${r.meta.id}__${r.meta.assembler_name}.fasta"
+			r.dir >> (params.verbose ? "assemblies/${r.meta.id}__${r.meta.assembler_name}.output" : null)    // assembler folder, with --verbose
+		}
 	}
 }

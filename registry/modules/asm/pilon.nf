@@ -7,18 +7,16 @@ process PILON {
     time 4.h
 
     input:
-    record(meta: Record?, fasta: Path, bam: Path, bai: Path, args: String?)
+    record(meta: Record?, path: Path, bam: Path, bai: Path, args: String?)    // path: the assembly to polish, bam: the short reads aligned on it
 
     output:
-    dir = record(meta: meta, path: file('pilon'))
-    fasta = record(meta: meta, path: file('pilon/pilon.fasta'))
-    outputs = record(meta: meta, dir: file('pilon'), fasta: file('pilon/pilon.fasta'))
+    record(meta: meta, path: file('pilon/pilon.fasta'), dir: file('pilon'))
 
     script:
     """
     mkdir pilon \\
     && java -Xmx8000M -jar /usr/local/share/pilon*/pilon.jar \\
-        --genome ${fasta} \\
+        --genome ${path} \\
         --bam ${bam} \\
         ${args ?: '--fix all --changes'} \\
         --threads ${task.cpus} \\
