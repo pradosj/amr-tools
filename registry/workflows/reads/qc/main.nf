@@ -1,7 +1,7 @@
 nextflow.enable.types = true
 
-include { NANOPLOT                             } from './modules/nanoplot'
-include { FASTP                                } from './modules/fastp'
+include { NANOPLOT                             } from './modules/fq/nanoplot'
+include { FASTP                                } from './modules/fq/fastp'
 include { MULTIQC                              } from './modules/multiqc'
 include { MetaPath } from './subworkflows/input/main.nf'
 

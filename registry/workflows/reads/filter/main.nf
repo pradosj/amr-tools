@@ -1,8 +1,8 @@
 nextflow.enable.types = true
 
-include { FQ_SUBSAMPLE as FQ_SUBSAMPLE_LONG  } from './modules/fq_subsample'
-include { CHOPPER as CHOPPER_LONG            } from './modules/chopper'
-include { FQ_SUBSAMPLE as FQ_SUBSAMPLE_SHORT } from './modules/fq_subsample'
+include { FQ_SUBSAMPLE as FQ_SUBSAMPLE_LONG  } from './modules/fq/subsample'
+include { CHOPPER as CHOPPER_LONG            } from './modules/fq/chopper'
+include { FQ_SUBSAMPLE as FQ_SUBSAMPLE_SHORT } from './modules/fq/subsample'
 
 
 // Options of READS_FILTER (params.reads_filter). Fields are nullable: modules fall back to their own defaults.
