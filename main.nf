@@ -224,9 +224,10 @@ workflow {
 
 	// The FASTA of the assemblies (path), identified by a meta record holding both id (sample id) and assembler_name
 	def given_genome_ch: Channel<MetaPath> = given_asm_ch.map({ r -> record(meta: r.meta + record(assembler_name: 'none'), path: r.fasta) })
-	// all the assemblies: FASTA (path) and assembler folder (dir, null for the given assemblies)
-	def asm_rec = given_genome_ch.map({ r -> record(meta: r.meta, path: r.path, dir: null) })
-		.mix(assemblies.map({ r -> record(meta: r.meta, path: r.path, dir: r.dir) }))
+	// all the assemblies: FASTA (path), assembler folder (dir) and info.json of the assembler (info), dir and info null for
+	// the given assemblies
+	def asm_rec = given_genome_ch.map({ r -> record(meta: r.meta, path: r.path, dir: null, info: null) })
+		.mix(assemblies.map({ r -> record(meta: r.meta, path: r.path, dir: r.dir, info: r.info) }))
 
 	// Each assembly with the reads of its sample: the assembled genomes carry them, the given assemblies (a single
 	// one by sample) are joined with the reads of their sample
@@ -306,6 +307,7 @@ output {
 		mode "copy" //because link is problematic
 		path { r ->
 			r.path >> "assemblies/${r.meta.id}__${r.meta.assembler_name}.fasta"
+			r.info >> "assemblies/${r.meta.id}__${r.meta.assembler_name}.asm.json"    // what the assembler tells of the contigs (topology), when it does
 			r.dir >> (params.verbose ? "assemblies/${r.meta.id}__${r.meta.assembler_name}.output" : null)    // assembler folder (none for the given assemblies)
 		}
 	}
