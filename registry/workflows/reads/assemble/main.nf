@@ -17,7 +17,7 @@ record AssemblerArgs {
 	hybracter: String?
 }
 
-// Options of the assemblies (params.assembler of the pipelines, turned into AssemblyJob records by them)
+// Options of the assemblies (params.assembler of the pipelines, turned into AssemblyJob records by them: one job per strategy)
 record AssemblerParams {
 	name: String?              // assembly strategies, comma-separated (default: long_flye_medaka): each sample is assembled by each of them
 	args: AssemblerArgs?
@@ -49,22 +49,6 @@ record AssembledGenome {
 	short_read1: Path?
 	short_read2: Path?
 	long_reads: Path?
-}
-
-
-// The assembly jobs of a sample: one per strategy of opts.name, named by it (assembler_name). r holds the meta of the
-// sample (record(id)) and its reads, null when missing: read1, read2 (Illumina) and reads (ONT), e.g. the join of
-// ShortReads and LongReads channels with remainder: true
-def assemblyJobs(r: Record, opts: Record?) -> Iterable<AssemblyJob> {    // opts: AssemblerParams (typed Record: a record literal is not cast to a record type at run time)
-	def names = (opts?.name ?: 'long_flye_medaka').tokenize(',').collect({ n -> n.trim() })
-	return names.collect({ n -> record(
-		meta: (r.meta as Record) + record(assembler_name: n),
-		assembler: n,
-		short_read1: r.read1 as Path,
-		short_read2: r.read2 as Path,
-		long_reads: r.reads as Path,
-		args: opts?.args
-	) })
 }
 
 

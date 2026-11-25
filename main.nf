@@ -3,7 +3,7 @@ nextflow.enable.types = true
 include { SAMTOOLS_FASTQ as CONVERT_LONG_BAM_TO_FASTQ } from './registry/modules/aln/samtools/fastq'
 include { READS_FILTER; ReadsFilterParams             } from './registry/workflows/reads/filter/main.nf'
 include { READS_QC as FILTERED_READS_QC               } from './registry/workflows/reads/qc/main.nf'
-include { READS_ASSEMBLE; AssemblerParams; assemblyJobs } from './registry/workflows/reads/assemble/main.nf'
+include { READS_ASSEMBLE; AssemblerParams } from './registry/workflows/reads/assemble/main.nf'
 include { GENOME_QC; GenomeQcParams; GenomeQcInput } from './registry/workflows/genome/qc/main.nf'
 include { AMR_ANNOT; AmrParams                        } from './registry/workflows/amr-annot/main.nf'
 include { DATABASES; DbParams; Db                     } from './registry/subworkflows/db/main.nf'
@@ -188,6 +188,7 @@ workflow {
 	}
 
 	// De novo assembly of the samples given without assembly: one assembly by each strategy of --assembler.name
+	def assemblers = channel.fromList((params.assembler?.name ?: 'long_flye_medaka').tokenize(',').collect({ n -> n.trim() }))
 	def todo_ch = samples
 		.filter({ s -> !s.assembly_fasta })
 		.map({ s -> record(meta: record(id: s.id), todo: true) })
@@ -196,7 +197,15 @@ workflow {
 			.join(sr_rec, by: 'meta', remainder: true)
 			.join(lr_rec, by: 'meta', remainder: true)
 			.filter({ r -> r.todo })
-			.flatMap({ r -> assemblyJobs(r, params.assembler) })
+			.combine(assemblers)
+			.map({ r, a -> record(
+				meta: r.meta + record(assembler_name: a),
+				assembler: a,
+				short_read1: r.read1,
+				short_read2: r.read2,
+				long_reads: r.reads,
+				args: params.assembler?.args
+			) })
 	)
 	// Given assemblies: copied in the work directory (to be published), or decompressed when gzipped
 	def given_ch = samples

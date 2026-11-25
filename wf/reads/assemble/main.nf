@@ -1,6 +1,6 @@
 nextflow.enable.types = true
 
-include { READS_ASSEMBLE; AssemblerParams; assemblyJobs } from './workflows/assemble/main.nf'
+include { READS_ASSEMBLE; AssemblerParams } from './workflows/assemble/main.nf'
 include { INPUT_READS; ReadsParams                   } from './subworkflows/input/main.nf'
 include { validateParameters; paramsSummaryLog } from 'plugin/nf-schema'
 
@@ -20,10 +20,19 @@ workflow {
 
 	def reads = INPUT_READS(params.reads?.ont, params.reads?.illumina)
 	// One assembly of each sample by each strategy of --assembler.name
+	def assemblers = channel.fromList((params.assembler?.name ?: 'long_flye_medaka').tokenize(',').collect({ n -> n.trim() }))
 	def assemblies = READS_ASSEMBLE(
 		reads.short_reads
-			.join(reads.long_reads.map({ r -> record(meta: r.meta, reads: r.path) }), by: 'meta', remainder: true)
-			.flatMap({ r -> assemblyJobs(r, params.assembler) })
+			.join(reads.long_reads.map({ r -> record(meta: r.meta, long_reads: r.path) }), by: 'meta', remainder: true)
+			.combine(assemblers)
+			.map({ r, a -> record(
+				meta: r.meta + record(assembler_name: a),
+				assembler: a,
+				short_read1: r.read1,
+				short_read2: r.read2,
+				long_reads: r.long_reads,
+				args: params.assembler?.args
+			) })
 	)
 
 	publish:
