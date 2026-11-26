@@ -1,4 +1,11 @@
 
+- Ajouter assembler name et assembler args aux json produits par les assemblers
+
+- Add Kleborate module to run if the species is Klebsiella only 
+
+- Deplacer wf/amr-annot dans wf/genome/amr ? probleme si reads en input ?
+
+- Add Kraken analysis of unmapped reads 
 
 - Revoir le pipeline des plasmid pour utiliser pymlst et wg-blastn
 
