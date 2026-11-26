@@ -37,7 +37,6 @@ record Assembly {
 	meta: Record?
 	path: Path
 	dir: Path
-	asm_info: Path?    // asm.json: what the assembler tells of the contigs (topology), null when it tells nothing
 }
 
 // A file or folder to put in the assembly folder under the given name
@@ -86,12 +85,11 @@ workflow LONG_FLYE_MEDAKA {
 	)
 
 	emit:
-	// the assembly (Medaka consensus, same contig names as Flye), the assembly folder and the asm.json of Flye; a single
-	// emit: the workflow returns this channel
+	// the assembly (Medaka consensus, same contig names as Flye) and the assembly folder; a single emit: the workflow
+	// returns this channel
 	assembly: Channel<Assembly> = medaka_ch
 		.map({ r -> record(meta: r.meta, path: r.path) })
 		.join(folder_ch, by: 'meta')
-		.join(flye_ch.map({ r -> record(meta: r.meta, asm_info: r.asm_info) }), by: 'meta')
 }
 
 
@@ -123,10 +121,10 @@ workflow HYBRID_FLYE_MEDAKA_PILON {
 	)
 
 	emit:
-	// the assembly (last Pilon round, or the Flye+Medaka assembly when polishing failed), the assembly folder and the
-	// asm.json of Flye (PILON keeps the contig names of Flye); a single emit: the workflow returns this channel
-	assembly: Channel<Assembly> = medaka_ch.map({ r -> record(meta: r.meta, path0: r.path, asm_info: r.asm_info) })
+	// the assembly (last Pilon round, or the Flye+Medaka assembly when polishing failed, PILON keeping the contig names
+	// of Flye) and the assembly folder; a single emit: the workflow returns this channel
+	assembly: Channel<Assembly> = medaka_ch.map({ r -> record(meta: r.meta, path0: r.path) })
 		.join(pilon3_ch.map({ r -> record(meta: r.meta, path3: r.path) }), by: 'meta', remainder: true)
-		.map({ r -> record(meta: r.meta, path: r.path3 ?: r.path0, asm_info: r.asm_info) })
+		.map({ r -> record(meta: r.meta, path: r.path3 ?: r.path0) })
 		.join(folder_ch, by: 'meta')
 }

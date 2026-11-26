@@ -321,13 +321,17 @@ read_samtools_coverage <- function(f) {
 
 #' Topology of the contigs given by an assembler
 #'
-#' @param f The asm.json of the assembler (output info of the READS_ASSEMBLE modules): `{ "topology": { "<contig_id>": "circular" | "linear" } }`,
-#'  a contig missing when its topology is unknown.
+#' @param f The asm.json of the assembler (asm_info of the READS_ASSEMBLE modules):
+#'  `{ "topology": [ { "contig_id": "<contig>", "topology": "circular" | "linear" }, ... ] }`, a contig missing when
+#'  its topology is unknown.
 #' @return A tibble with contig_id and topology (circular or linear), empty when the file does not exist.
 read_assembly_topology <- function(f) {
-	if (!fs::file_exists(f)) return(tibble(contig_id = character(0), topology = character(0)))
-	t <- jsonlite::read_json(f)$topology
-	tibble(contig_id = names(t) %||% character(0), topology = as.character(unlist(t)))
+	expected_structure <- tibble(contig_id = character(0), topology = character(0))
+	if (!fs::file_exists(f)) return(expected_structure)
+	jsonlite::read_json(f, simplifyVector = TRUE)$topology |>
+		as_tibble() |>
+		bind_rows(expected_structure) |>
+		select(contig_id, topology)
 }
 
 #' Completeness and contamination of a CheckM2 result

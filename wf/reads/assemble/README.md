@@ -20,7 +20,7 @@ nextflow run pradosj/amr-tools/wf/reads/assemble --reads.ont='ont/*.fastq.gz' --
 ONT reads can also be given as BAM or CRAM files. The sample id is taken from the file names.
 Assembly strategies (`--assembler.name`, comma-separated: each sample is assembled by each of them, named `<sample>__<strategy>` in the outputs; a sample without the reads of a strategy is not assembled by it: long reads for the long_* ones, short reads for the short_* ones, both for the hybrid_* ones): `long_flye`, `long_flye_medaka` (default), `long_unicycler`, `long_hybracter`, `short_unicycler`, `short_spades`, `hybrid_unicycler`, `hybrid_hybracter`, `hybrid_flye_medaka_pilon`. Tool arguments: `--assembler.args.<tool>`.
 
-Outputs: `genomes/<sample_id>__<assembler>.fasta`, `genomes/<sample_id>__<assembler>.asm.json` (what the assembler tells of the contigs: `{ "topology": { "<contig>": "circular" | "linear" } }`, a contig missing when its topology is unknown; flye, unicycler and hybracter strategies, not spades), and with `--verbose` the assembler output folder `genomes/<sample_id>__<assembler>.output`.
+Outputs: `genomes/<sample_id>__<assembler>.fasta`, `genomes/<sample_id>__<assembler>.asm.json` (what the assembler tells: `{ "tool": { "name", "args" }, "topology": [ { "contig_id": "<contig>", "topology": "circular" | "linear" } ] }`, a contig missing from topology when it is unknown, topology empty ([]) for spades), and with `--verbose` the assembler output folder `genomes/<sample_id>__<assembler>.output`.
 
 # Test the pipeline
 
