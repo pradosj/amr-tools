@@ -195,16 +195,22 @@ workflow INPUT_FASTA {
 workflow INPUT_GENOMES {
 	take:
 	fasta: String?    // FASTA files of the genomes (see INPUT_FASTA)
-	json: String?     // asm.json files of their assemblers (comma-separated paths, globs or URLs), matched to the FASTA files by sample id (jsonSampleId())
+	json: String?     // asm.json files of their assemblers (comma-separated paths, globs or URLs), matched to the FASTA files by sample id (jsonSampleId());
+	                  // when null, the <sample id>.asm.json next to each local FASTA file (not split with !), when it exists
 
 	main:
-	def json_ch = channel.fromList(json ? pathList(json) : [])
+	def json_files = json
+		? pathList(json)
+		: pathList(patternList(fasta ?: '').findAll({ p -> !p.endsWith('!') && !(p ==~ /^[a-z]+:\/\/.*/) }).join(','))
+			.collect({ f -> f.resolveSibling("${fastaSampleId(f.name)}.asm.json") })
+			.findAll({ f -> f.exists() })
+			.toList()
+	def json_ch = channel.fromList(json_files)
 		.map({ f -> record(meta: record(id: jsonSampleId(f.name)), json: f) })
-	// each FASTA file with the asm.json of its sample (null when there is none), the asm.json files without FASTA ignored
 	def genome_ch = INPUT_FASTA(fasta)
 		.join(json_ch, by: 'meta', remainder: true)
 		.filter({ r -> r.path != null })
 
 	emit:
-	genomes: Channel<InputGenome> = genome_ch    // a single emit: the workflow returns this channel
+	genomes: Channel<InputGenome> = genome_ch
 }

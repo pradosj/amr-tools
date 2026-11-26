@@ -43,7 +43,7 @@
 				"json": {
 					"type": "string",
 					"pattern": "^(((https?|ftp)://[^,\\s]+|\\S+(\\.json|\\}))(,\\s*|$))+$",
-					"description": "asm.json files of the assemblers (topology of the contigs, as published in genomes/ by the assembly pipelines): comma-separated paths, glob patterns or URLs, matched to the FASTA files by sample id (the file name without .asm.json or .json)"
+					"description": "asm.json files of the assemblers (topology of the contigs, as published in genomes/ by the assembly pipelines): comma-separated paths, glob patterns or URLs, matched to the FASTA files by sample id (the file name without .asm.json or .json); by default, the <sample id>.asm.json next to each local FASTA file when it exists"
 				}
 			}
 		},
