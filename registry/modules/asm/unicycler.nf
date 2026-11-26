@@ -12,8 +12,7 @@ process UNICYCLER {
     record(meta: Record?, short_read1: Path?, short_read2: Path?, long_reads: Path?, args: String?)
 
     output:
-    // asm_info: what the assembler tells of the contigs, by block: topology (circular or linear, from the FASTA headers)
-    record(meta: meta, path: file('unicycler/assembly.fasta'), dir: file('unicycler'), asm_info: file('asm.json'))
+    record(meta: meta, path: file('unicycler/assembly.fasta'), dir: file('unicycler'))
 
     script:
     def short_opts = !short_read1 ? '' : (short_read2 ? "-1 ${short_read1} -2 ${short_read2}" : "-s ${short_read1}")
@@ -24,19 +23,11 @@ process UNICYCLER {
         --threads ${task.cpus} \\
         ${short_opts} ${long_opts} \\
         --out ./unicycler/
-
-    # topology of each contig: circular=true in its FASTA header (e.g. >1 length=5329000 depth=1.00x circular=true), else linear
-    awk '
-        BEGIN { printf "{\\n  \\"topology\\": {" }
-        /^>/ { printf "%s\\n    \\"%s\\": \\"%s\\"", (n++ ? "," : ""), substr(\$1, 2), (\$0 ~ / circular=true( |\$)/ ? "circular" : "linear") }
-        END { print (n ? "\\n  " : "") "}\\n}" }
-    ' unicycler/assembly.fasta > asm.json
     """
 
     stub:
     """
     mkdir -p unicycler
     touch unicycler/assembly.fasta
-    echo '{"topology": {}}' > asm.json
     """
 }
